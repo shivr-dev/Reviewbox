@@ -1,0 +1,22 @@
+'use client';
+import { createContext, useContext } from 'react';
+import type { StudyData, QueueItem, Mastery } from '@/lib/model';
+export type AppContext = {
+  data: StudyData;
+  states: Record<string, Mastery>;
+  refresh: () => Promise<void>;
+  navigate: (page: string, subject?: string) => void;
+  start: (items: QueueItem[], mode?: 'review' | 'test', title?: string) => void;
+  notify: (message: string) => void;
+  subject: string;
+  cloudUser: { id: string; email: string } | null;
+  setCloudUser: (u: any) => void;
+  aiReady: boolean;
+  sync: () => Promise<void>;
+  pending: number;
+  syncing: boolean;
+  prepare: () => Promise<void>;
+  preparing: string;
+};
+export const ReviewContext = createContext<AppContext>(null!);
+export const useReview = () => useContext(ReviewContext);
