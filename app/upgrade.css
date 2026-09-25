@@ -237,7 +237,82 @@
 :root[data-review-theme='editorial'] .today-card { border-color:#e7e3dc; box-shadow:0 6px 20px #3d302006; }
 :root[data-review-theme='editorial'] .page-heading h1 { font-family:'Noto Serif SC','Songti SC',Georgia,serif; font-weight:500; letter-spacing:0; }
 :root[data-review-theme='editorial'] .eyebrow { color:#9d6a56; }
+:root[data-review-theme='editorial'] .nav-label,
+:root[data-review-theme='editorial'] .nav-item,
+:root[data-review-theme='editorial'] .subject-nav,
+:root[data-review-theme='editorial'] .local-indicator { color:#756e65; }
+:root[data-review-theme='editorial'] .subject-nav.active { color:#57463b; }
+:root[data-review-theme='editorial'] .nav-count { background:#e2d8cb; color:#57463b; }
+:root[data-review-theme='editorial'] .avatar { background:#ece6dd; color:#81634f; }
+:root[data-review-theme='editorial'] .profile small,
+:root[data-review-theme='editorial'] .date-pill,
+:root[data-review-theme='editorial'] .slash { color:#82786d; }
+:root[data-review-theme='editorial'] .local-indicator > span,
+:root[data-review-theme='editorial'] .status-dot { background:#ab7058; }
+:root[data-review-theme='editorial'] .section-kicker,
+:root[data-review-theme='editorial'] .overview-stat > strong,
+:root[data-review-theme='editorial'] .overview-bottom b { color:#a26750; }
+:root[data-review-theme='editorial'] .subtle-badge { background:#f1ece5; color:#89796b; }
+:root[data-review-theme='editorial'] .today-card { border-color:#e7e3dc; }
+:root[data-review-theme='editorial'] .focus-circle { border-color:#eee9e2; outline-color:#e8e2da; color:#a26750; }
+:root[data-review-theme='editorial'] .focus-circle:after { border-top-color:#b7795e; border-right-color:#b7795e; }
+:root[data-review-theme='editorial'] .focus-circle span,
+:root[data-review-theme='editorial'] .hero-metrics span,
+:root[data-review-theme='editorial'] .plan-row p,
+:root[data-review-theme='editorial'] .row-meta,
+:root[data-review-theme='editorial'] .overview-stat span,
+:root[data-review-theme='editorial'] .overview-stat p,
+:root[data-review-theme='editorial'] .overview-bottom { color:#897e72; }
+:root[data-review-theme='editorial'] .orbit-tag,
+:root[data-review-theme='editorial'] .reason-pill { border-color:#e7dfd5; color:#927b6b; background:#fffdf9; }
+:root[data-review-theme='editorial'] .plan-row > svg,
+:root[data-review-theme='editorial'] .subject-large .section-head > svg { color:#a49586; }
+:root[data-review-theme='editorial'] .plan-row:hover,
+:root[data-review-theme='editorial'] .weak-row:hover,
+:root[data-review-theme='editorial'] .knowledge-row:hover { background:#fbf8f4; }
+:root[data-review-theme='editorial'] .empty-state h3 { color:#71685f; }
+:root[data-review-theme='editorial'] .empty-line { background:#d9cbbd; }
+:root[data-review-theme='editorial'] .legend-dot { background:#ad745a; }
+:root[data-review-theme='editorial'] .meter [data-slot='progress'] { background:#eee8e1; }
+:root[data-review-theme='editorial'] .meter [data-slot='progress-indicator'] { background:var(--meter-color,#b7795e); }
+:root[data-review-theme='editorial'] .page-tabs [data-active] { color:#8c533d !important; }
+:root[data-review-theme='editorial'] .page-tabs [data-slot='tabs-trigger']:after { background:#b7795e !important; }
 @media(max-width:650px){ .appearance-card { align-items:flex-start; flex-direction:column; } }
+
+/* Keep the question in place while a potentially long explanation scrolls on its own. */
+.answer-modal-backdrop { position:fixed; inset:0; z-index:220; display:flex; justify-content:flex-end; align-items:center; padding:24px; background:#241d1830; backdrop-filter:blur(2px); animation:answer-shade-in .18s ease-out; }
+.answer-modal { display:flex; flex-direction:column; width:min(520px,100%); max-height:min(780px,calc(100dvh - 48px)); overflow:hidden; border:1px solid #e5dcd1; border-radius:18px; background:#fffdf9; box-shadow:0 22px 76px #251a1430; color:#322d29; animation:answer-panel-in .2s ease-out; }
+.answer-modal-head { display:flex; flex:0 0 auto; align-items:center; justify-content:space-between; gap:16px; padding:20px 24px 17px; border-bottom:1px solid #eee8df; }
+.answer-modal-head span { display:block; font-size:17px; font-weight:600; }
+.answer-modal-head small { display:block; margin-top:3px; color:#93877b; font-size:12px; }
+.answer-modal-head button { width:34px; height:34px; display:grid; place-items:center; border-radius:8px; }
+.answer-modal .answer-reveal { flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain; margin:0; padding:22px 24px 24px; border:0; animation:none; }
+.answer-modal .answer-label { color:#9b6651; }
+.answer-modal .answer-reveal > h3 { color:#694638; overflow-wrap:anywhere; font-family:'Noto Serif SC','Songti SC',Georgia,serif; }
+.answer-modal .answer-explanation { color:#4c4842; overflow-wrap:anywhere; }
+.answer-modal .katex-display { max-width:100%; overflow-x:auto; overflow-y:hidden; }
+.answer-modal .solution-steps { background:#f7f2ec; }
+.answer-modal .solution-steps span,
+.answer-modal .criterion .evidence { color:#9b6651; }
+.answer-modal .rating-actions,
+.answer-modal .answer-reveal > .primary { position:sticky; bottom:-24px; z-index:1; margin-top:24px; padding:18px 0 24px; background:#fffdf9; box-shadow:0 -12px 14px #fffdf9; }
+.answer-modal .rating-actions { gap:8px; }
+.answer-modal .rating-actions button { min-height:46px; }
+.answer-modal .rating-actions .correct { color:#755f4e; border-color:#d8c6b4; }
+.answer-modal .rating-actions .correct:hover { background:#f7f0e9; }
+.answer-modal .answer-reveal > .primary { display:flex; width:100%; justify-content:center; }
+@keyframes answer-shade-in { from { opacity:0; } to { opacity:1; } }
+@keyframes answer-panel-in { from { opacity:0; transform:translateX(12px); } to { opacity:1; transform:none; } }
+@media(max-width:700px) {
+  .answer-modal-backdrop { align-items:flex-end; padding:0; }
+  .answer-modal { width:100%; max-height:82dvh; border-radius:18px 18px 0 0; }
+  .answer-modal .answer-reveal { padding:20px 18px 24px; }
+  .answer-modal .rating-actions button { font-size:12px; gap:4px; }
+  .answer-modal .rating-actions kbd { display:none; }
+}
+@media(prefers-reduced-motion:reduce) {
+  .answer-modal-backdrop,.answer-modal { animation:none; }
+}
 .matching-board {
   position: relative;
   display: grid;

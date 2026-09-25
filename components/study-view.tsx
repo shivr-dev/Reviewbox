@@ -3,6 +3,7 @@ import MathText from './math-text';
 import MatchingInput from './matching-input';
 import { objectiveScore, isPinyin } from '@/lib/question-tools';
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   ArrowLeft,
   ArrowRight,
@@ -53,6 +54,7 @@ export default function StudyView({
     [focusMode, setFocusMode] = useState(true),
     [scratchOpen, setScratchOpen] = useState(false),
     [revealed, setRevealed] = useState(false),
+    [answerPanelOpen, setAnswerPanelOpen] = useState(false),
     [solution, setSolution] = useState(false),
     [answer, setAnswer] = useState(''),
     [grade, setGrade] = useState<Grade | null>(null),
@@ -64,6 +66,7 @@ export default function StudyView({
     'sure' | 'unsure' | 'guess' | undefined
   >();
   const lock = useRef(false);
+  const answerCloseRef = useRef<HTMLButtonElement>(null);
   const originNamespace = useRef(currentNamespace());
   const timing = useRef({
     displayed: '',
@@ -86,6 +89,7 @@ export default function StudyView({
   const node = data.nodes.find((n) => n.id === q?.nodeId);
   const reset = () => {
     setRevealed(false);
+    setAnswerPanelOpen(false);
     setSolution(false);
     setAnswer('');
     setGrade(null);
@@ -118,6 +122,7 @@ export default function StudyView({
       if (draft.grade) {
         setGrade(draft.grade);
         setRevealed(true);
+        setAnswerPanelOpen(true);
       }
     }
   }, [index]);
@@ -138,6 +143,7 @@ export default function StudyView({
       t.revealed = new Date().toISOString();
     }
     setRevealed(true);
+    setAnswerPanelOpen(true);
   }
   async function record(
     outcome: 'correct' | 'unsure' | 'wrong',
@@ -298,6 +304,7 @@ export default function StudyView({
       );
     } catch (e) {
       setRevealed(false);
+      setAnswerPanelOpen(false);
       notify(
         e instanceof Error ? e.message : '批改暂时不可用，答案仍保留在当前页面',
       );
@@ -305,6 +312,15 @@ export default function StudyView({
       setBusy(false);
     }
   }
+  useEffect(() => {
+    if (!answerPanelOpen) return;
+    answerCloseRef.current?.focus();
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setAnswerPanelOpen(false);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [answerPanelOpen]);
   useEffect(() => {
     if (!q || done) return;
     const keys = (e: KeyboardEvent) => {
@@ -324,6 +340,7 @@ export default function StudyView({
       }
       if (
         revealed &&
+        answerPanelOpen &&
         q.type !== 'subjective' &&
         session?.mode !== 'test' &&
         ['1', '2', '3'].includes(e.key)
@@ -681,8 +698,27 @@ export default function StudyView({
             </p>
           </div>
         )}
-        {revealed && (
-          <div className="answer-reveal">
+        {revealed && !answerPanelOpen && !isTest && (
+          <div className="reveal-area">
+            <button className="primary" onClick={() => setAnswerPanelOpen(true)}>
+              <Eye size={17} /> 查看参考答案
+            </button>
+          </div>
+        )}
+        {revealed && answerPanelOpen && createPortal(
+          <div className="answer-modal-backdrop" onMouseDown={() => setAnswerPanelOpen(false)}>
+            <section
+              className="answer-modal"
+              role="dialog"
+              aria-modal="true"
+              aria-label="参考答案与核对"
+              onMouseDown={(event) => event.stopPropagation()}
+            >
+              <header className="answer-modal-head">
+                <div><span>核对答案</span><small>第 {index + 1} / {session.items.length} 题</small></div>
+                <button ref={answerCloseRef} className="quiet" onClick={() => setAnswerPanelOpen(false)} aria-label="关闭参考答案弹窗"><X size={18} /></button>
+              </header>
+              <div className="answer-reveal">
             {grade ? (
               <>
                 <div className="grade-heading">
@@ -834,7 +870,10 @@ export default function StudyView({
                 </div>
               </>
             )}
-          </div>
+              </div>
+            </section>
+          </div>,
+          document.body,
         )}
       </article>
       {!isTest && scratchOpen && <Scratchpad key={q.id} onClose={() => setScratchOpen(false)} />}

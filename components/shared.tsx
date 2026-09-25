@@ -75,7 +75,7 @@ export function Meter({
     <div className="meter">
       <Progress
         value={value === null ? 0 : Math.round(value * 100)}
-        style={{ '--meter-color': color ?? '#8aa177' } as React.CSSProperties}
+        style={color ? ({ '--meter-color': color } as React.CSSProperties) : undefined}
       />
       <span>{value === null ? '未评估' : Math.round(value * 100) + '%'}</span>
     </div>
