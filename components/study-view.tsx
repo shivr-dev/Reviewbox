@@ -249,8 +249,14 @@ export default function StudyView({
             originNamespace.current,
           );
         await completeActiveSession(session.id, originNamespace.current);
+        setAnswerPanelOpen(false);
+        setRevealed(false);
         setDone(true);
-      } else setIndex(index + 1);
+      } else {
+        setAnswerPanelOpen(false);
+        setRevealed(false);
+        setIndex(index + 1);
+      }
       await refresh();
     } catch (e) {
       notify(e instanceof Error ? e.message : '保存未完成，请重试');
