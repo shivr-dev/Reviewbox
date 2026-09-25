@@ -85,9 +85,10 @@ textarea {
   background: #fff0ec;
   color: #873b31;
   box-shadow: 0 1px 4px #0001;
+  display:flex; align-items:center; gap:12px; flex-wrap:wrap;
 }
 .native-exam-error button {
-  margin-left: 20px;
+  margin-left: 0;
   text-decoration: underline;
 }
 .oral-review {

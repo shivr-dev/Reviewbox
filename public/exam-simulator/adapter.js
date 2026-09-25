@@ -4,6 +4,17 @@
   let closed=false;
   let ready = false, screen = {name:'', args:[]}, last = performance.now();
   const pending = new Map();
+  // Screen callbacks sometimes receive a PointerEvent. Only persist values that
+  // can be replayed after a reload; browser objects cannot cross postMessage.
+  const plain = (value) => {
+    try {
+      if ((typeof Event !== 'undefined' && value instanceof Event) ||
+          (typeof Node !== 'undefined' && value instanceof Node) ||
+          (typeof Blob !== 'undefined' && value instanceof Blob) ||
+          typeof value === 'function') return null;
+      return JSON.parse(JSON.stringify(value));
+    } catch { return null; }
+  };
   const send = (type, payload = {}) => parent.postMessage({type, channel, ...payload}, location.origin);
   const snapshot = () => {
     if (!session) return null;
@@ -12,14 +23,14 @@
       if (key === 'base' || value instanceof Element || value instanceof Audio || typeof value === 'function') continue;
       try { copy[key] = JSON.parse(JSON.stringify(value)); } catch {}
     }
-    copy.screen = screen;
+    copy.screen = {name:screen.name,args:screen.args.map(plain)};
     return copy;
   };
   const save = () => { if (ready && session) send('exam-save', {snapshot:snapshot()}); };
   for (const name of ['bbWelcome','bbRoomCode','bbStartCode','bbPreparing','bbDirections','renderQuestion','bbReviewPage','bbModuleOver','renderBreak','actWelcome','actDashboard','actSectionIntro','tfHardwareCheck','tfAudioCheck','tfMicrophoneCheck','tfSectionIntro','tfWritingTaskIntro','tfSpeakingTaskIntro','tfEndSection','tfEndModule']) {
     const original = window[name];
     if (typeof original !== 'function') continue;
-    window[name] = function(...args) { screen = {name,args}; const result = original.apply(this,args); save(); return result; };
+    window[name] = function(...args) { screen = {name,args:args.map(plain)}; const result = original.apply(this,args); save(); return result; };
   }
   const originalError=tfErrorScreen;tfErrorScreen=code=>{send('exam-error',{message:'麦克风或录音未就绪，请检查浏览器权限后返回并继续考试。'+code});originalError(code);};
   const originalFinish = finishExam;

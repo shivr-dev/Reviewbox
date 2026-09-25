@@ -8,7 +8,10 @@ export default defineConfig({
   base: './',
   publicDir: project + 'public',
   plugins: [react()],
-  resolve: { alias: { '@': project } },
+  resolve: { alias: [
+    { find: /^\.\/server$/, replacement: project + 'lib/pages-server-shim.ts' },
+    { find: '@', replacement: project },
+  ] },
   css: { postcss: { plugins: [tailwindcss()] } },
   build: {
     outDir: project + 'pages-dist',

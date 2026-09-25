@@ -13,6 +13,7 @@ import {
   Clock3,
   Eye,
   Minus,
+  PencilLine,
   X,
 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
@@ -49,6 +50,8 @@ export default function StudyView({
 }) {
   const { data, start, refresh, notify, aiReady } = useReview();
   const [index, setIndex] = useState(0),
+    [focusMode, setFocusMode] = useState(true),
+    [scratchOpen, setScratchOpen] = useState(false),
     [revealed, setRevealed] = useState(false),
     [solution, setSolution] = useState(false),
     [answer, setAnswer] = useState(''),
@@ -69,6 +72,15 @@ export default function StudyView({
     start: 0,
     visible: true,
   });
+  useEffect(() => {
+    setFocusMode(localStorage.getItem('review-focus-mode') !== 'classic');
+  }, []);
+  const toggleFocus = () => {
+    setFocusMode((current) => {
+      localStorage.setItem('review-focus-mode', current ? 'classic' : 'focus');
+      return !current;
+    });
+  };
   const item = session?.items[index];
   const q = item?.question;
   const node = data.nodes.find((n) => n.id === q?.nodeId);
@@ -481,7 +493,8 @@ export default function StudyView({
   return (
     <div
       className={
-        'study-surface ' + (isTest ? 'assessment-surface' : 'practice-surface')
+        'study-surface ' + (isTest ? 'assessment-surface' : 'practice-surface') +
+        (!isTest && focusMode ? ' focus-mode' : '')
       }
     >
       <div className="session-top">
@@ -498,6 +511,14 @@ export default function StudyView({
           {index + 1}
           <span> / {session.items.length}</span>
         </b>
+        {!isTest && <div className="study-view-controls">
+          <button className="quiet" onClick={() => setScratchOpen((v) => !v)} aria-expanded={scratchOpen}>
+            <PencilLine size={15} /> 草稿纸
+          </button>
+          <button className="quiet" onClick={toggleFocus} aria-pressed={focusMode}>
+            {focusMode ? '退出沉浸' : '沉浸模式'}
+          </button>
+        </div>}
       </div>
       <Progress
         value={(index / session.items.length) * 100}
@@ -816,10 +837,74 @@ export default function StudyView({
           </div>
         )}
       </article>
+      {!isTest && scratchOpen && <Scratchpad key={q.id} onClose={() => setScratchOpen(false)} />}
       <div className="gentle-note">
         <Clock3 size={14} />
         只和自己的昨天相比。
       </div>
     </div>
   );
+}
+
+function Scratchpad({ onClose }: { onClose: () => void }) {
+  const canvas = useRef<HTMLCanvasElement>(null);
+  const drawing = useRef(false);
+  const [clearCount, setClearCount] = useState(0);
+  useEffect(() => {
+    const element = canvas.current;
+    if (!element) return;
+    const resize = () => {
+      const ratio = window.devicePixelRatio || 1;
+      const width = element.clientWidth;
+      const height = element.clientHeight;
+      if (!width || !height) return;
+      const saved = document.createElement('canvas');
+      saved.width = element.width;
+      saved.height = element.height;
+      saved.getContext('2d')?.drawImage(element, 0, 0);
+      element.width = width * ratio;
+      element.height = height * ratio;
+      const context = element.getContext('2d');
+      context?.setTransform(ratio, 0, 0, ratio, 0, 0);
+      if (saved.width && saved.height)
+        context?.drawImage(saved, 0, 0, saved.width, saved.height, 0, 0, width, height);
+    };
+    const observer = new ResizeObserver(resize);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+  useEffect(() => {
+    const element = canvas.current;
+    if (!element) return;
+    element.getContext('2d')?.clearRect(0, 0, element.clientWidth, element.clientHeight);
+  }, [clearCount]);
+  const point = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    return { x: event.clientX - rect.left, y: event.clientY - rect.top };
+  };
+  return <aside className="study-scratchpad" aria-label="草稿纸">
+    <div className="scratchpad-head"><span>草稿纸</span><div>
+      <button onClick={() => setClearCount((n) => n + 1)}>清空</button>
+      <button onClick={onClose} aria-label="关闭草稿纸">关闭</button>
+    </div></div>
+    <canvas ref={canvas} aria-label="可用鼠标或触控笔书写的草稿纸"
+      onPointerDown={(event) => {
+        drawing.current = true;
+        event.currentTarget.setPointerCapture(event.pointerId);
+        const p = point(event), context = event.currentTarget.getContext('2d');
+        if (!context) return;
+        context.beginPath(); context.moveTo(p.x, p.y);
+        context.lineWidth = 2; context.lineCap = 'round'; context.lineJoin = 'round';
+        context.strokeStyle = '#324238';
+      }}
+      onPointerMove={(event) => {
+        if (!drawing.current) return;
+        const p = point(event), context = event.currentTarget.getContext('2d');
+        context?.lineTo(p.x, p.y); context?.stroke();
+      }}
+      onPointerUp={() => { drawing.current = false; }}
+      onPointerCancel={() => { drawing.current = false; }}
+    />
+    <p>仅作当前题的思考草稿，不计入评分。</p>
+  </aside>;
 }

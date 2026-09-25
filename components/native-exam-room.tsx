@@ -150,7 +150,8 @@ export default function NativeExamRoom({
     <main className="native-exam-shell">
       {error && (
         <div className="native-exam-error" role="alert">
-          {error}
+          <span>{error}</span>
+          <button onClick={() => setError('')} aria-label="关闭错误提示">关闭</button>
           <button onClick={() => navigate('subjects', 'ce')}>返回 CE</button>
         </div>
       )}

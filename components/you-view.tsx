@@ -1,8 +1,9 @@
 'use client';
 import { isStaticSite } from '@/lib/runtime';
+import { pagesConfig, unlockPages, lockPages } from '@/lib/pages-vault';
 import ClearDataCard from './clear-data-card';
 import ImportSkillCard from './import-skill-card';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Plus,
   Cloud,
@@ -45,6 +46,8 @@ export default function YouView() {
     aiReady,
   } = useReview();
   const [examOpen, setExamOpen] = useState(false),
+    [visualTheme, setVisualTheme] = useState<'editorial' | 'classic'>('editorial'),
+    [vaultReady, setVaultReady] = useState<boolean | null>(null),
     [subject, setSubject] = useState<Subject>('math'),
     [scope, setScope] = useState<string[]>([]),
     [accountOpen, setAccountOpen] = useState(false),
@@ -52,6 +55,25 @@ export default function YouView() {
     [busy, setBusy] = useState(false),
     [minutes, setMinutes] = useState(String(data.settings.dailyMinutes));
   const nodes = data.nodes.filter((n) => n.subject === subject);
+  useEffect(() => {
+    if (isStaticSite()) void pagesConfig().then((value) => setVaultReady(!!value));
+    setVisualTheme(localStorage.getItem('review-visual-theme') === 'classic' ? 'classic' : 'editorial');
+  }, []);
+  const chooseTheme = (theme:'editorial'|'classic') => {
+    setVisualTheme(theme);
+    localStorage.setItem('review-visual-theme',theme);
+    document.documentElement.dataset.reviewTheme=theme;
+  };
+  async function unlock(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      await unlockPages(String(new FormData(e.currentTarget).get('passphrase')));
+      location.reload();
+    } catch (error) {
+      notify(error instanceof Error ? error.message : '无法解锁站点配置');
+    } finally { setBusy(false); }
+  }
   async function login(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setBusy(true);
@@ -115,21 +137,26 @@ export default function YouView() {
       />
       {isStaticSite() && (
         <section className="panel">
-          <h2>GitHub Pages 本地版</h2>
-          <p>
-            本地学习、手动导入和考试均可使用。AI
-            与云同步由私有完整版提供；迁移数据请使用备份导出与导入。
-          </p>
-          <a
-            className="secondary"
-            href="https://review-study-kevin.shivrdream.chatgpt.site/#you"
-            target="_blank"
-            rel="noreferrer"
-          >
-            打开私有完整版
-          </a>
+          <h2>私有学习配置</h2>
+          {vaultReady ? <>
+            <p>当前设备已解锁。登录后可将学习记录同步到你的私有账户。</p>
+            <button className="secondary" onClick={async () => { await lockPages(); location.reload(); }}>锁定当前设备</button>
+          </> : <>
+            <p>首次在此设备使用时，输入网站配置口令。口令不会上传至 GitHub。</p>
+            <form onSubmit={unlock} className="pages-unlock-form">
+              <input type="password" name="passphrase" minLength={12} autoComplete="off" placeholder="网站配置口令" required />
+              <button className="primary" disabled={busy}>解锁云端配置</button>
+            </form>
+          </>}
         </section>
       )}
+      <section className="panel appearance-card">
+        <div><h2>界面风格</h2><p className="muted">选择适合自己的阅读环境。复习时还可单独切换沉浸模式。</p></div>
+        <div className="appearance-options" role="group" aria-label="界面风格">
+          <button aria-pressed={visualTheme==='editorial'} className={visualTheme==='editorial'?'selected':''} onClick={()=>chooseTheme('editorial')}>暖纸</button>
+          <button aria-pressed={visualTheme==='classic'} className={visualTheme==='classic'?'selected':''} onClick={()=>chooseTheme('classic')}>经典</button>
+        </div>
+      </section>
       <section className="panel account-card">
         <div className="account-avatar">
           {(data.settings.name || 'K').slice(0, 1)}
@@ -327,7 +354,7 @@ export default function YouView() {
             {aiReady
               ? '已连接'
               : isStaticSite()
-                ? '本地版 · 在私有完整版使用 AI'
+                ? '请先解锁配置并登录'
                 : '等待 Cloudflare 账户配置'}
           </span>
         </div>

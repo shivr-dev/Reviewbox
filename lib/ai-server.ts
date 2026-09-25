@@ -41,13 +41,23 @@ export async function runJSON(
   const accountId = accounts[slot % accounts.length];
   if (!/^[a-f0-9]{32}$/i.test(accountId))
     throw new Error('Cloudflare 账户配置不正确');
+  const onPages = typeof window !== 'undefined' && (window as any).__REVIEW_STATIC__ === true;
+  const pages = onPages ? await (await import('./pages-vault')).pagesConfig() : null;
+  const access = onPages ? await (await import('./pages-cloud')).accessToken() : null;
+  if (onPages && (!pages || !access)) throw new Error('请先解锁站点配置并登录学习账户');
   const r = await fetch(
-    `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${MODEL}`,
+    onPages ? pages!.supabaseUrl + '/functions/v1/review-ai-proxy' :
+      `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${MODEL}`,
     {
       method: 'POST',
       headers: {
-        Authorization: 'Bearer ' + tokens[slot % tokens.length],
+        Authorization: 'Bearer ' + (onPages ? access : tokens[slot % tokens.length]),
         'Content-Type': 'application/json',
+        ...(onPages ? {
+          apikey: pages!.publishableKey,
+          'X-Cloudflare-Token': tokens[slot % tokens.length],
+          'X-Cloudflare-Account': accountId,
+        } : {}),
       },
       body: JSON.stringify({
         messages: [

@@ -125,6 +125,11 @@ test('supplied SAT runtime keeps check-in, directions, review, module transition
       }),
     );
   send({ type: 'exam-init', pack, snapshot: { fresh: true } });
+  // A UI callback may receive a live pointer event; saves must remain cloneable.
+  const pointer: any = {type:'pointerdown',target:{nodeType:1}};
+  pointer.target.ownerEvent = pointer;
+  assert.doesNotThrow(() => context.bbWelcome(pointer));
+  assert.deepEqual(messages.at(-1).snapshot.screen.args, [null]);
   assert.ok(element('app').innerHTML.includes('Your Tests'));
   element('#bbCheck').onclick();
   assert.ok(element('app').innerHTML.includes('Room Code'));

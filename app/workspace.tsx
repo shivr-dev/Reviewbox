@@ -30,6 +30,7 @@ import StudyView from '@/components/study-view';
 import SubjectsView from '@/components/subjects-view';
 import LibraryView from '@/components/library-view';
 import YouView from '@/components/you-view';
+import { assetPath } from '@/lib/runtime';
 import AnalyticsView from '@/components/analytics-view';
 import { SUBJECTS, uid, type StudyData, type QueueItem } from '@/lib/model';
 import { seedNodes, seedQuestions } from '@/lib/seed';
@@ -75,6 +76,9 @@ function CloseMobileNavigation({
   return null;
 }
 export default function Workspace() {
+  useEffect(() => {
+    document.documentElement.dataset.reviewTheme = localStorage.getItem('review-visual-theme') || 'editorial';
+  }, []);
   const [data, setData] = useState<StudyData>(base),
     [page, setPage] = useState('home'),
     [subject, setSubject] = useState('all'),
@@ -292,7 +296,7 @@ export default function Workspace() {
     onHash();
     window.addEventListener('hashchange', onHash);
     if ('serviceWorker' in navigator && location.hostname !== 'localhost')
-      navigator.serviceWorker.register('/sw.js').catch(() => {});
+      navigator.serviceWorker.register(assetPath('sw.js')).catch(() => {});
     return () => {
       alive = false;
       window.removeEventListener('online', updateNetwork);
