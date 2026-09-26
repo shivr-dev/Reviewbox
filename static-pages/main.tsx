@@ -7,6 +7,7 @@ import '../app/globals.css';
 import '../app/upgrade.css';
 import '../app/courses.css';
 import '../app/exam-import.css';
+import '../app/editorial.css';
 (window as any).__REVIEW_STATIC__ = true;
 (window as any).__REVIEW_PAGES_API__ = pagesApi;
 (window as any).__REVIEW_BUILD_SHA__ = (import.meta as any).env.VITE_REVIEW_SHA || 'local';

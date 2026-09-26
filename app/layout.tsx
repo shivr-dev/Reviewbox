@@ -5,6 +5,7 @@ import './globals.css';
 import './upgrade.css';
 import './courses.css';
 import './exam-import.css';
+import './editorial.css';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',

@@ -9,6 +9,7 @@ import {
   type Pack,
 } from './model';
 import { assertQuestionFormat } from './question-tools';
+import { assetPath } from './runtime';
 const subjects = SUBJECTS.map((x) => x.id);
 const safeText = z.string().max(100000);
 const skillSchema = z.object({
@@ -79,6 +80,8 @@ export const questionSchema = z.object({
     })
     .optional(),
   transferFrom: z.string().max(160).optional(),
+  collectionId: z.string().max(160).optional(),
+  collectionTitle: z.string().max(200).optional(),
   passage: z.string().max(30000).optional(),
   rubric: z
     .array(
@@ -372,8 +375,14 @@ export async function extractFile(
   }
   if (file.type.startsWith('image/')) {
     const { createWorker } = await import('tesseract.js');
-    const worker = await createWorker('chi_sim+eng');
+    let worker: Awaited<ReturnType<typeof createWorker>> | undefined;
     try {
+      worker = await createWorker('chi_sim+eng', 1, {
+        workerPath: assetPath('ocr/worker.min.js'),
+        corePath: assetPath('ocr/core'),
+        langPath: assetPath('ocr/lang'),
+        workerBlobURL: false,
+      });
       const result = await worker.recognize(file);
       return {
         text: result.data.text.replace(
@@ -381,8 +390,13 @@ export async function extractFile(
           '',
         ),
       };
+    } catch (cause) {
+      const message = String(cause instanceof Error ? cause.message : cause);
+      if (/404|Network error|fetch|importScripts|Worker|Failed to load/i.test(message))
+        throw new Error('本地文字识别文件未能加载。请刷新页面后重试；若仍失败，请检查网站是否已完成更新。');
+      throw new Error('本地文字识别失败。请重拍清晰、正向且光线充足的照片，或换一张图片重试。');
     } finally {
-      await worker.terminate();
+      await worker?.terminate();
     }
   }
   throw new Error(

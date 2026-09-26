@@ -1,5 +1,6 @@
 'use client';
 import ManualImport from './manual-import';
+import { pinyinCollections, pinyinPracticeQueue } from '@/lib/pinyin-collections';
 import {
   wrongQuestions,
   isPinyin,
@@ -62,6 +63,7 @@ export default function SubjectsView() {
     [reaction, setReaction] = useState(reactions[0]);
   const [practiceSource, setPracticeSource] = useState('all'),
     [practiceType, setPracticeType] = useState('all'),
+    [pinyinCollection, setPinyinCollection] = useState('all'),
     [questionTypes, setQuestionTypes] = useState<string[]>([]);
   const s = SUBJECTS.find((s) => s.id === subject);
   const nodes = data.nodes.filter((n) => !s || n.subject === s.id);
@@ -76,14 +78,21 @@ export default function SubjectsView() {
       practiceType === 'all' ||
       (practiceType === 'pinyin' ? isPinyin(q) : q.type === practiceType),
   );
-  const queue =
-    practiceSource === 'all'
+  const subjectQuestions = selectedQuestions.filter((q) => !s || q.subject === s.id);
+  const collections = s?.id === 'chinese' ? pinyinCollections(data.questions, data.nodes) : [];
+  const fullPinyin = s?.id === 'chinese' && subjectQuestions.length > 0 &&
+    (practiceType === 'pinyin' || subjectQuestions.every(isPinyin));
+  const queue = fullPinyin
+    ? pinyinPracticeQueue(subjectQuestions, pinyinCollection).map((item) => ({
+        ...item,
+        reason: practiceSource === 'wrong' ? '错题专项' : practiceSource === 'blind' ? '信心校准' : '篇目字词',
+      }))
+    : practiceSource === 'all'
       ? buildQueue(
           { ...data, questions: selectedQuestions },
           { subject: s?.id, practice: true },
         )
-      : selectedQuestions
-          .filter((q) => !s || q.subject === s.id)
+      : subjectQuestions
           .slice(0, 20)
           .map((q) => ({
             question: q,
@@ -415,6 +424,28 @@ export default function SubjectsView() {
           )}
         </TabsContent>
         <TabsContent value="practice">
+          {s.id === 'chinese' && collections.length > 0 && (
+            <section className="panel pinyin-collections-panel">
+              <div className="section-head">
+                <div>
+                  <p className="eyebrow">CHINESE WORD SETS</p>
+                  <h2>字词篇目</h2>
+                </div>
+                <span className="muted">按篇目完整练习</span>
+              </div>
+              <p className="muted">篇目是字词集合；每个字词单独记录掌握度。整篇练习会覆盖全部字词，不受每日推荐题量限制。</p>
+              <div className="pinyin-collection-list">
+                {collections.map((collection) => (
+                  <div className="pinyin-collection-row" key={collection.id}>
+                    <div><strong>{collection.title}</strong><span>{collection.count} 个字词</span></div>
+                    <button className="secondary" onClick={() => start(pinyinPracticeQueue(data.questions, collection.id))}>
+                      练完整篇 <ArrowRight size={15} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
           {s.id === 'ce' && <ToeflPractice />}
           <div className="home-columns">
             <section className="panel">
@@ -447,6 +478,14 @@ export default function SubjectsView() {
                     ).map((t) => ({ value: t.id, label: t.label })),
                   ]}
                 />
+                {s.id === 'chinese' && fullPinyin && collections.length > 1 && (
+                  <Choice
+                    label="字词篇目"
+                    value={pinyinCollection}
+                    onChange={setPinyinCollection}
+                    options={[{ value: 'all', label: '全部篇目' }, ...collections.map((collection) => ({ value: collection.id, label: collection.title }))]}
+                  />
+                )}
               </div>
               <div className="practice-count">
                 {queue.length}

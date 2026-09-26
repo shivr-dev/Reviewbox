@@ -1,5 +1,6 @@
 import { build } from 'vite';
 import { writeFile } from 'node:fs/promises';
+import './prepare-ocr.mjs';
 await build({ configFile: 'vite.pages.config.ts' });
 await writeFile('pages-dist/.nojekyll', '');
 await writeFile('pages-dist/version.json', JSON.stringify({

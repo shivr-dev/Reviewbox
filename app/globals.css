@@ -418,7 +418,7 @@ small {
 .focus-circle {
   width: 180px;
   height: 180px;
-  border: 9px solid #ebefe6;
+  background: conic-gradient(var(--focus-accent, #9daf8d) var(--focus-progress, 0%), #ebefe6 0);
   outline: 1px solid #edf0e7;
   border-radius: 50%;
   display: flex;
@@ -431,13 +431,12 @@ small {
 .focus-circle:after {
   content: '';
   position: absolute;
-  inset: -9px;
-  border: 9px solid transparent;
-  border-top-color: #9daf8d;
-  border-right-color: #9daf8d;
+  inset: 9px;
+  background: #fff;
   border-radius: 50%;
-  transform: rotate(-30deg);
+  z-index: 0;
 }
+.focus-circle > * { position: relative; z-index: 1; }
 .focus-circle strong {
   font-size: 28px;
   font-weight: 550;

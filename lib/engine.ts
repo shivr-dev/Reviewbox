@@ -253,6 +253,7 @@ export function buildQueue(
   data: StudyData,
   opts: {
     subject?: string;
+    subjects?: string[];
     scope?: string[];
     limit?: number;
     now?: number;
@@ -269,6 +270,7 @@ export function buildQueue(
   const active = data.nodes.filter(
     (n) =>
       (!opts.subject || n.subject === opts.subject) &&
+      (!opts.subjects?.length || opts.subjects.includes(n.subject)) &&
       (!opts.scope?.length || opts.scope.includes(n.id)),
   );
   const candidates: QueueItem[] = [];

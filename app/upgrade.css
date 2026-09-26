@@ -254,8 +254,7 @@
 :root[data-review-theme='editorial'] .overview-bottom b { color:#a26750; }
 :root[data-review-theme='editorial'] .subtle-badge { background:#f1ece5; color:#89796b; }
 :root[data-review-theme='editorial'] .today-card { border-color:#e7e3dc; }
-:root[data-review-theme='editorial'] .focus-circle { border-color:#eee9e2; outline-color:#e8e2da; color:#a26750; }
-:root[data-review-theme='editorial'] .focus-circle:after { border-top-color:#b7795e; border-right-color:#b7795e; }
+:root[data-review-theme='editorial'] .focus-circle { outline-color:#e8e2da; color:#a26750; }
 :root[data-review-theme='editorial'] .focus-circle span,
 :root[data-review-theme='editorial'] .hero-metrics span,
 :root[data-review-theme='editorial'] .plan-row p,

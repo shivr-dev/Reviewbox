@@ -143,6 +143,8 @@ export type Question = {
     right: { id: string; text: string }[];
   };
   transferFrom?: string;
+  collectionId?: string;
+  collectionTitle?: string;
   passage?: string;
   rubric?: RubricItem[];
   solution?: string[];

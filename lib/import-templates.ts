@@ -46,14 +46,16 @@ export function learningTemplate(type: string) {
     pack.manifest.subject = 'chinese';
     const n = pack.knowledge[0];
     n.subject = 'chinese';
-    n.title = '字词回忆';
+    n.title = '沮丧';
     n.course = '语文';
     n.unit = '字词';
-    n.chapter = '字词';
+    n.chapter = '藤野先生字词';
     q.subject = 'chinese';
-    q.prompt = 'jǔ sàng（心情低落）';
+    q.prompt = 'jǔ sàng';
     q.answer = '沮丧';
-    q.explanation = '沮丧：灰心失望。自行回忆或纸上书写，揭晓后手动判断。';
+    q.explanation = '';
+    q.collectionId = 'example-tengye-words';
+    q.collectionTitle = '藤野先生字词';
   }
   return JSON.stringify(pack, null, 2);
 }

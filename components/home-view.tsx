@@ -12,6 +12,7 @@ import {
 import { useReview } from './review-context';
 import { SUBJECTS, localDay } from '@/lib/model';
 import { buildQueue, nodeMastery, forgettingRisk } from '@/lib/engine';
+import { questionTopicTitle } from '@/lib/pinyin-collections';
 import { Meter, Empty, Heading, dateLabel } from './shared';
 export default function HomeView() {
   const { data, states, start, navigate, prepare, preparing, aiReady } =
@@ -42,6 +43,8 @@ export default function HomeView() {
   const duration = Math.ceil(
     queue.reduce((a, q) => a + q.question.expectedSeconds, 0) / 60,
   );
+  const todayTotal = todayEvents.length + queue.length;
+  const todayProgress = todayTotal ? Math.round(todayEvents.length / todayTotal * 100) : 0;
   return (
     <>
       <Heading
@@ -140,10 +143,10 @@ export default function HomeView() {
           </div>
         </div>
         <div className="focus-visual">
-          <div className="focus-circle">
+          <div className="focus-circle" role="img" aria-label={`今日已完成 ${todayEvents.length} 道，待复习 ${queue.length} 道，进度 ${todayProgress}%`} style={{ '--focus-progress': `${todayProgress}%` } as React.CSSProperties}>
             <BookOpen size={24} />
             <strong>{queue.length}</strong>
-            <span>一次专注，一点进步</span>
+            <span>待复习 · 已完成 {todayEvents.length}</span>
           </div>
           <div className="orbit-tag">
             <Check size={14} />
@@ -169,8 +172,7 @@ export default function HomeView() {
                   ...new Set(
                     items.map(
                       (q) =>
-                        data.nodes.find((n) => n.id === q.question.nodeId)
-                          ?.title,
+                        questionTopicTitle(q.question, data.nodes.find((n) => n.id === q.question.nodeId)),
                     ),
                   ),
                 ];

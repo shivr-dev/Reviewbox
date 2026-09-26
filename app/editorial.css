@@ -1,0 +1,114 @@
+/* The warm-paper workspace has its own typography, spacing and controls. */
+:root[data-review-theme='editorial'] {
+  --color-ring: #ad745a;
+  --color-accent: #f2eae2;
+  --color-accent-foreground: #624b3c;
+  --color-sidebar-accent: #ebe3da;
+  --color-sidebar-accent-foreground: #624b3c;
+  --color-sidebar-ring: #ad745a;
+}
+:root[data-review-theme='editorial'] .page:not(.study-page) {
+  max-width: 1160px;
+  padding: 48px 52px 76px;
+}
+:root[data-review-theme='editorial'] .page-heading { margin-bottom: 38px; }
+:root[data-review-theme='editorial'] .page-heading h1 {
+  font-size: clamp(34px, 3.1vw, 45px);
+  line-height: 1.35;
+}
+:root[data-review-theme='editorial'] .today-card {
+  grid-template-columns: minmax(0, 1fr) 220px;
+  padding: 42px 46px;
+  border-radius: 16px;
+  gap: 28px;
+  background: #fffefb;
+}
+:root[data-review-theme='editorial'] .today-card h2 {
+  font-family: 'Noto Serif SC', 'Songti SC', Georgia, serif;
+  font-size: 27px;
+  font-weight: 600;
+}
+:root[data-review-theme='editorial'] .home-columns { grid-template-columns: 1.25fr .85fr; gap: 18px; }
+:root[data-review-theme='editorial'] .panel {
+  border-radius: 14px;
+  padding: 28px 30px;
+  background: #fffefb;
+}
+:root[data-review-theme='editorial'] .section-head h2,
+:root[data-review-theme='editorial'] .panel > h2 {
+  font-family: 'Noto Serif SC', 'Songti SC', Georgia, serif;
+  font-weight: 600;
+}
+:root[data-review-theme='editorial'] .focus-circle {
+  --focus-accent: #b7795e;
+  outline-color: #e8e2da;
+  background: conic-gradient(var(--focus-accent) var(--focus-progress, 0%), #eee9e2 0);
+}
+:root[data-review-theme='editorial'] .focus-circle:after { background: #fffefb; }
+:root[data-review-theme='editorial'] .account-avatar { background: #eee7df; color: #a26e57; }
+:root[data-review-theme='editorial'] .setting-switch [data-slot='switch'][data-checked] { background: #ad745a !important; }
+:root[data-review-theme='editorial'] .setting-switch [data-slot='switch'][data-unchecked] { background: #ddd4c9 !important; }
+:root[data-review-theme='editorial'] .setting-switch [data-slot='switch-thumb'] { background: #fffdf9; }
+:root[data-review-theme='editorial'] label,
+:root[data-review-theme='editorial'] .clear-dialog label { color: #766d63; }
+:root[data-review-theme='editorial'] input:not([type='checkbox']),
+:root[data-review-theme='editorial'] textarea,
+:root[data-review-theme='editorial'] select,
+:root[data-review-theme='editorial'] .choice {
+  border-color: #e3dbd0;
+  color: #403a34;
+}
+:root[data-review-theme='editorial'] input:focus-visible,
+:root[data-review-theme='editorial'] textarea:focus-visible,
+:root[data-review-theme='editorial'] select:focus-visible,
+:root[data-review-theme='editorial'] button:focus-visible { outline-color: #ad745a; }
+:root[data-review-theme='editorial'] .course-input-actions button { background: #fffdf9; border-color: #e5dcd1; }
+:root[data-review-theme='editorial'] .course-input-actions button:hover { background: #faf4ed; border-color: #bc8a71; }
+:root[data-review-theme='editorial'] .course-input-actions button span { color: #82776c; }
+:root[data-review-theme='editorial'] .clear-data-panel { border-top-color: #e5dcd1; }
+:root[data-review-theme='editorial'] .clear-dialog { border-color: #e5dcd1; }
+.danger-button { display: inline-flex; align-items: center; justify-content: center; gap: 9px; width: auto; white-space: nowrap; line-height: 1.25; }
+.danger-button svg { display: block; }
+.answer-modal .answer-reveal > h3 {
+  font-size: var(--answer-font-size, 32px);
+  line-height: 1.5;
+  margin: 3px 0 22px;
+  font-weight: 600;
+}
+.answer-modal .answer-label { font-size: 12px; letter-spacing: .08em; }
+.answer-modal .answer-explanation { font-size: 14px; line-height: 1.85; }
+.pinyin-collections-panel > .muted { margin: -8px 0 14px; }
+.pinyin-collection-list { display: grid; gap: 0; }
+.pinyin-collection-row { display: flex; justify-content: space-between; align-items: center; gap: 18px; border-top: 1px solid var(--border); padding: 16px 0; }
+.pinyin-collection-row strong { display: block; font-size: 15px; }
+.pinyin-collection-row span { display: block; margin-top: 2px; font-size: 12px; color: #8a8178; }
+.pinyin-collection-row button { flex-shrink: 0; }
+.study-subject-filter { margin: 0 0 22px; padding: 15px 18px; border: 1px solid var(--border); border-radius: 10px; background: #fff; }
+.study-subject-filter summary { display: flex; justify-content: space-between; gap: 15px; cursor: pointer; font-size: 14px; font-weight: 600; }
+.study-subject-filter summary span { color: #82786f; font-weight: 400; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.study-subject-options { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.study-subject-options button { border: 1px solid #e1ddd6; border-radius: 7px; background: #fff; padding: 7px 13px; color: #5e5a54; font-size: 13px; }
+.study-subject-options button.selected { border-color: #b7795e; color: #8c533d; background: #f9f0e9; }
+.camera-capture-backdrop { position: fixed; inset: 0; z-index: 300; display: grid; place-items: center; padding: 20px; background: #1e1c1bcc; backdrop-filter: blur(4px); }
+.camera-capture-dialog { width: min(760px, 100%); max-height: calc(100dvh - 40px); display: flex; flex-direction: column; gap: 18px; overflow: hidden; border-radius: 16px; background: #fffdf9; padding: 24px; box-shadow: 0 24px 80px #0005; }
+.camera-capture-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
+.camera-capture-head strong { font-size: 19px; }
+.camera-capture-head p { color: #81776d; font-size: 13px; }
+.camera-capture-dialog video { width: 100%; min-height: 180px; max-height: 65dvh; object-fit: contain; background: #171717; border-radius: 9px; }
+.camera-capture-actions { display: flex; justify-content: flex-end; gap: 10px; }
+.camera-capture-actions .primary { display: inline-flex; align-items: center; gap: 8px; }
+@media (max-width: 1100px) {
+  :root[data-review-theme='editorial'] .page:not(.study-page) { padding: 34px 30px 58px; }
+  :root[data-review-theme='editorial'] .today-card { grid-template-columns: 1fr; }
+  :root[data-review-theme='editorial'] .home-columns { grid-template-columns: 1fr; }
+  :root[data-review-theme='editorial'] .focus-visual { min-height: 190px; }
+}
+@media (max-width: 760px) {
+  :root[data-review-theme='editorial'] .page:not(.study-page) { padding: 30px 19px 55px; }
+  :root[data-review-theme='editorial'] .page-heading { margin-bottom: 24px; }
+  :root[data-review-theme='editorial'] .today-card { grid-template-columns: 1fr; padding: 28px 24px; }
+  :root[data-review-theme='editorial'] .home-columns { grid-template-columns: 1fr; }
+  :root[data-review-theme='editorial'] .panel { padding: 22px 20px; }
+  .pinyin-collection-row { align-items: flex-start; }
+  .camera-capture-dialog { padding: 17px; }
+}

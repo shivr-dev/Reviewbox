@@ -25,28 +25,76 @@ export default function CourseHub({ subject }: { subject: Subject }) {
     [source, setSource] = useState(''),
     [files, setFiles] = useState<string[]>([]),
     [working, setWorking] = useState(''),
+    [cameraOpen, setCameraOpen] = useState(false),
+    [cameraReady, setCameraReady] = useState(false),
     [error, setError] = useState(''),
     [query, setQuery] = useState(''),
     [selected, setSelected] = useState(''),
     [live, setLive] = useState<Course | null>(null);
   const input = useRef<HTMLInputElement>(null),
-    camera = useRef<HTMLInputElement>(null),
+    video = useRef<HTMLVideoElement>(null),
+    cameraStream = useRef<MediaStream | null>(null),
     stop = useRef(false),
     busy = useRef(false),
     origin = useRef(currentNamespace());
   useEffect(
     () => () => {
       stop.current = true;
+      cameraStream.current?.getTracks().forEach((track) => track.stop());
     },
     [],
   );
+  useEffect(() => {
+    if (!cameraOpen || !video.current || !cameraStream.current) return;
+    video.current.srcObject = cameraStream.current;
+    void video.current.play().catch(() => setError('摄像头预览未能启动，请检查浏览器权限。'));
+  }, [cameraOpen]);
   const courses =
     data.jobs
       ?.filter((j): j is Course => j.kind === 'course' && j.subject === subject)
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)) ?? [];
   const materials = data.materials.filter((m) => m.subject === subject);
   const shown = live && live.subject === subject ? live : null;
-  async function readFiles(list: FileList | null) {
+  function closeCamera() {
+    cameraStream.current?.getTracks().forEach((track) => track.stop());
+    cameraStream.current = null;
+    setCameraReady(false);
+    setCameraOpen(false);
+  }
+  async function openCamera() {
+    setError('');
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setError('此浏览器不支持直接拍摄，请使用“导入学习资料”选择已有照片。');
+      return;
+    }
+    try {
+      cameraStream.current = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' } },
+        audio: false,
+      });
+      setCameraOpen(true);
+    } catch {
+      setError('摄像头未能开启。请允许摄像头权限，或使用“导入学习资料”选择已有照片。');
+    }
+  }
+  async function takePhoto() {
+    const live = video.current;
+    if (!live?.videoWidth || !live.videoHeight) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = live.videoWidth;
+    canvas.height = live.videoHeight;
+    canvas.getContext('2d')?.drawImage(live, 0, 0);
+    try {
+      const blob = await new Promise<Blob>((resolve, reject) =>
+        canvas.toBlob((result) => result ? resolve(result) : reject(new Error('照片保存失败，请重拍。')), 'image/jpeg', 0.92),
+      );
+      closeCamera();
+      await readFiles([new File([blob], `教材照片-${Date.now()}.jpg`, { type: 'image/jpeg' })]);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : '拍摄失败，请重试。');
+    }
+  }
+  async function readFiles(list: FileList | File[] | null) {
     if (!list?.length || busy.current) return;
     busy.current = true;
     setError('');
@@ -127,6 +175,15 @@ export default function CourseHub({ subject }: { subject: Subject }) {
   }
   return (
     <div className="course-hub">
+      {cameraOpen && (
+        <div className="camera-capture-backdrop" role="presentation" onMouseDown={closeCamera}>
+          <section className="camera-capture-dialog" role="dialog" aria-modal="true" aria-label="拍摄教材或笔记" onMouseDown={(event) => event.stopPropagation()}>
+            <div className="camera-capture-head"><div><strong>拍摄教材或笔记</strong><p>请将文字置于画面中央，拍摄后在本机识别并校对。</p></div><button className="quiet" onClick={closeCamera} aria-label="关闭摄像头">关闭</button></div>
+            <video ref={video} autoPlay playsInline muted onLoadedMetadata={() => setCameraReady(true)} />
+            <div className="camera-capture-actions"><button className="secondary" onClick={closeCamera}>取消</button><button className="primary" disabled={!cameraReady} onClick={() => void takePhoto()}><Camera size={16} /> 拍照并识别</button></div>
+          </section>
+        </div>
+      )}
       <section className="course-intro">
         <div>
           <p className="eyebrow">COURSE REVIEW</p>
@@ -160,7 +217,7 @@ export default function CourseHub({ subject }: { subject: Subject }) {
           </div>
           <div className="course-input-actions">
             <button
-              onClick={() => camera.current?.click()}
+              onClick={() => void openCamera()}
               disabled={!!working}
             >
               <Camera size={18} />
@@ -175,19 +232,14 @@ export default function CourseHub({ subject }: { subject: Subject }) {
           </div>
           <input
             hidden
-            ref={camera}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            onChange={(e) => void readFiles(e.target.files)}
-          />
-          <input
-            hidden
             ref={input}
             type="file"
             multiple
             accept="image/*,.pdf,.docx,.pptx,.txt,.md"
-            onChange={(e) => void readFiles(e.target.files)}
+            onChange={(e) => {
+              void readFiles(e.target.files);
+              e.target.value = '';
+            }}
           />
           {materials.length > 0 && (
             <label>

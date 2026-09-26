@@ -2,6 +2,7 @@
 import MathText from './math-text';
 import MatchingInput from './matching-input';
 import { objectiveScore, isPinyin } from '@/lib/question-tools';
+import { questionTopicTitle } from '@/lib/pinyin-collections';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
@@ -27,6 +28,7 @@ import {
   uid,
   localDay,
   subjectName,
+  SUBJECTS,
 } from '@/lib/model';
 import {
   put,
@@ -36,7 +38,7 @@ import {
 } from '@/lib/store';
 import { gradeAnswer } from '@/lib/ai-client';
 import Diagram from './diagram';
-import { Empty, Heading, SubjectChoice } from './shared';
+import { Empty, Heading } from './shared';
 export default function StudyView({
   session,
   finish,
@@ -60,7 +62,7 @@ export default function StudyView({
     [grade, setGrade] = useState<Grade | null>(null),
     [busy, setBusy] = useState(false),
     [done, setDone] = useState(false),
-    [subject, setSubject] = useState('all'),
+    [selectedSubjects, setSelectedSubjects] = useState<string[]>([]),
     [results, setResults] = useState<AnswerEvent[]>([]);
   const [confidence, setConfidence] = useState<
     'sure' | 'unsure' | 'guess' | undefined
@@ -364,7 +366,7 @@ export default function StudyView({
   });
   if (!session) {
     const queue = buildQueue(data, {
-      subject: subject === 'all' ? undefined : subject,
+      subjects: selectedSubjects,
     });
     return (
       <>
@@ -372,8 +374,22 @@ export default function StudyView({
           eyebrow="STUDY SESSION"
           title="给回忆，一点专注。"
           description="想一想，揭晓答案，再如实判断自己的掌握情况。"
-          action={<SubjectChoice all value={subject} onChange={setSubject} />}
+          action={<span className="muted">{selectedSubjects.length ? `已选 ${selectedSubjects.length} 门学科` : '全部学科'}</span>}
         />
+        <details className="study-subject-filter">
+          <summary>选择本次练习学科 <span>{selectedSubjects.length ? SUBJECTS.filter((subject) => selectedSubjects.includes(subject.id)).map((subject) => subject.name).join('、') : '全部学科'}</span></summary>
+          <div className="study-subject-options">
+            <button className={!selectedSubjects.length ? 'selected' : ''} onClick={() => setSelectedSubjects([])}>全部</button>
+            {SUBJECTS.map((subject) => (
+              <button
+                key={subject.id}
+                className={selectedSubjects.includes(subject.id) ? 'selected' : ''}
+                aria-pressed={selectedSubjects.includes(subject.id)}
+                onClick={() => setSelectedSubjects((current) => current.includes(subject.id) ? current.filter((id) => id !== subject.id) : [...current, subject.id])}
+              >{subject.name}</button>
+            ))}
+          </div>
+        </details>
         <section className="panel">
           <div className="section-head">
             <h2>今日复习队列</h2>
@@ -393,10 +409,7 @@ export default function StudyView({
                 </span>
                 <div className="grow">
                   <h3>
-                    {
-                      data.nodes.find((n) => n.id === item.question.nodeId)
-                        ?.title
-                    }
+                    {questionTopicTitle(item.question, data.nodes.find((n) => n.id === item.question.nodeId))}
                   </h3>
                   <p className="muted">
                     {subjectName(item.question.subject)} ·{' '}
@@ -528,7 +541,7 @@ export default function StudyView({
         <span>
           {isTest
             ? session.title
-            : subjectName(q.subject) + ' · ' + node?.title}
+            : subjectName(q.subject) + ' · ' + questionTopicTitle(q, node)}
         </span>
         <b>
           {index + 1}
@@ -724,7 +737,7 @@ export default function StudyView({
                 <div><span>核对答案</span><small>第 {index + 1} / {session.items.length} 题</small></div>
                 <button ref={answerCloseRef} className="quiet" onClick={() => setAnswerPanelOpen(false)} aria-label="关闭参考答案弹窗"><X size={18} /></button>
               </header>
-              <div className="answer-reveal">
+              <div className="answer-reveal" style={{ '--answer-font-size': `${Math.max(21, Math.round(44 - Math.sqrt(Array.from(q.answer).length) * 2))}px` } as React.CSSProperties}>
             {grade ? (
               <>
                 <div className="grade-heading">
@@ -795,9 +808,9 @@ export default function StudyView({
                       </MathText>
                     </p>
                   ))}
-                <p className="answer-explanation">
+                {!isPinyin(q) && q.explanation && <p className="answer-explanation">
                   <MathText>{q.explanation}</MathText>
-                </p>
+                </p>}
                 {answer && (
                   <p className="answer-check">
                     本次作答：

@@ -46,7 +46,7 @@ export const GENERAL_IMPORT_TYPES = [
 ];
 export function manualExample(id: string, subject: Subject) {
   if (id === 'pinyin')
-    return 'jǔ sàng｜沮丧｜灰心失望。\nláng jí｜狼藉｜杂乱不堪。';
+    return 'jǔ sàng｜沮丧\nláng jí｜狼藉';
   if (id === 'matching')
     return '题干：将作者与作品对应。\n配对：李白 => 静夜思\n杜甫 => 春望\n解析：李白作《静夜思》，杜甫作《春望》。';
   if (id === 'poem')
@@ -79,6 +79,8 @@ export function parseManualImport(
     subject === 'chinese' ? CHINESE_IMPORT_TYPES : GENERAL_IMPORT_TYPES
   ).find((t) => t.id === preset);
   if (!spec) throw Error('请选择题型。');
+  const collectionTitle = title.trim() || '未命名字词篇目';
+  const collectionId = preset === 'pinyin' ? uid() : undefined;
   const node: Node = {
     id: uid(),
     subject,
@@ -110,11 +112,9 @@ export function parseManualImport(
     if (preset === 'pinyin') {
       const parts = block.split(/[｜|\t]/).map((s) => s.trim());
       if (parts.length < 2 || !parts[0] || !parts[1])
-        throw Error(`第 ${index + 1} 行请按“拼音｜汉字｜解释”填写。`);
+        throw Error(`第 ${index + 1} 行请按“拼音｜汉字”填写。`);
       fields['题干'] = parts[0];
       fields['答案'] = parts[1];
-      fields['解析'] =
-        parts.slice(2).join('｜') || '回忆或纸上书写后，揭晓答案并手动判断。';
     } else
       for (const line of block.split(/\r?\n/)) {
         const field = line.match(
@@ -161,22 +161,31 @@ export function parseManualImport(
     }
     if (!fields['题干']?.trim() || !answer)
       throw Error(`第 ${index + 1} 题缺少题干或答案。`);
+    const wordNode: Node = preset === 'pinyin' ? {
+      ...node,
+      id: uid(),
+      chapter: collectionTitle,
+      title: answer,
+      description: '根据拼音回忆这个字词的字形。',
+    } : node;
     const q = questionSchema.safeParse({
       schemaVersion: 1,
       id: uid(),
       subject,
-      nodeId: node.id,
+      nodeId: wordNode.id,
       skillId: 'practice',
       type: spec.type,
       prompt: fields['题干'],
       answer,
-      explanation: fields['解析'] || '请对照参考答案核对。',
+      explanation: preset === 'pinyin' ? '' : fields['解析'] || '请对照参考答案核对。',
       passage: fields['原文'] || undefined,
       options: spec.type === 'choice' ? options : undefined,
       matching,
       difficulty: 2,
       expectedSeconds: spec.type === 'subjective' ? 180 : 30,
       variant: preset === 'pinyin' ? 'pinyin-to-hanzi' : preset,
+      collectionId,
+      collectionTitle: preset === 'pinyin' ? collectionTitle : undefined,
       source: '手动导入',
       tags: [spec.label],
       version: '1.0.0',
@@ -200,7 +209,12 @@ export function parseManualImport(
         `第 ${index + 1} 题字段过长或格式不正确，请检查题干、选项及答案。`,
       );
     assertQuestionFormat(q.data as Question);
-    return q.data as Question;
+    return { question: q.data as Question, node: wordNode };
   });
-  return { node, questions };
+  return {
+    node: questions[0]?.node ?? node,
+    nodes: preset === 'pinyin' ? questions.map((item) => item.node) : [node],
+    title: preset === 'pinyin' ? collectionTitle : node.title,
+    questions: questions.map((item) => item.question),
+  };
 }

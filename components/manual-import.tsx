@@ -98,17 +98,17 @@ export default function ManualImport({
                 </label>
               </div>
               <label>
-                知识点或篇目名称
+                {preset === 'pinyin' ? '字词篇目名称' : '知识点或篇目名称'}
                 <input
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder="例如：七年级易错字词、静夜思"
+                  placeholder={preset === 'pinyin' ? '例如：藤野先生字词' : '例如：二次函数顶点、静夜思'}
                   maxLength={200}
                 />
               </label>
               <p className="muted">
                 {preset === 'pinyin'
-                  ? '每行一道，格式为：拼音｜汉字｜解释。学习时仍然揭晓后手动判断，不输入汉字。'
+                  ? '每行一道，格式为：拼音｜汉字。篇目是字词集合，每个字词单独记录掌握度；练整篇时会覆盖全部字词。揭晓后手动判断，无需输入汉字。'
                   : '使用下方示例的字段格式。多道题之间单独一行填写 ---；原文和答案均可换行。'}
               </p>
               <details className="manual-format-help" open>
@@ -174,7 +174,7 @@ export default function ManualImport({
           ) : (
             <>
               <h3>
-                {preview.node.title} · {preview.questions.length} 道题
+                {preview.title} · {preview.questions.length} 道题
               </h3>
               <div className="import-preview">
                 {preview.questions.map((q, i) => (
@@ -209,9 +209,7 @@ export default function ManualImport({
                           : q.answer}
                       </MathText>
                     </p>
-                    <p className="muted">
-                      <MathText>{q.explanation}</MathText>
-                    </p>
+                    {q.explanation && <p className="muted"><MathText>{q.explanation}</MathText></p>}
                   </article>
                 ))}
               </div>
@@ -236,13 +234,13 @@ export default function ManualImport({
                       const now = new Date().toISOString();
                       await saveRecords(
                         [
-                          {
-                            id: preview.node.id,
-                            kind: 'node',
-                            payload: preview.node,
+                          ...preview.nodes.map((node) => ({
+                            id: node.id,
+                            kind: 'node' as const,
+                            payload: node,
                             updated_at: now,
                             deleted: false,
-                          },
+                          })),
                           ...preview.questions.map((q) => ({
                             id: q.id,
                             kind: 'question' as const,
