@@ -10,8 +10,10 @@ import { nativeMapQuestion, responseFromMapState, initialMapState } from '@/lib/
 export default function MapExamRoom({run:initial,paper}:{run:ExamRun;paper:ExamPaper}) {
   const {data,refresh,navigate}=useReview();
   const [error,setError]=useState('');
+  const [loading,setLoading]=useState(true);
+  const [connection,setConnection]=useState(0);
   const frame=useRef<HTMLIFrameElement>(null), run=useRef(initial), namespace=useRef(currentNamespace()),
-    writes=useRef(Promise.resolve()),lock=useRef(false),nonce=useRef(''),timer=useRef(0),visible=useRef(false),active=useRef(true);
+    writes=useRef(Promise.resolve()),lock=useRef(false),nonce=useRef(''),timer=useRef(0),visible=useRef(false),active=useRef(true),ready=useRef(false);
   const context=useRef({data,refresh,navigate});context.current={data,refresh,navigate};
   function currentQuestion() {const r=run.current;return context.current.data.questions.find(q=>q.id===paper.questions[r.map?.order[r.index] ?? '']);}
   function send(type:string,payload:Record<string,unknown>={}) {frame.current?.contentWindow?.postMessage({channel:'review-map',nonce:nonce.current,type,...payload},'*');}
@@ -45,12 +47,16 @@ export default function MapExamRoom({run:initial,paper}:{run:ExamRun;paper:ExamP
     });
   }
   useEffect(()=>{
-    active.current=true;nonce.current=crypto.randomUUID();timer.current=Date.now();
+    active.current=true;ready.current=false;setLoading(true);nonce.current=crypto.randomUUID();timer.current=Date.now();
+    let initialized=false;
+    const probe=setInterval(()=>{if(!initialized)send('ping');},1000);
+    const timeout=setTimeout(()=>{if(!initialized){setLoading(false);setError('MAP 界面未能加载。请重新连接；已保存的考试与答案不会丢失。');}},12000);
     async function receive(event:MessageEvent) {
       if(event.source!==frame.current?.contentWindow||!event.data||event.data.channel!=='review-map')return;
       const message=event.data;
-      if(message.type==='ready'){init();return;}
+      if(message.type==='ready'){if(!ready.current){ready.current=true;init();}return;}
       if(message.nonce!==nonce.current)return;
+      if(message.type==='initialized'){initialized=true;clearInterval(probe);clearTimeout(timeout);setLoading(false);setError('');return;}
       const q=currentQuestion(),r=run.current,id=r.map?.order[r.index];
       if(!q||!id||!r.map)return;
       let acquired=false;
@@ -96,10 +102,13 @@ export default function MapExamRoom({run:initial,paper}:{run:ExamRun;paper:ExamP
     function visibility(){capture();if(document.hidden)visible.current=false;timer.current=Date.now();}
     function hide(){if(lock.current)return;capture();void save(run.current).catch(()=>{});}
     window.addEventListener('message',receive);window.addEventListener('pagehide',hide);document.addEventListener('visibilitychange',visibility);
-    return()=>{hide();active.current=false;clearInterval(tick);window.removeEventListener('message',receive);window.removeEventListener('pagehide',hide);document.removeEventListener('visibilitychange',visibility);};
-  },[]);
+    return()=>{hide();active.current=false;clearInterval(tick);clearInterval(probe);clearTimeout(timeout);window.removeEventListener('message',receive);window.removeEventListener('pagehide',hide);document.removeEventListener('visibilitychange',visibility);};
+  },[connection]);
   return <main className="map-native-host">
-    <iframe ref={frame} title="MAP 考试" src={assetPath('map-player/index.html')} sandbox="allow-scripts allow-modals allow-popups" allow="fullscreen" onLoad={init} />
-    {error&&<div className="map-native-error" role="alert">{error}<button onClick={()=>setError('')} aria-label="关闭错误提示">×</button><button onClick={()=>{setError('');init();}}>重新连接</button><button onClick={()=>navigate('subjects','ce')}>返回 CE</button></div>}
+    {/* This is the trusted bundled renderer, not imported or AI-authored HTML.
+        Same-origin requests retain the private Sites session for scripts/assets. */}
+    <iframe key={connection} ref={frame} title="MAP 考试" src={assetPath('map-player/index.html')} sandbox="allow-scripts allow-same-origin allow-modals allow-popups" allow="fullscreen" onLoad={()=>send('ping')} />
+    {loading&&<div className="map-native-error" role="status">正在加载 MAP 考试界面…<button onClick={()=>navigate('subjects','ce')}>返回 CE</button></div>}
+    {error&&<div className="map-native-error" role="alert">{error}<button onClick={()=>setError('')} aria-label="关闭错误提示">×</button><button onClick={()=>{setError('');setConnection(n=>n+1);}}>重新连接</button><button onClick={()=>navigate('subjects','ce')}>返回 CE</button></div>}
   </main>;
 }

@@ -15,7 +15,7 @@ await build({
   packages: 'external',
   jsx: 'automatic',
 });
-const result = spawnSync(process.execPath, ['--test', 'work/map.test.mjs'], {
+const result = spawnSync(process.execPath, ['--test', 'work/map.test.mjs', 'tests/map-player-flow.test.mjs'], {
   stdio: 'inherit',
 });
 process.exitCode = result.status ?? 1;

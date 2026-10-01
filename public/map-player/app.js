@@ -5,7 +5,7 @@
  const stage=$('#stage'), question=$('#question'), bank=window.MAP_QUESTIONS||[];
  const state={question:null,answers:{},gaps:{},pronoun:null,text:'',zoom:100,highlight:false,erase:false,eliminate:false,armed:null};
  const setup={grade:'',course:'',language:'',active:false};
- let review=null,restoring=false,bridgeBusy=false,displayed=Date.now(),quickCount=0,skipHash=false;
+ let review=null,restoring=false,bridgeBusy=false,displayed=Date.now(),quickCount=0;
  const sendReview=(type,payload={})=>{if(review)parent.postMessage({channel:'review-map',nonce:review.nonce,type,...payload},'*');};
  const testName=()=>`${review?.practice?'Practice Items':'MAP Simulation'}: ${setup.course||'Reading'}`;
  const firstQuestion=()=>bank[0]?.id;
@@ -128,8 +128,10 @@
    $('.ending-done').onclick=()=>navigate('login');$('.ending-print').onclick=()=>window.print();
   }
  }
- function navigate(id){if(review&&!reviewRoutes().includes(id))return;location.hash=id;}
- function route(){document.body.scrollTop=0;document.documentElement.scrollTop=0;stage.scrollTop=0;$('#session-screen').scrollTop=0;clearTimeout(pendingTimer);clearTimeout(bootTimer);clearTimeout(confirmationTimer);$('#item-loader').hidden=true;$('#boot-loader').hidden=true;$('#session-screen').hidden=true;$('#player').inert=false;$('#modal-layer').hidden=true;$('#screen-picker').hidden=true;let id=location.hash.slice(1)||'login';if(review&&!reviewRoutes().includes(id))id=review.screen==='question'?bank[0].id:review.screen;
+ // Embedded exams use their own router; an opaque sandbox must not navigate
+ // the iframe URL, and parent initialization must not cancel the login animation.
+ function navigate(id){if(review){if(reviewRoutes().includes(id))route(id);return;}location.hash=id;}
+ function route(screen){document.body.scrollTop=0;document.documentElement.scrollTop=0;stage.scrollTop=0;$('#session-screen').scrollTop=0;clearTimeout(pendingTimer);clearTimeout(bootTimer);clearTimeout(confirmationTimer);$('#item-loader').hidden=true;$('#boot-loader').hidden=true;$('#session-screen').hidden=true;$('#player').inert=false;$('#modal-layer').hidden=true;$('#screen-picker').hidden=true;let id=screen||location.hash.slice(1)||'login';if(review&&!reviewRoutes().includes(id))id=review.screen==='question'?bank[0].id:review.screen;
   if(['select-test','self-confirm','waiting','confirmed','slow-down','finished','test-ended'].includes(id)){sessionPage(id);if(review)wireReviewScreen(id);return;}
   if(id==='login'){if(review)sendReview('visible',{visible:false});$('#login').hidden=false;$('#player').hidden=true;$('#notepad').hidden=true;$('#reading-guide').hidden=true;return;}
   if(id==='loading'){showQuestion('reading-1');showBoot(()=>navigate('reading-1'),4200);return;}
@@ -138,7 +140,7 @@
   if(id==='reading-2-marked'){showQuestion('reading-2');state.answers={'0':[0],'1':[0]};updateChoices();tool('elim');tool('highlighter');$$('.answer-part').forEach(p=>{$$('.choice',p).forEach((r,i)=>{if(i===1||i===2){r.classList.add('eliminated');$('.eliminate-button',r).setAttribute('aria-pressed','true');}});});const verse=$$('.poem>div')[4];verse.innerHTML='Be a frie<mark>nd. The pay is bigger</mark><span class="line-number">5</span>';updateNext();return;}
   showQuestion(id);
  }
- window.addEventListener('hashchange',()=>{if(skipHash){skipHash=false;return;}route();});
+ window.addEventListener('hashchange',()=>{if(!review)route();});
  $$('[data-action]').forEach(b=>b.addEventListener('click',()=>{const a=b.dataset.action;if(a==='reset')openReset();else if(a==='next'){if(!complete())return;if(review){submitReview();return;}const pool=setup.active?bank.filter(q=>q.subject===(setup.course==='Language Usage'?'Language Usage':'Reading')):bank;const i=pool.indexOf(state.question);loadItem(()=>navigate(i===pool.length-1||i<0?'finished':pool[i+1].id));}else if(a==='zoom-in'||a==='zoom-out'||a==='zoom-reset'){state.zoom=a==='zoom-reset'?100:Math.min(200,Math.max(100,state.zoom+(a==='zoom-in'?25:-25)));updateZoom();if(review)publishSnapshot();}else {tool(a);if(review)publishSnapshot();}}));
  $('#login-form').addEventListener('input',()=>{$('.login-next').disabled=!$('#username').value.trim()||!$('#password').value.trim();});
  $('#login-form').addEventListener('submit',e=>{e.preventDefault();if($('.login-next').disabled)return;if(review){review.student=$('#username').value.trim();showBoot(()=>navigate('select-test'));return;}$('#username').value='';$('#password').value='';$('.login-next').disabled=true;setup.active=false;showBoot(()=>navigate('select-test'));});
@@ -223,6 +225,7 @@
  }
  window.addEventListener('message',e=>{
   const m=e.data;if(e.source!==parent||!m||m.channel!=='review-map')return;
+  if(m.type==='ping'){parent.postMessage({channel:'review-map',type:'ready'},'*');return;}
   if(m.type==='init'){
    if(review&&m.nonce!==review.nonce)return;
    const prior=review;review=m;bank.splice(0,bank.length,m.question);setup.grade=String(m.grade);setup.course=m.section;setup.language='en';setup.active=true;
@@ -236,13 +239,13 @@
    $('#review-pause').onclick=()=>{if(review.screen==='question'){review.screen='slow-down';publishSnapshot();navigate('slow-down');sendReview('pause');}};
    $('#review-exit').onclick=()=>{publishSnapshot();requestReview('exit');};
    const view=()=>{
-    restoring=true;const target=m.screen==='question'?m.question.id:m.screen;if(location.hash!=='#'+target){skipHash=true;location.hash=target;}route();
+    restoring=true;const target=m.screen==='question'?m.question.id:m.screen;route(target);
     if(m.screen==='question'){
      restoreSnapshot(m.state);$('#test-name').textContent=testName();$('.next').setAttribute('aria-label',m.practice&&!m.checked?'Check answer':'Submit and continue');
      if(m.checked){$$('button,input',question).forEach(b=>b.disabled=true);const aside=document.createElement('aside');aside.className='review-feedback';const title=document.createElement('h2');title.textContent=m.feedback.correct?'Correct':'Review this answer';const answer=document.createElement('p');answer.textContent=m.feedback.answer;const explanation=document.createElement('p');explanation.textContent=m.feedback.explanation;aside.append(title,answer,explanation);$('.question-content').append(aside);aside.scrollIntoView({block:'nearest'});$('.reset').disabled=true;}else $('.reset').disabled=false;
      if(!prior||prior.question?.id!==m.question.id)displayed=Date.now();
     }
-    restoring=false;updateNext();
+    restoring=false;updateNext();sendReview('initialized');
    };
    if(m.screen==='question'&&prior?.question?.id!==m.question.id)loadItem(view);else view();
   }else if(review&&m.nonce===review.nonce){
