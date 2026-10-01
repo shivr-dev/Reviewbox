@@ -33,7 +33,7 @@ import { gradeExam } from '@/lib/exam-client';
 import MathText from './math-text';
 import NativeExamRoom from './native-exam-room';
 import { nativeExamPackage } from '@/lib/exam-native';
-import MapExamRoom from './map-exam-room';
+import MapExamRoom from './map-native-room';
 import { mapAnswerText } from '@/lib/map-model';
 
 function HighlightedPassage({
@@ -76,7 +76,7 @@ export default function ExamRoom({ runId }: { runId: string }) {
   const paper = data.jobs?.find(
     (j) => j.id === run?.paperId && j.kind === 'exam-paper',
   ) as ExamPaper | undefined;
-  if (run && paper?.exam === 'MAP' && run.status !== 'complete')
+  if (run && paper?.exam === 'MAP' && (run.status !== 'complete' || !run.map?.showReport))
     return <MapExamRoom key={runId} run={run} paper={paper} />;
   if (
     run &&

@@ -24,7 +24,7 @@ MAP 题型：
 4. gap_match：passage 中用 {{1}}、{{2}} 顺序标空，choices 为可拖放词库（可含干扰词），answer 为按空格顺序的词块数组；每个词块只能用一次。
 5. hot_text：passage 中可点击词标为 [word]，tokens 为可选词数组，answer 为错误词；需要纠错输入时增加 correction:"正确替换词"。可选词不可重复，且原文必须包含全部标记。
 6. text_entry：answer 为简短文字，可提供 acceptedAnswers 同义有效答案数组。
-MAP 可选 passageTitle、instruction；图片仅支持 image:"data:image/png;base64,..."（也支持jpeg/webp），须为有使用权的实际图片并提供imageAlt，不可编造链接或执行HTML。
+MAP 可选 passageTitle、instruction；词义拖放表格使用 type:"gap_match",layout:"word-table",word:"待解释词",choices:词库,answer:["正确词义"]，passage 是完整阅读原文（此布局无需空格标记）。普通段落拖放仍用 {{1}} 起的空格。图片仅支持 image:"data:image/png;base64,..."（也支持jpeg/webp），须为有使用权的实际图片并提供imageAlt，不可编造链接或执行HTML。
 MAP 最小示例：{"schemaVersion":1,"exam":"MAP","title":"MAP Language Usage 专项练习","grade":8,"testCount":1,"flow":[{"id":"map","label":"Language Usage","section":"Language Usage","type":"map","durationSeconds":0,"count":1}],"sectionsInline":{"map":{"questions":[{"type":"gap_match","prompt":"Move the words into the blanks.","passage":"It was raining. {{1}}, we stayed inside.","choices":["Therefore","Likewise"],"answer":["Therefore"],"explanation":"Therefore introduces the result of the rain.","skill":"Transitions","difficulty":2}]}}}
 可直接导入的最小 TOEFL 示例：
 {"schemaVersion":1,"id":"sample-reading","title":"TOEFL 阅读专项练习","exam":"TOEFL","flow":[{"id":"reading","label":"Reading","type":"toefl-reading","durationSeconds":90,"count":1}],"sectionsInline":{"reading":{"questions":[{"id":"q1","type":"daily_life","skill":"Identify purpose","passage":"The library will close at 6 p.m. on Friday for maintenance.","prompt":"Why will the library close early?","choices":["For repairs.","For a celebration."],"correct":0,"explanation":"The notice says maintenance, which means work to keep the facility in good condition."}]}}}

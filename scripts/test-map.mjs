@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 await mkdir('work', { recursive: true });
 await build({
   stdin: {
-    contents: "import './tests/map.test.ts';",
+    contents: "import './tests/map.test.ts'; import './tests/pages-ai-proxy.test.ts';",
     resolveDir: process.cwd(),
     loader: 'tsx',
   },

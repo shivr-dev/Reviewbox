@@ -1,6 +1,7 @@
 'use client';
 import { isStaticSite } from '@/lib/runtime';
 import { pagesConfig, unlockPages, lockPages } from '@/lib/pages-vault';
+import { checkPagesAI } from '@/lib/pages-ai-check';
 import ClearDataCard from './clear-data-card';
 import ImportSkillCard from './import-skill-card';
 import { useEffect, useState } from 'react';
@@ -48,6 +49,8 @@ export default function YouView() {
   const [examOpen, setExamOpen] = useState(false),
     [visualTheme, setVisualTheme] = useState<'editorial' | 'classic'>('editorial'),
     [vaultReady, setVaultReady] = useState<boolean | null>(null),
+    [checkingAI, setCheckingAI] = useState(false),
+    [aiCheck, setAiCheck] = useState(''),
     [subject, setSubject] = useState<Subject>('math'),
     [scope, setScope] = useState<string[]>([]),
     [accountOpen, setAccountOpen] = useState(false),
@@ -139,7 +142,14 @@ export default function YouView() {
         <section className="panel">
           <h2>私有学习配置</h2>
           {vaultReady ? <>
-            <p>当前设备已解锁。登录后可将学习记录同步到你的私有账户。</p>
+            <p>当前设备已解锁，可使用 AI。登录学习账户后可同步学习记录。</p>
+            <button className="secondary" disabled={checkingAI} onClick={async()=>{
+              setCheckingAI(true);setAiCheck('');
+              try {const count=await checkPagesAI();setAiCheck('连接正常：'+count+' 个凭据可访问所选模型。此次检查不生成内容。');}
+              catch(error){setAiCheck(error instanceof Error?error.message:'网络连接未完成，请重试。');}
+              finally{setCheckingAI(false);}
+            }}>{checkingAI?'正在检查连接':'检查 AI 连接'}</button>
+            {aiCheck && <p role="status">{aiCheck} <button className="text-button" onClick={()=>setAiCheck('')}>关闭</button></p>}
             <button className="secondary" onClick={async () => { await lockPages(); location.reload(); }}>锁定当前设备</button>
           </> : <>
             <p>首次在此设备使用时，输入网站配置口令。口令不会上传至 GitHub。</p>
@@ -352,9 +362,9 @@ export default function YouView() {
           <span>动态题目与评分标准批改</span>
           <span className={aiReady ? 'outcome correct' : 'muted'}>
             {aiReady
-              ? '已连接'
+              ? isStaticSite() ? '配置已解锁' : '已连接'
               : isStaticSite()
-                ? '请先解锁配置并登录'
+                ? '请先解锁私有配置'
                 : '等待 Cloudflare 账户配置'}
           </span>
         </div>

@@ -43,15 +43,14 @@ export async function runJSON(
     throw new Error('Cloudflare 账户配置不正确');
   const onPages = typeof window !== 'undefined' && (window as any).__REVIEW_STATIC__ === true;
   const pages = onPages ? await (await import('./pages-vault')).pagesConfig() : null;
-  const access = onPages ? await (await import('./pages-cloud')).accessToken() : null;
-  if (onPages && (!pages || !access)) throw new Error('请先解锁站点配置并登录学习账户');
+  if (onPages && !pages) throw new Error('请先在「我的」解锁私有学习配置');
   const r = await fetch(
     onPages ? pages!.supabaseUrl + '/functions/v1/review-ai-proxy' :
       `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${MODEL}`,
     {
       method: 'POST',
       headers: {
-        Authorization: 'Bearer ' + (onPages ? access : tokens[slot % tokens.length]),
+        ...(onPages ? {} : {Authorization: 'Bearer ' + tokens[slot % tokens.length]}),
         'Content-Type': 'application/json',
         ...(onPages ? {
           apikey: pages!.publishableKey,
@@ -87,12 +86,17 @@ export async function runJSON(
       signal: AbortSignal.timeout(55000),
     },
   );
-  if (!r.ok)
+  if (!r.ok) {
+    const failure = await r.json().catch(()=>null) as {error?:string}|null;
     throw new Error(
       r.status === 429
-        ? '题目生成服务繁忙，请稍后重试'
-        : '题目生成连接暂时不可用',
+        ? 'Cloudflare 请求较多或额度暂不可用，请稍后重试'
+        : typeof failure?.error === 'string' ? failure.error
+        : r.status === 401 || r.status === 403 ? 'Cloudflare 凭据已失效或没有模型权限，请更新私有配置'
+        : r.status === 404 ? 'AI 连接服务尚未部署，请检查私有配置'
+        : '题目生成连接暂时不可用（'+r.status+'）',
     );
+  }
   const body = (await r.json()) as any;
   if (body.success === false) throw new Error('模型未完成请求');
   const result = body.result ?? body;

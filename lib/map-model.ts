@@ -45,6 +45,8 @@ export const mapItemSchema = z.object({
     .regex(/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/)
     .optional(),
   imageAlt: z.string().max(1000).optional(),
+  layout:z.literal('word-table').optional(),
+  word:z.string().max(300).optional(),
 });
 export type MapItem = z.infer<typeof mapItemSchema>;
 export const MAP_TYPES = [
@@ -73,6 +75,8 @@ export function parseMapQuestion(
         '。请参考对应题型模板。',
     );
   const v = parsed.data;
+  if(v.layout==='word-table'&&(v.type!=='gap_match'||!v.word||!Array.isArray(v.answer)||v.answer.length!==1))
+    throw Error('词义表格采用单空 gap_match，并提供 word。');
   const values = Array.isArray(v.answer) ? v.answer : [v.answer];
   if (v.choices && !unique(v.choices)) throw Error('MAP 选项不得重复。');
   if (
@@ -102,7 +106,7 @@ export function parseMapQuestion(
     if (
       !v.choices ||
       !Array.isArray(v.answer) ||
-      blanks.length !== values.length ||
+      (v.layout!=='word-table' && blanks.length !== values.length) ||
       !blanks.every((n, i) => n === i + 1) ||
       !values.every((a) => v.choices!.includes(a)) ||
       !unique(values)

@@ -1,0 +1,9 @@
+{
+  "version": "1.0",
+  "referenceCanvas": {"width":1556,"height":906,"contentWidth":970},
+  "colors": {"canvas":"#e9ebee","paper":"#f7f7f7","ink":"#414142","navy":"#173d70","heading":"#26577d","rule":"#4193b5","blue":"#2c66b7","teal":"#60c4d4","selected":"#e1e1e1","highlight":"#ffffa0","disabled":"#dedee0"},
+  "typography": {"family":"Open Sans","body":14,"bodyLineHeight":19,"passageTitle":14,"passageTitleWeight":600,"instruction":16,"footer":16,"dialogTitle":20,"dialogBody":20},
+  "layout": {"toolbarHeight":50,"toolbarGap":8,"footerHeight":58,"instructionHeight":42,"splitLeftPercent":58.5,"nextWidth":116,"nextHeight":40,"choiceMinHeight":42,"dialogWidth":524},
+  "motion": {"cubeCycleMs":1300,"spinnerCycleMs":1000,"dialogEnterMs":160,"choiceMs":130,"dropMs":180,"questionLoadingMs":650},
+  "zoom": {"min":100,"max":200,"step":25}
+}

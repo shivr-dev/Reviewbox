@@ -1,0 +1,327 @@
+[
+  {
+    "file": "nweaYellowTmLarge.1e8086e2.svg",
+    "source": "https://practice.mapnwea.org/images/nweaYellowTmLarge.1e8086e2.svg",
+    "bytes": 3727
+  },
+  {
+    "file": "paperFooter.784db7dd.png",
+    "source": "https://practice.mapnwea.org/images/paperFooter.784db7dd.png",
+    "bytes": 2345
+  },
+  {
+    "file": "paperFill.9b26f35d.png",
+    "source": "https://practice.mapnwea.org/images/paperFill.9b26f35d.png",
+    "bytes": 4343
+  },
+  {
+    "file": "loading.5dedc737.gif",
+    "source": "https://practice.mapnwea.org/images/loading.5dedc737.gif",
+    "bytes": 6820
+  },
+  {
+    "file": "paperDrawings.f2d0da65.png",
+    "source": "https://practice.mapnwea.org/images/paperDrawings.f2d0da65.png",
+    "bytes": 40897
+  },
+  {
+    "file": "paperHeader.0b5d1592.png",
+    "source": "https://practice.mapnwea.org/images/paperHeader.0b5d1592.png",
+    "bytes": 2388
+  },
+  {
+    "file": "nweaGraphite.957cd108.png",
+    "source": "https://practice.mapnwea.org/images/nweaGraphite.957cd108.png",
+    "bytes": 1956
+  },
+  {
+    "file": "icomoon.woff",
+    "source": "https://practice.mapnwea.org/fonts/icomoon.woff",
+    "bytes": 64172
+  },
+  {
+    "file": "open-sans-0.ttf",
+    "source": "https://fonts.gstatic.com/s/opensans/v44/memSYaGs126MiZpBA-UvWbX2vVnXBbObj2OVZyOOSr4dVJWUgsiH0B4gaVc.ttf",
+    "bytes": 35348
+  },
+  {
+    "file": "open-sans-1.ttf",
+    "source": "https://fonts.gstatic.com/s/opensans/v44/memSYaGs126MiZpBA-UvWbX2vVnXBbObj2OVZyOOSr4dVJWUgsjZ0B4gaVc.ttf",
+    "bytes": 35316
+  },
+  {
+    "file": "open-sans-2.ttf",
+    "source": "https://fonts.gstatic.com/s/opensans/v44/memSYaGs126MiZpBA-UvWbX2vVnXBbObj2OVZyOOSr4dVJWUgsgH1x4gaVc.ttf",
+    "bytes": 35296
+  },
+  {
+    "file": "open-sans-3.ttf",
+    "source": "https://fonts.gstatic.com/s/opensans/v44/memSYaGs126MiZpBA-UvWbX2vVnXBbObj2OVZyOOSr4dVJWUgsg-1x4gaVc.ttf",
+    "bytes": 35292
+  },
+  {
+    "file": "highlighter-0.svg",
+    "source": "https://item-presenter-lib.mapnwea.org/6bf74da/css/highlighter-item-aid-map.css",
+    "selector": ".highlighter-item-aid .highlighter-item-aid-button"
+  },
+  {
+    "file": "highlighter-1.svg",
+    "source": "https://item-presenter-lib.mapnwea.org/6bf74da/css/highlighter-item-aid-map.css",
+    "selector": ".highlighter-item-aid .highlighter-item-aid-button.active"
+  },
+  {
+    "file": "highlighter-2.svg",
+    "source": "https://item-presenter-lib.mapnwea.org/6bf74da/css/highlighter-item-aid-map.css",
+    "selector": ".highlighter-item-aid .highlight-eraser-item-aid-button"
+  },
+  {
+    "file": "highlighter-3.svg",
+    "source": "https://item-presenter-lib.mapnwea.org/6bf74da/css/highlighter-item-aid-map.css",
+    "selector": ".highlighter-item-aid .highlight-eraser-item-aid-button.active"
+  },
+  {
+    "file": "highlighter-4.svg",
+    "source": "https://item-presenter-lib.mapnwea.org/6bf74da/css/highlighter-item-aid-map.css",
+    "selector": ".highlighter-item-aid-popup .highlight-popup-button"
+  },
+  {
+    "file": "highlighter-5.svg",
+    "source": "https://item-presenter-lib.mapnwea.org/6bf74da/css/highlighter-item-aid-map.css",
+    "selector": ".highlighter-item-aid-popup .highlight-popup-button:hover"
+  },
+  {
+    "file": "highlighter-6.svg",
+    "source": "https://item-presenter-lib.mapnwea.org/6bf74da/css/highlighter-item-aid-map.css",
+    "selector": ".highlighter-item-aid-popup .erase-popup-button"
+  },
+  {
+    "file": "highlighter-7.svg",
+    "source": "https://item-presenter-lib.mapnwea.org/6bf74da/css/highlighter-item-aid-map.css",
+    "selector": ".highlighter-item-aid-popup .erase-popup-button:hover"
+  },
+  {
+    "file": "highlighter-8.svg",
+    "source": "https://item-presenter-lib.mapnwea.org/6bf74da/css/highlighter-item-aid-map.css",
+    "selector": ".highlighter-item-aid .highlighter-item-aid-button"
+  },
+  {
+    "file": "highlighter-9.svg",
+    "source": "https://item-presenter-lib.mapnwea.org/6bf74da/css/highlighter-item-aid-map.css",
+    "selector": ".highlighter-item-aid .highlighter-item-aid-button.active"
+  },
+  {
+    "file": "highlighter-10.svg",
+    "source": "https://item-presenter-lib.mapnwea.org/6bf74da/css/highlighter-item-aid-map.css",
+    "selector": ".highlighter-item-aid .highlight-eraser-item-aid-button"
+  },
+  {
+    "file": "highlighter-11.svg",
+    "source": "https://item-presenter-lib.mapnwea.org/6bf74da/css/highlighter-item-aid-map.css",
+    "selector": ".highlighter-item-aid .highlight-eraser-item-aid-button.active"
+  },
+  {
+    "file": "highlighter-12.svg",
+    "source": "https://item-presenter-lib.mapnwea.org/6bf74da/css/highlighter-item-aid-map.css",
+    "selector": ".highlighter-item-aid-popup .highlight-popup-button"
+  },
+  {
+    "file": "highlighter-13.svg",
+    "source": "https://item-presenter-lib.mapnwea.org/6bf74da/css/highlighter-item-aid-map.css",
+    "selector": ".highlighter-item-aid-popup .highlight-popup-button:hover"
+  },
+  {
+    "file": "highlighter-14.svg",
+    "source": "https://item-presenter-lib.mapnwea.org/6bf74da/css/highlighter-item-aid-map.css",
+    "selector": ".highlighter-item-aid-popup .erase-popup-button"
+  },
+  {
+    "file": "highlighter-15.svg",
+    "source": "https://item-presenter-lib.mapnwea.org/6bf74da/css/highlighter-item-aid-map.css",
+    "selector": ".highlighter-item-aid-popup .erase-popup-button:hover"
+  },
+  {
+    "file": "zoom-0.svg",
+    "source": "https://item-presenter-lib.mapnwea.org/6bf74da/css/zoom-item-aid-map.css",
+    "selector": ".zoom-item-aid .zoom-in-item-aid-button"
+  },
+  {
+    "file": "zoom-1.svg",
+    "source": "https://item-presenter-lib.mapnwea.org/6bf74da/css/zoom-item-aid-map.css",
+    "selector": ".zoom-item-aid .zoom-out-item-aid-button"
+  },
+  {
+    "file": "zoom-2.svg",
+    "source": "https://item-presenter-lib.mapnwea.org/6bf74da/css/zoom-item-aid-map.css",
+    "selector": ".zoom-item-aid .zoom-in-item-aid-button"
+  },
+  {
+    "file": "zoom-3.svg",
+    "source": "https://item-presenter-lib.mapnwea.org/6bf74da/css/zoom-item-aid-map.css",
+    "selector": ".zoom-item-aid .zoom-in-item-aid-button.active"
+  },
+  {
+    "file": "zoom-4.svg",
+    "source": "https://item-presenter-lib.mapnwea.org/6bf74da/css/zoom-item-aid-map.css",
+    "selector": ".zoom-item-aid .zoom-out-item-aid-button"
+  },
+  {
+    "file": "zoom-5.svg",
+    "source": "https://item-presenter-lib.mapnwea.org/6bf74da/css/zoom-item-aid-map.css",
+    "selector": ".zoom-item-aid .zoom-out-item-aid-button.active"
+  },
+  {
+    "file": "line-reader-0.svg",
+    "source": "https://item-presenter-lib.mapnwea.org/6bf74da/css/line-reader-item-aid-map.css",
+    "selector": ".line-reader-item-aid-button"
+  },
+  {
+    "file": "line-reader-1.svg",
+    "source": "https://item-presenter-lib.mapnwea.org/6bf74da/css/line-reader-item-aid-map.css",
+    "selector": ".line-reader-item-aid-button.active"
+  },
+  {
+    "file": "line-reader-2.svg",
+    "source": "https://item-presenter-lib.mapnwea.org/6bf74da/css/line-reader-item-aid-map.css",
+    "selector": ".line-reader-item-aid-button"
+  },
+  {
+    "file": "line-reader-3.svg",
+    "source": "https://item-presenter-lib.mapnwea.org/6bf74da/css/line-reader-item-aid-map.css",
+    "selector": ".line-reader-item-aid-button.active"
+  },
+  {
+    "file": "notepad-0.svg",
+    "source": "https://item-presenter-lib.mapnwea.org/6bf74da/css/notepad-item-aid-map.css",
+    "selector": ".notepad-item-aid-button"
+  },
+  {
+    "file": "notepad-1.svg",
+    "source": "https://item-presenter-lib.mapnwea.org/6bf74da/css/notepad-item-aid-map.css",
+    "selector": ".notepad-item-aid-button.active"
+  },
+  {
+    "file": "notepad-2.svg",
+    "source": "https://item-presenter-lib.mapnwea.org/6bf74da/css/notepad-item-aid-map.css",
+    "selector": ".notepad-item-aid-button"
+  },
+  {
+    "file": "notepad-3.svg",
+    "source": "https://item-presenter-lib.mapnwea.org/6bf74da/css/notepad-item-aid-map.css",
+    "selector": ".notepad-item-aid-button.active"
+  },
+  {
+    "file": "elim-0.svg",
+    "source": "https://item-presenter-lib.mapnwea.org/6bf74da/css/elim-item-aid-map.css",
+    "selector": ".elim-item-aid-button"
+  },
+  {
+    "file": "elim-1.svg",
+    "source": "https://item-presenter-lib.mapnwea.org/6bf74da/css/elim-item-aid-map.css",
+    "selector": ".elim-item-aid-button.active"
+  },
+  {
+    "file": "elim-2.svg",
+    "source": "https://item-presenter-lib.mapnwea.org/6bf74da/css/elim-item-aid-map.css",
+    "selector": ".elim-item-aid-button"
+  },
+  {
+    "file": "elim-3.svg",
+    "source": "https://item-presenter-lib.mapnwea.org/6bf74da/css/elim-item-aid-map.css",
+    "selector": ".elim-item-aid-button.active"
+  },
+  {
+    "file": "flowers-reference.png",
+    "source": "User attachment: screenshot 09",
+    "usage": "CSS background-position selects photo regions; full reference preserved."
+  },
+  {
+    "file": "loading-reference.png",
+    "source": "User attachment: screenshot 06",
+    "usage": "CSS background-position selects the character; full reference preserved."
+  },
+  {
+    "file": "radio-empty.svg",
+    "source": "https://item-presenter-lib.mapnwea.org/6bf74da/css/themes/map-steel.css",
+    "selector": "#item-presenter .interactionHolder .multipleChoice .inputCell .radio"
+  },
+  {
+    "file": "checkbox-empty.svg",
+    "source": "https://item-presenter-lib.mapnwea.org/6bf74da/css/themes/map-steel.css",
+    "selector": "#item-presenter .interactionHolder .multipleChoice .inputCell .checkbox"
+  },
+  {
+    "file": "radio-checked.svg",
+    "source": "https://item-presenter-lib.mapnwea.org/6bf74da/css/themes/map-steel.css",
+    "selector": "#item-presenter .interactionHolder .selected-choice .inputCell .radio"
+  },
+  {
+    "file": "checkbox-checked.svg",
+    "source": "https://item-presenter-lib.mapnwea.org/6bf74da/css/themes/map-steel.css",
+    "selector": "#item-presenter .interactionHolder .selected-choice .inputCell .checkbox"
+  },
+  {
+    "file": "OpenSans-Regular.ttf",
+    "source": "https://item-presenter-lib.mapnwea.org/6bf74da/font/OpenSans-Regular.ttf",
+    "bytes": 217276
+  },
+  {
+    "file": "OpenSans-Italic.ttf",
+    "source": "https://item-presenter-lib.mapnwea.org/6bf74da/font/OpenSans-Italic.ttf",
+    "bytes": 212760
+  },
+  {
+    "file": "OpenSans-SemiBold.ttf",
+    "source": "https://item-presenter-lib.mapnwea.org/6bf74da/font/OpenSans-SemiBold.ttf",
+    "bytes": 221164
+  },
+  {
+    "file": "OpenSans-Bold.ttf",
+    "source": "https://item-presenter-lib.mapnwea.org/6bf74da/font/OpenSans-Bold.ttf",
+    "bytes": 224452
+  },
+  {
+    "file": "paperFooter2.321e5a51.png",
+    "source": "https://cdn.mapnwea.org/growth/2.76.0/images/paperFooter2.321e5a51.png",
+    "bytes": 1935
+  },
+  {
+    "file": "pen_line.440ac3ce.gif",
+    "source": "https://cdn.mapnwea.org/growth/2.76.0/images/pen_line.440ac3ce.gif",
+    "bytes": 2495
+  },
+  {
+    "file": "Head.7e24f6b4.svg",
+    "source": "https://cdn.mapnwea.org/growth/2.76.0/images/Head.7e24f6b4.svg",
+    "bytes": 1276
+  },
+  {
+    "file": "Star.9c060c07.svg",
+    "source": "https://cdn.mapnwea.org/growth/2.76.0/images/Star.9c060c07.svg",
+    "bytes": 668
+  },
+  {
+    "file": "Clock.b0ba0593.svg",
+    "source": "https://cdn.mapnwea.org/growth/2.76.0/images/Clock.b0ba0593.svg",
+    "bytes": 1394
+  },
+  {
+    "file": "paperHeader2.9597e3f4.png",
+    "source": "https://cdn.mapnwea.org/growth/2.76.0/images/paperHeader2.9597e3f4.png",
+    "bytes": 1939
+  },
+  {
+    "file": "paperFill2.e921f8c0.png",
+    "source": "https://cdn.mapnwea.org/growth/2.76.0/images/paperFill2.e921f8c0.png",
+    "bytes": 1199
+  },
+  {
+    "file": "noteSmall.626a741f.png",
+    "source": "https://cdn.mapnwea.org/growth/2.76.0/images/noteSmall.626a741f.png",
+    "bytes": 22253
+  },
+  {
+    "file": "Sloth_CrossingGuard-en.c57f521d.svg",
+    "source": "https://cdn.mapnwea.org/growth/2.76.0/images/Sloth_CrossingGuard-en.c57f521d.svg",
+    "bytes": 128261
+  }
+]

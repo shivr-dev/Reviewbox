@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MAP · Review</title><link rel="stylesheet" href="assets/fonts.css"><link rel="stylesheet" href="styles.css"></head>
+<body><button id="review-quick-exit" title="Save and return to CE" aria-label="Save and return to CE">×</button>
+<div id="stage">
+ <section id="login" hidden aria-label="Practice Test login">
+  <div class="paper"><div class="paper-top"></div><div class="paper-body"></div><div class="paper-bottom"></div><img class="brand" src="assets/nweaYellowTmLarge.1e8086e2.svg" alt="NWEA"><div class="paper-drawings"></div><button class="paper-close" aria-label="Skip demo login">×</button>
+  <form id="login-form" autocomplete="off"><div class="login-subtitle">Practice Test / Item Sampler</div><h1>Log in</h1><label for="username">Username <span>Nombre de usuario</span></label><input id="username" name="demo-username" autocomplete="off" spellcheck="false" aria-label="Demo username"><label for="password">Password <span>Contraseña</span></label><div class="password-row"><input id="password" name="demo-password" type="text" autocomplete="off" aria-label="Demo password"><button class="login-next" type="submit" aria-label="Log in to demo" disabled><span class="icon">&#xe901;</span></button></div></form>
+  <div class="copyright">Copyright © 2025 by Houghton Mifflin Harcourt Publishing Company. All<br>rights reserved.</div><img class="footer-brand" src="assets/nweaGraphite.957cd108.png" alt="NWEA">
+  </div>
+ </section>
+ <section id="player" hidden>
+  <header class="toolbar" aria-label="Question tools">
+   <button class="tool zoom-out" data-action="zoom-out" title="Zoom out" aria-label="Zoom out" disabled></button><button id="zoom-value" data-action="zoom-reset" title="Reset zoom">100%</button><button class="tool zoom-in" data-action="zoom-in" title="Zoom in" aria-label="Zoom in"></button><span class="toolbar-divider"></span>
+   <button class="tool highlighter" data-action="highlighter" title="Highlighter (H)" aria-label="Highlighter" aria-pressed="false"></button><button class="tool eraser" data-action="eraser" title="Erase highlight (E)" aria-label="Erase highlight" aria-pressed="false"></button><button class="tool line-reader" data-action="line-reader" title="Line reader (L)" aria-label="Line reader" aria-pressed="false"></button><button class="tool notepad" data-action="notepad" title="Notepad (N)" aria-label="Notepad" aria-pressed="false"></button><button class="tool elim" data-action="elim" title="Answer eliminator (A)" aria-label="Answer eliminator" aria-pressed="false"></button>
+  </header>
+  <main id="question" tabindex="-1"></main>
+  <footer class="test-footer"><div class="footer-inner"><button class="reset" data-action="reset"><span class="icon">&#xe955;</span> RESET</button><div class="metadata"><span>Student Guest</span><span id="test-name">Practice Items: Reading</span><span id="grade">Grade 8</span><span id="subject">Reading</span><button id="question-number" title="Choose a demo screen (F2)" aria-label="Choose a demo screen">Question # 1</button></div><button class="next" data-action="next" aria-label="Next question" disabled><span class="icon">&#xe901;</span></button></div></footer>
+ </section>
+ <section id="session-screen" hidden></section>
+ <section id="boot-loader" hidden role="status" aria-label="Loading, please wait"><div class="boot-loading"><div class="cube-grid" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div>Loading, please wait. . .</div></div><div class="pet-sprite" aria-hidden="true"></div></section>
+ <section id="item-loader" hidden role="status" aria-label="Loading"><div class="item-loader-card"><div class="spinner" aria-hidden="true"></div><div>Loading</div></div></section>
+ <div id="modal-layer" hidden><section class="reset-dialog" role="dialog" aria-modal="true" aria-labelledby="dialog-title"><header><h2 id="dialog-title">Reset Question</h2><button class="dialog-close" aria-label="Close dialog">×</button></header><div class="dialog-body"><p>Are you sure you want to clear your answer?</p><div class="dialog-actions"><button class="confirm-reset"><span class="icon">&#xe955;</span> RESET</button><button class="cancel-reset">CANCEL</button></div></div></section></div>
+ <section id="notepad" class="floating-panel" hidden aria-label="Notepad"><header><span>Notepad</span><button aria-label="Close notepad">×</button></header><textarea aria-label="Notes" placeholder=""></textarea><div class="note-footer"><button id="clear-note">Clear</button><span id="note-count">0</span></div></section>
+ <div id="reading-guide" hidden tabindex="0" role="region" aria-label="Line reader, drag vertically or use arrow keys"><div class="guide-top"></div><div class="guide-window"></div><div class="guide-bottom"></div></div>
+ <section id="screen-picker" hidden role="dialog" aria-modal="true" aria-labelledby="picker-title"><header><h2 id="picker-title">界面演示</h2><button id="close-picker" aria-label="Close screen picker">×</button></header><p>选择参考画面 · F2 打开 / Esc 关闭</p><div id="screen-links"></div><footer><button id="fullscreen">全屏显示</button><a href="library.html" target="_blank">格式规范与资源库</a></footer></section>
+ <div id="live-status" class="sr-only" role="status" aria-live="polite"></div>
+</div>
+<script src="app.js"></script>
+</body></html>

@@ -83,6 +83,10 @@ export type ExamRun = {
     practice: boolean;
     entered?: boolean;
     tools?: { zoom: number; reader: boolean };
+    showReport?: boolean;
+    nativeStates?: Record<string, import('./map-native').NativeMapState>;
+    screen?: string;
+    studentName?: string;
   };
 };
 const rw = [

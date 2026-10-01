@@ -43,6 +43,8 @@ export default function ExamImportPanel({
     [items, setItems] = useState<any[]>([]),
     [sections, setSections] = useState<any[]>([]);
   const [mapType, setMapType] = useState('mcq'),
+    [mapWord,setMapWord]=useState(''),
+    [tableLayout,setTableLayout]=useState(false),
     [partB, setPartB] = useState(''),
     [partBOptions, setPartBOptions] = useState(''),
     [partBAnswer, setPartBAnswer] = useState(''),
@@ -108,6 +110,7 @@ export default function ExamImportPanel({
                       .length,
                   }
                 : {}),
+              ...(mapType==='gap_match'&&tableLayout?{layout:'word-table',word:mapWord}:{}),
               ...(mapType === 'two_part'
                 ? {
                     parts: [
@@ -307,6 +310,10 @@ export default function ExamImportPanel({
               ? '多选答案每行一项；拖放原文用 {{1}}、{{2}} 标空，答案按空格顺序每行一项；选词纠错在原文中用 [word] 标记可选词，选项栏填写这些词。'
               : '表单适合选择题和写作。补词、组句、听力音频与口语请使用试卷文件导入，格式可从上方 Skill 复制。'}
           </p>
+          {exam==='MAP'&&mapType==='gap_match'&&<>
+            <label className="field"><span><input type="checkbox" checked={tableLayout} onChange={e=>setTableLayout(e.target.checked)}/> 使用词义拖放表格</span></label>
+            {tableLayout&&<label className="field">原文中的目标词<input value={mapWord} onChange={e=>setMapWord(e.target.value)}/><small>填写完整原文，不需要标空；词库填备选词义，答案填一项。</small></label>}
+          </>}
           <label className="field">
             共享材料
             <textarea

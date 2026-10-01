@@ -1,0 +1,24 @@
+{
+ "$schema":"https://json-schema.org/draft/2020-12/schema",
+ "title":"MAP interface question data", "type":"array",
+ "items":{
+  "type":"object","required":["id","type","number","subject","grade"],
+  "properties":{
+   "id":{"type":"string","pattern":"^[a-z0-9-]+$"},"type":{"enum":["word-table","split-parts","single-choice","split-multiple","pronoun","gap-match"]},
+   "number":{"type":"integer","minimum":1},"subject":{"enum":["Reading","Language Usage"]},"grade":{"type":"integer","minimum":1,"maximum":12},
+   "instruction":{"type":"string"},"title":{"type":"string"},"passage":{"type":"string"},"prompt":{"type":"string"},"word":{"type":"string"},"preamble":{"type":"string"},"attribution":{"type":"string"},"secondaryPrompt":{"type":"string"},
+   "paragraphs":{"type":"array","items":{"type":"string"},"minItems":1},
+   "choices":{"type":"array","items":{"type":"string"},"minItems":2},
+   "parts":{"type":"array","minItems":1,"items":{"type":"object","required":["label","prompt","choices"],"properties":{"label":{"type":"string"},"prompt":{"type":"string"},"choices":{"type":"array","items":{"type":"string"},"minItems":2}}}},
+   "maxSelections":{"type":"integer","minimum":1},"gapCount":{"type":"integer","minimum":1}
+  },
+  "allOf":[
+   {"if":{"properties":{"type":{"const":"word-table"}}},"then":{"required":["instruction","title","passage","prompt","word","choices"]}},
+   {"if":{"properties":{"type":{"const":"split-parts"}}},"then":{"required":["instruction","passage","preamble","parts"]}},
+   {"if":{"properties":{"type":{"const":"single-choice"}}},"then":{"required":["instruction","title","paragraphs","prompt","choices"]}},
+   {"if":{"properties":{"type":{"const":"split-multiple"}}},"then":{"required":["instruction","passage","preamble","prompt","choices","maxSelections"]}},
+   {"if":{"properties":{"type":{"const":"pronoun"}}},"then":{"required":["prompt","passage","secondaryPrompt"]}},
+   {"if":{"properties":{"type":{"const":"gap-match"}}},"then":{"required":["preamble","prompt","passage","choices","gapCount"]}}
+  ]
+ }
+}

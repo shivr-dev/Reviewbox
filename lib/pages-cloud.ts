@@ -49,8 +49,8 @@ export async function pagesApi(path:string, init?:RequestInit):Promise<Response>
     const method = init?.method || 'GET';
     if (path === '/api/account' && method === 'GET') {
       if (!config) return Response.json({user:null,aiReady:false,cloudReady:false,staticMode:true,vaultLocked:true});
-      const current = await session(true);
-      return Response.json({user:current?.user ?? null,aiReady:!!current && config.cloudflareTokens.length>0,cloudReady:true,staticMode:true,vaultLocked:false});
+      const current = await session(true).catch(()=>null);
+      return Response.json({user:current?.user ?? null,aiReady:config.cloudflareTokens.length>0,cloudReady:true,staticMode:true,vaultLocked:false});
     }
     const body = init?.body ? JSON.parse(String(init.body)) : null;
     if (path === '/api/account' && method === 'POST') {

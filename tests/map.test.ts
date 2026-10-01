@@ -18,6 +18,36 @@ import { objectiveScore } from '../lib/question-tools';
 import { put, loadData, switchAccount } from '../lib/store';
 import { gradeExam } from '../lib/exam-client';
 import { EXAM_IMPORT_SKILL } from '../lib/exam-skill';
+import { nativeMapQuestion, responseFromMapState, initialMapState } from '../lib/map-native';
+
+test('supplied MAP renderer receives each layout and restores old answer records without exposing keys',async()=>{
+  const types:Record<string,string>={mcq:'single-choice',multi_select:'split-multiple',two_part:'split-parts',gap_match:'gap-match',hot_text:'pronoun',text_entry:'text-entry'};
+  for(const [type,layout] of Object.entries(types)){
+    const {paper,questions}=await parseExamPackage(mapTemplate(type,'Language Usage',8));
+    const q=questions[0],run=createMapRun(paper,questions),slot=run.map!.order[0];
+    run.answers[slot]=q.answer;run.notes[slot]='Saved note';
+    const dto=nativeMapQuestion(q,paper,run),state=initialMapState(q,run,slot);
+    assert.equal(dto.type,layout);assert.equal('answer' in dto,false);assert.equal('explanation' in dto,false);
+    assert.equal(responseFromMapState(q,state).answer,q.answer);assert.equal(state.note,'Saved note');
+    assert.doesNotThrow(()=>structuredClone(state));
+    if(type==='gap_match')assert.ok(dto.passage.includes('{{0}}'));
+    if(type==='hot_text')assert.ok(dto.passage.includes('{{0}}'));
+    if(type==='mcq')assert.throws(()=>responseFromMapState(q,{...state,answers:{main:[99]}}));
+    const unsafe={...q,examTask:{...q.examTask!,map:{...q.examTask!.map!,prompt:'<img src=x onerror="alert(1)">',passage:'<script>run()</script>'}}};
+    const escaped=nativeMapQuestion(unsafe,paper,run);
+    assert.ok(!escaped.prompt.includes('<img'));assert.ok(!escaped.passage.includes('<script>'));
+  }
+});
+test('word-meaning table imports and scores a single drag slot without requiring a blank in the reading text',async()=>{
+  const pack=JSON.parse(mapTemplate('gap_match','Reading',8));
+  const m=pack.sectionsInline.map.questions[0];
+  Object.assign(m,{layout:'word-table',word:'appoints',passage:'The president appoints cabinet members.',choices:['chooses','visits'],answer:['chooses']});
+  const parsed=await parseExamPackage(JSON.stringify(pack));
+  const run=createMapRun(parsed.paper,parsed.questions),q=parsed.questions[0],slot=run.map!.order[0];run.answers[slot]=q.answer;
+  assert.equal(nativeMapQuestion(q,parsed.paper,run).type,'word-table');
+  assert.equal(objectiveScore(q,responseFromMapState(q,initialMapState(q,run,slot)).answer),1);
+  assert.ok(EXAM_IMPORT_SKILL.includes('word-table'));
+});
 
 test('all six MAP templates import, link skills and grade actual responses without AI', async () => {
   for (const type of Object.keys(MAP_TEMPLATES)) {
