@@ -19,6 +19,17 @@ import { put, loadData, switchAccount } from '../lib/store';
 import { gradeExam } from '../lib/exam-client';
 import { EXAM_IMPORT_SKILL } from '../lib/exam-skill';
 import { nativeMapQuestion, responseFromMapState, initialMapState } from '../lib/map-native';
+import { extractFile } from '../lib/importer';
+import * as XLSX from '../public/vendor/xlsx.mjs';
+
+test('vendored Excel parser retains Chinese learning material import',async()=>{
+  const workbook=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook,XLSX.utils.aoa_to_sheet([['拼音','汉字'],['lang ji','狼藉']]),'藤野先生字词');
+  const bytes=XLSX.write(workbook,{type:'array',bookType:'xlsx'});
+  const result=await extractFile(new File([bytes],'learning.xlsx'));
+  assert.ok(result.text?.includes('藤野先生字词'));
+  assert.ok(result.text?.includes('狼藉'));
+});
 
 test('supplied MAP renderer receives each layout and restores old answer records without exposing keys',async()=>{
   const types:Record<string,string>={mcq:'single-choice',multi_select:'split-multiple',two_part:'split-parts',gap_match:'gap-match',hot_text:'pronoun',text_entry:'text-entry'};

@@ -340,7 +340,10 @@ export async function extractFile(
     return { text };
   }
   if (ext === 'xlsx' || ext === 'xls') {
-    const XLSX = await import('xlsx');
+    const moduleURL = typeof document === 'undefined'
+      ? new URL('../public/vendor/xlsx.mjs', import.meta.url).href
+      : new URL('vendor/xlsx.mjs', document.baseURI).href;
+    const XLSX = await import(/* @vite-ignore */ moduleURL) as typeof import('../public/vendor/xlsx.mjs');
     const wb = XLSX.read(await file.arrayBuffer(), {
       type: 'array',
       dense: true,
