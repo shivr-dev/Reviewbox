@@ -1,8 +1,11 @@
 import { randomBytes, pbkdf2Sync, createCipheriv } from 'node:crypto';
 import { writeFile } from 'node:fs/promises';
+import { createInterface } from 'node:readline';
 
+const input = createInterface({ input: process.stdin });
 let source = '';
-for await (const chunk of process.stdin) source += chunk;
+for await (const line of input) { source = line; break; }
+input.close();
 const config = JSON.parse(source);
 if (!/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(config.supabaseUrl) ||
     !/^sb_publishable_/.test(config.publishableKey) ||
