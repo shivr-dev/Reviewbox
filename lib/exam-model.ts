@@ -1,11 +1,15 @@
 import type { Node, Question } from './model';
 import { objectiveScore } from './question-tools';
 export const EXAM_FORMAT = 'english-v1' as const;
-export type ExamKind = 'SAT' | 'ACT' | 'TOEFL';
+export type ExamKind = 'SAT' | 'ACT' | 'TOEFL' | 'MAP';
 export type ExamOptions = {
   writing: boolean;
   stages?: ExamStage[];
   practice?: boolean;
+  mapSection?: 'Reading' | 'Language Usage';
+  grade?: number;
+  count?: number;
+  poolSize?: number;
 };
 export type ExamTask = {
   native?: Record<string, unknown>;
@@ -15,6 +19,7 @@ export type ExamTask = {
   parts?: { visiblePrefix: string; missingLength: number; answer: string }[];
   words?: string[];
   responseSeconds?: number;
+  map?: import('./map-model').MapItem;
 };
 export type ExamSlot = {
   id: string;
@@ -71,6 +76,14 @@ export type ExamRun = {
   audioPlayed?: Record<string, boolean>;
   selfScores?: Record<string, number>;
   native?: any;
+  map?: {
+    order: string[];
+    ability: number;
+    checked?: boolean;
+    practice: boolean;
+    entered?: boolean;
+    tools?: { zoom: number; reader: boolean };
+  };
 };
 const rw = [
   'Craft and Structure',
@@ -80,6 +93,33 @@ const rw = [
 ];
 export function examStages(exam: ExamKind, options: ExamOptions): ExamStage[] {
   if (options.stages) return options.stages;
+  if (exam === 'MAP') {
+    const section = options.mapSection ?? 'Reading';
+    const count = options.count ?? 43;
+    const domains =
+      section === 'Reading'
+        ? ['Literary Text', 'Informational Text', 'Vocabulary']
+        : ['Writing: Purpose and Audience', 'Grammar and Usage', 'Mechanics'];
+    return [
+      {
+        id: 'map',
+        title: section,
+        section,
+        count,
+        seconds: 0,
+        breakAfter: 0,
+        adaptive: false,
+        slots: Array.from({ length: options.poolSize ?? 65 }, (_, index) => ({
+          id: '0-standard-' + index,
+          stage: 0,
+          index,
+          domain: domains[index % 3],
+          type: 'blank' as const,
+          route: 'standard' as const,
+        })),
+      },
+    ];
+  }
   const definitions: [string, number, number, number, boolean][] =
     exam === 'SAT'
       ? [
@@ -207,6 +247,10 @@ export const paperReady = (p: ExamPaper, questions?: Question[]) =>
   );
 export function stageSlots(paper: ExamPaper, run: ExamRun, stage = run.stage) {
   const s = examStages(paper.exam, paper.options)[stage];
+  if (paper.exam === 'MAP' && run.map)
+    return run.map.order
+      .map((id) => s.slots.find((x) => x.id === id)!)
+      .filter(Boolean);
   return (
     s?.slots.filter((x) => x.route === (run.routes[stage] ?? 'standard')) ?? []
   );
@@ -215,7 +259,7 @@ export function createRun(p: ExamPaper, now = Date.now()): ExamRun {
   if (!paperReady(p)) throw new Error('英语专项完整试卷尚未准备好');
   return {
     id: 'exam-run:' + crypto.randomUUID(),
-    native: { fresh: true },
+    native: p.exam === 'MAP' ? undefined : { fresh: true },
     kind: 'exam-run',
     paperId: p.id,
     exam: p.exam,
@@ -276,7 +320,7 @@ export function expireRun(
   questions: Question[],
   now = Date.now(),
 ) {
-  if (p.options.practice) return run;
+  if (p.options.practice || p.exam === 'MAP') return run;
   let next = run;
   let guard = 0;
   while (next.status !== 'complete' && now >= next.deadline && guard++ < 12)

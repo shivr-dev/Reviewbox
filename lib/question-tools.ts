@@ -1,4 +1,5 @@
 import type { Question, StudyData } from './model';
+import { mapScore } from './map-model';
 export const QUESTION_TYPES = [
   { id: 'recall', label: '回忆卡' },
   { id: 'choice', label: '选择题' },
@@ -56,6 +57,7 @@ function numberValue(s: string): number | null {
   return m && Number(m[2]) !== 0 ? Number(m[1]) / Number(m[2]) : null;
 }
 export function objectiveScore(q: Question, answer: string): number {
+  if (q.examTask?.map) return mapScore(q, answer);
   if (!answer.trim()) return 0;
   if (q.examTask?.parts) {
     try {

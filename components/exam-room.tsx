@@ -33,6 +33,8 @@ import { gradeExam } from '@/lib/exam-client';
 import MathText from './math-text';
 import NativeExamRoom from './native-exam-room';
 import { nativeExamPackage } from '@/lib/exam-native';
+import MapExamRoom from './map-exam-room';
+import { mapAnswerText } from '@/lib/map-model';
 
 function HighlightedPassage({
   text,
@@ -74,6 +76,8 @@ export default function ExamRoom({ runId }: { runId: string }) {
   const paper = data.jobs?.find(
     (j) => j.id === run?.paperId && j.kind === 'exam-paper',
   ) as ExamPaper | undefined;
+  if (run && paper?.exam === 'MAP' && run.status !== 'complete')
+    return <MapExamRoom key={runId} run={run} paper={paper} />;
   if (
     run &&
     paper &&
@@ -415,9 +419,41 @@ function LegacyExamRoom({ runId }: { runId: string }) {
                   {String.fromCharCode(65 + i)}. <MathText>{o}</MathText>
                 </p>
               ))}
+              {q.examTask?.map?.parts?.map((part, i) => (
+                <div key={i}>
+                  <h3>
+                    Part {i ? 'B' : 'A'} · {part.prompt}
+                  </h3>
+                  {part.choices.map((choice, j) => (
+                    <p
+                      key={j}
+                      className={choice === part.answer ? 'correct-option' : ''}
+                    >
+                      {j + 1}. {choice}
+                    </p>
+                  ))}
+                </div>
+              ))}
+              {q.examTask?.map?.type === 'multi_select' &&
+                q.examTask.map.choices?.map((choice, i) => (
+                  <p
+                    key={i}
+                    className={
+                      (q.examTask!.map!.answer as string[]).includes(choice)
+                        ? 'correct-option'
+                        : ''
+                    }
+                  >
+                    {i + 1}. {choice}
+                  </p>
+                ))}
               <p>
                 你的回答：
-                <MathText>{run.answers[qSlot.id] || '未作答'}</MathText>
+                <MathText>
+                  {q.examTask?.map
+                    ? mapAnswerText(q, run.answers[qSlot.id] || '未作答')
+                    : run.answers[qSlot.id] || '未作答'}
+                </MathText>
               </p>
               <p>
                 {q.type === 'subjective' && (
@@ -476,7 +512,9 @@ function LegacyExamRoom({ runId }: { runId: string }) {
                   </span>
                 )}
                 <b>参考答案：</b>
-                <MathText>{q.answer}</MathText>
+                <MathText>
+                  {q.examTask?.map ? mapAnswerText(q) : q.answer}
+                </MathText>
               </p>
               <p>
                 <MathText>{q.explanation}</MathText>

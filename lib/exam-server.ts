@@ -10,6 +10,7 @@ import {
 import { questionSchema } from './importer';
 import { assertQuestionFormat } from './question-tools';
 import { z } from 'zod';
+import { mapGenerate, mapSolve, mapJudge } from './map-server';
 const requestSchema = z.object({
   exam: z.enum(['SAT', 'ACT']),
   options: z.object({ writing: z.boolean() }),
@@ -68,6 +69,7 @@ export async function examPassage(b: any) {
   return { passage };
 }
 export async function examGenerate(b: any) {
+  if (b.exam === 'MAP') return mapGenerate(b);
   const { exam, stages } = context(b);
   const ids = z.array(z.string()).min(1).max(3).parse(b.slots);
   const slots = ids.map((id) =>
@@ -180,6 +182,8 @@ const batchItem = z.object({
     .optional(),
 });
 export async function examSolve(b: any) {
+  if (b.questions?.some((v: any) => v.question?.examTask?.map))
+    return mapSolve(b);
   const qs = z
     .array(z.object({ slotId: z.string(), question: questionSchema }))
     .min(1)
@@ -209,6 +213,8 @@ export async function examSolve(b: any) {
   return { solutions };
 }
 export async function examJudge(b: any) {
+  if (b.questions?.some((v: any) => v.question?.examTask?.map))
+    return mapJudge(b);
   const qs = z
     .array(z.object({ slotId: z.string(), question: questionSchema }))
     .min(1)

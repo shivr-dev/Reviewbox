@@ -14,6 +14,7 @@ import {
 } from '@/lib/exam-model';
 import { put, currentNamespace } from '@/lib/store';
 import ExamImportPanel from './exam-import-panel';
+import { createMapRun } from '@/lib/map-model';
 export function FullExamHub() {
   const { data, refresh, navigate, notify, aiReady, sync } = useReview();
   const [exam, setExam] = useState<ExamKind>('SAT'),
@@ -22,6 +23,11 @@ export function FullExamHub() {
     [message, setMessage] = useState(''),
     [allowGeneration, setAllowGeneration] = useState(false),
     [live, setLive] = useState<ExamPaper | null>(null);
+  const [mapSection, setMapSection] = useState<'Reading' | 'Language Usage'>(
+      'Reading',
+    ),
+    [grade, setGrade] = useState(8),
+    [mapPractice, setMapPractice] = useState(false);
   const stop = useRef(false),
     lock = useRef(false);
   useEffect(
@@ -37,10 +43,17 @@ export function FullExamHub() {
     )
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   const matching = papers.filter(
-    (p) => p.exam === exam && (exam !== 'ACT' || p.options.writing === writing),
+    (p) =>
+      p.exam === exam &&
+      (exam !== 'ACT' || p.options.writing === writing) &&
+      (exam !== 'MAP' ||
+        (p.options.mapSection === mapSection && p.options.grade === grade)),
   );
   const shown =
-    (live?.exam === exam && (exam !== 'ACT' || live.options.writing === writing)
+    (live?.exam === exam &&
+    (exam !== 'ACT' || live.options.writing === writing) &&
+    (exam !== 'MAP' ||
+      (live.options.mapSection === mapSection && live.options.grade === grade))
       ? live
       : null) ??
     matching.find((p) => paperReady(p, data.questions)) ??
@@ -48,7 +61,7 @@ export function FullExamHub() {
   const readyPaper = !!shown && paperReady(shown, data.questions);
   const stages = shown
     ? examStages(shown.exam, shown.options)
-    : examStages(exam, { writing });
+    : examStages(exam, { writing, mapSection, grade });
   const used =
     !!shown &&
     data.jobs?.some((j) => j.kind === 'exam-run' && j.paperId === shown.id);
@@ -59,7 +72,15 @@ export function FullExamHub() {
     setBusy(true);
     stop.current = false;
     try {
-      const paper = p ?? (await newPaper(exam, { writing }, origin));
+      const paper =
+        p ??
+        (await newPaper(
+          exam,
+          exam === 'MAP'
+            ? { writing: false, mapSection, grade, count: 43, poolSize: 65 }
+            : { writing },
+          origin,
+        ));
       if (currentNamespace() !== origin) return;
       setLive(paper);
       await refresh();
@@ -91,9 +112,14 @@ export function FullExamHub() {
         (j) =>
           j.kind === 'exam-run' &&
           j.paperId === p.id &&
-          j.status !== 'complete',
+          j.status !== 'complete' &&
+          (p.exam !== 'MAP' || j.map?.practice === mapPractice),
       );
-      const run = active ?? createRun(p);
+      const run =
+        active ??
+        (p.exam === 'MAP'
+          ? createMapRun(p, data.questions, mapPractice)
+          : createRun(p));
       await put('job', run);
       await refresh();
       navigate('exam', run.id);
@@ -114,7 +140,7 @@ export function FullExamHub() {
         <FileCheck2 size={25} />
       </div>
       <div className="exam-kind-picker">
-        {(['SAT', 'ACT', 'TOEFL'] as const).map((k) => (
+        {(['SAT', 'ACT', 'TOEFL', 'MAP'] as const).map((k) => (
           <button
             key={k}
             disabled={busy}
@@ -130,11 +156,59 @@ export function FullExamHub() {
                 ? 'Reading and Writing · 54 questions'
                 : k === 'ACT'
                   ? 'English & Reading · 86 questions'
-                  : 'Reading · Listening · Writing · Speaking'}
+                  : k === 'TOEFL'
+                    ? 'Reading · Listening · Writing · Speaking'
+                    : 'Reading · Language Usage'}
             </span>
           </button>
         ))}
       </div>
+      {exam === 'MAP' && (
+        <div className="map-hub-options">
+          <div className="segmented" aria-label="MAP 科目">
+            {(['Reading', 'Language Usage'] as const).map((s) => (
+              <button
+                key={s}
+                className={s === mapSection ? 'active' : ''}
+                onClick={() => {
+                  setMapSection(s);
+                  setLive(null);
+                }}
+                disabled={busy}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+          <label>
+            Grade
+            <select
+              value={grade}
+              disabled={busy}
+              onChange={(e) => {
+                setGrade(Number(e.target.value));
+                setLive(null);
+              }}
+            >
+              {Array.from({ length: 11 }, (_, i) => (
+                <option key={i} value={i + 2}>
+                  {i + 2}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            模式
+            <select
+              value={mapPractice ? 'practice' : 'test'}
+              onChange={(e) => setMapPractice(e.target.value === 'practice')}
+            >
+              <option value="test">自适应测试 · 结束后解析</option>
+              <option value="practice">专项练习 · 逐题解析</option>
+            </select>
+          </label>
+        </div>
+      )}
       {exam === 'ACT' && (
         <div className="type-checkboxes">
           <label>
@@ -158,13 +232,17 @@ export function FullExamHub() {
             <b>
               {s.count} {s.section === 'Writing' ? '篇' : '题'}
             </b>
-            <small>{s.seconds / 60} min</small>
+            <small>
+              {exam === 'MAP' ? '不设倒计时' : s.seconds / 60 + ' min'}
+            </small>
           </div>
         ))}
       </div>
       <p className="muted exam-duration">
-        <Clock3 size={14} /> 作答{' '}
-        {stages.reduce((n, s) => n + s.seconds, 0) / 60} 分钟
+        <Clock3 size={14} />{' '}
+        {exam === 'MAP'
+          ? '按照个人节奏完成；提交后不能返回上一题。'
+          : '作答 ' + stages.reduce((n, s) => n + s.seconds, 0) / 60 + ' 分钟'}
         {exam === 'ACT' && writing ? ' · 写作前休息 5 分钟' : ''}
       </p>
       <div className="button-row">
@@ -217,11 +295,17 @@ export function FullExamHub() {
         </details>
       )}
       <ExamImportPanel
-        key={exam}
+        key={exam + '-' + mapSection + '-' + grade}
         exam={exam}
+        mapSection={mapSection}
+        grade={grade}
         onImported={(p) => {
           setExam(p.exam);
           setWriting(p.options.writing);
+          if (p.exam === 'MAP') {
+            setMapSection(p.options.mapSection ?? 'Reading');
+            setGrade(p.options.grade ?? 8);
+          }
           setLive(p);
         }}
       />
@@ -279,6 +363,15 @@ export function FullExamHub() {
       )}
       <details className="exam-about">
         <summary>考试说明与历史试卷</summary>
+        {exam === 'MAP' && (
+          <p>
+            MAP 模拟采用不设倒计时、逐题提交及本地题池自适应选题。新题池默认保存
+            65 题，实际作答 43 题；较短的导入卷标记为专项练习。Reading
+            涵盖文学、信息文本与词汇，Language Usage
+            涵盖写作修订、语法与书写规范。题池未使用官方标定参数，报告不提供 RIT
+            分数。界面参考 NWEA 公开练习版，内容为私人学习材料。
+          </p>
+        )}
         <p>
           保留现行 SAT / ACT 的完整英语部分，使用原创题目。SAT
           两模块直接衔接；ACT English 与 Reading 直接衔接，选考 Writing
@@ -291,6 +384,13 @@ export function FullExamHub() {
           首次准备整套题目需要数分钟至数十分钟，视模型速度与核验重试而定；可以暂停并续接。正式计时开始后，关闭页面不会暂停考试。
         </p>
         <div className="source-links">
+          <a
+            href="https://studentresources.nwea.org/"
+            target="_blank"
+            rel="noreferrer"
+          >
+            MAP 官方练习说明
+          </a>
           <a
             href="https://satsuite.collegeboard.org/sat/whats-on-the-test/structure"
             target="_blank"
@@ -318,6 +418,10 @@ export function FullExamHub() {
               onClick={() => {
                 setExam(p.exam);
                 setWriting(p.options.writing);
+                if (p.exam === 'MAP') {
+                  setMapSection(p.options.mapSection ?? 'Reading');
+                  setGrade(p.options.grade ?? 8);
+                }
                 setLive(p);
               }}
             >

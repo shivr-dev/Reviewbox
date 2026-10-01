@@ -1,6 +1,8 @@
 'use client';
 import { useState } from 'react';
 import { QUESTION_TYPES } from '@/lib/question-tools';
+import { MAP_TYPES } from '@/lib/map-model';
+import { mapTemplate } from '@/lib/map-templates';
 import {
   learningTemplate,
   examTaskTemplate,
@@ -9,9 +11,15 @@ import {
 export default function ImportTemplates({
   onUse,
   exam = false,
+  map = false,
+  mapSection = 'Reading',
+  grade = 8,
 }: {
   onUse: (value: string) => void;
   exam?: boolean;
+  map?: boolean;
+  mapSection?: string;
+  grade?: number;
 }) {
   const [type, setType] = useState(exam ? 'mcq' : 'choice');
   return (
@@ -26,9 +34,14 @@ export default function ImportTemplates({
           value={type}
           onChange={(e) => setType(e.target.value)}
         >
-          {(exam
-            ? Object.keys(EXAM_TASK_TEMPLATES).map((id) => ({ id, label: id }))
-            : QUESTION_TYPES
+          {(map
+            ? MAP_TYPES.map(([id, label]) => ({ id, label }))
+            : exam
+              ? Object.keys(EXAM_TASK_TEMPLATES).map((id) => ({
+                  id,
+                  label: id,
+                }))
+              : QUESTION_TYPES
           ).map((t) => (
             <option key={t.id} value={t.id}>
               {t.label}
@@ -38,13 +51,19 @@ export default function ImportTemplates({
         <button
           className="secondary"
           onClick={() =>
-            onUse(exam ? examTaskTemplate(type) : learningTemplate(type))
+            onUse(
+              map
+                ? mapTemplate(type, mapSection, grade)
+                : exam
+                  ? examTaskTemplate(type)
+                  : learningTemplate(type),
+            )
           }
         >
           载入格式模板
         </button>
       </div>
-      {exam && (
+      {exam && !map && (
         <p className="muted">
           模板默认 TOEFL；SAT / ACT 试卷可按考试包 Skill 修改 exam、flow
           和对应章节。任意完整 JSON 也可直接粘贴导入。

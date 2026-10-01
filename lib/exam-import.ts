@@ -10,6 +10,7 @@ import {
 import type { Node, Question } from './model';
 import { questionSchema } from './importer';
 import { currentNamespace, saveRecords } from './store';
+import { parseMapQuestion } from './map-model';
 
 export type ExamImport = {
   paper: ExamPaper;
@@ -24,8 +25,8 @@ export const normalizeExamName = (v: unknown): ExamKind => {
     .toUpperCase()
     .replace(/[^A-Z]/g, '');
   if (['TOEFL', 'TOFEL', '托福'].includes(name) || v === '托福') return 'TOEFL';
-  if (name === 'SAT' || name === 'ACT') return name;
-  throw new Error('请选择 TOEFL、SAT 或 ACT 试卷。');
+  if (name === 'SAT' || name === 'ACT' || name === 'MAP') return name;
+  throw new Error('请选择 TOEFL、SAT、ACT 或 MAP 试卷。');
 };
 const hash = async (s: string) =>
   Array.from(
@@ -176,9 +177,14 @@ export async function parseExamPackage(
     if (!Array.isArray(items) || !items.length || items.length > 120)
       throw new Error('章节 ' + entry.id + ' 缺少题目，或题量超过 120。');
     let seconds = Number(entry.durationSeconds ?? entry.duration);
+    if (exam === 'MAP') seconds = 0;
     if (seconds === 0 && entry.type === 'toefl-writing') seconds = 1380;
     if (seconds === 0 && entry.type === 'toefl-speaking') seconds = 480;
-    if (!Number.isInteger(seconds) || seconds <= 0 || seconds > 14400)
+    if (
+      !Number.isInteger(seconds) ||
+      (exam !== 'MAP' && seconds <= 0) ||
+      seconds > 14400
+    )
       throw new Error(
         '章节 ' + entry.id + ' 需要有效的 durationSeconds（秒）。',
       );
@@ -200,6 +206,27 @@ export async function parseExamPackage(
       adaptive,
       slots: [],
     };
+    if (exam === 'MAP') {
+      if (stageIndex || !['Reading', 'Language Usage'].includes(stage.section))
+        throw Error('MAP 每份试卷仅包含 Reading 或 Language Usage 一个科目。');
+      const grade = Number(m.grade ?? 8),
+        target = Number(m.testCount ?? items.length);
+      if (
+        !Number.isInteger(grade) ||
+        grade < 2 ||
+        grade > 12 ||
+        !Number.isInteger(target) ||
+        target < 1 ||
+        target > 43 ||
+        target > items.length
+      )
+        throw Error('MAP 年级为 2–12，作答题量为 1–43，且不能超过题池数量。');
+      paper.options.mapSection = stage.section as 'Reading' | 'Language Usage';
+      paper.options.grade = grade;
+      paper.options.count = target;
+      paper.options.poolSize = items.length;
+      stage.count = target;
+    }
     const upper = adaptive
       ? Array.isArray(higher)
         ? higher
@@ -226,6 +253,47 @@ export async function parseExamPackage(
           route: 'standard',
         }));
     for (const { item, index, route } of entries) {
+      if (exam === 'MAP') {
+        const slot = {
+          id: `${stageIndex}-standard-${index}`,
+          stage: stageIndex,
+          index,
+          domain: (text(item.skill) || stage.section).slice(0, 80),
+          type: 'blank' as const,
+          route: 'standard' as const,
+        };
+        const mapChoices = item.choices ?? item.options;
+        const mapAnswer =
+          item.answer ??
+          (Number.isInteger(item.correct)
+            ? mapChoices?.[item.correct]
+            : typeof item.correct === 'string'
+              ? (mapChoices?.['ABCDEF'.indexOf(item.correct)] ?? item.correct)
+              : undefined);
+        const result = parseMapQuestion(
+          {
+            ...item,
+            skill: text(item.skill) || slot.domain,
+            type: item.type === 'choice' ? 'mcq' : (item.type ?? 'mcq'),
+            choices: mapChoices,
+            answer: mapAnswer,
+            passage: item.passage ?? section?.passage,
+          },
+          prefix + ':q:' + slot.id,
+          slot,
+          stage,
+        );
+        result.question.source = paper.title ?? 'MAP 导入试卷';
+        result.question.tags.push('imported');
+        questions.push(result.question);
+        nodes.push(result.node);
+        stage.slots.push({
+          ...slot,
+          type: result.question.type === 'choice' ? 'choice' : 'blank',
+        });
+        paper.questions[slot.id] = result.question.id;
+        continue;
+      }
       const aliases: Record<string, string> = {
         email: 'write_email',
         fill_letters: 'complete_words',
@@ -521,6 +589,12 @@ export async function parseExamPackage(
     warnings.push(
       '部分题目仅含朗读文本，将使用设备语音合成，不等同正式考试录音。',
     );
+  if (exam === 'MAP')
+    warnings.push(
+      'MAP 不设倒计时，提交后不能返回上一题；从本地题池按表现选择下一题。' +
+        (paper.options.count! < 40 ? ' 此卷为短篇专项练习。' : '') +
+        '不换算官方 RIT 分数。',
+    );
   return {
     paper,
     questions,
@@ -556,7 +630,12 @@ export async function installExamImport(
   );
 }
 
-export function smartExamText(source: string, exam: ExamKind) {
+export function smartExamText(
+  source: string,
+  exam: ExamKind,
+  mapSection: 'Reading' | 'Language Usage' = 'Reading',
+  grade = 8,
+) {
   if (source.trim().startsWith('{') || source.includes('```json'))
     return parseExamPackage(source);
   const blocks = source.trim().split(/\n(?=\s*\d+[.、)]\s*)/);
@@ -592,10 +671,12 @@ export function smartExamText(source: string, exam: ExamKind) {
     flow: [
       {
         id: 'import',
-        label: 'Reading',
+        label: exam === 'MAP' ? mapSection : 'Reading',
+        section: exam === 'MAP' ? mapSection : 'Reading',
         durationSeconds: Math.max(60, items.length * 90),
       },
     ],
     sectionsInline: { import: { questions: items } },
+    grade,
   });
 }

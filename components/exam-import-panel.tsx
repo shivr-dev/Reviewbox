@@ -12,12 +12,17 @@ import {
 import { EXAM_IMPORT_SKILL } from '@/lib/exam-skill';
 import { currentNamespace } from '@/lib/store';
 import type { ExamKind, ExamPaper } from '@/lib/exam-model';
+import { MAP_TYPES } from '@/lib/map-model';
 export default function ExamImportPanel({
   exam,
   onImported,
+  mapSection = 'Reading',
+  grade = 8,
 }: {
   exam: ExamKind;
   onImported: (paper: ExamPaper) => void;
+  mapSection?: 'Reading' | 'Language Usage';
+  grade?: number;
 }) {
   const { refresh, notify } = useReview();
   const [mode, setMode] = useState('smart'),
@@ -26,7 +31,9 @@ export default function ExamImportPanel({
     [busy, setBusy] = useState(false),
     [error, setError] = useState('');
   const [title, setTitle] = useState(''),
-    [section, setSection] = useState('Reading'),
+    [section, setSection] = useState<string>(
+      exam === 'MAP' ? mapSection : 'Reading',
+    ),
     [minutes, setMinutes] = useState(30),
     [passage, setPassage] = useState(''),
     [prompt, setPrompt] = useState(''),
@@ -35,6 +42,12 @@ export default function ExamImportPanel({
     [explanation, setExplanation] = useState(''),
     [items, setItems] = useState<any[]>([]),
     [sections, setSections] = useState<any[]>([]);
+  const [mapType, setMapType] = useState('mcq'),
+    [partB, setPartB] = useState(''),
+    [partBOptions, setPartBOptions] = useState(''),
+    [partBAnswer, setPartBAnswer] = useState(''),
+    [correction, setCorrection] = useState(''),
+    [skill, setSkill] = useState('');
   const namespace = useRef(currentNamespace());
   async function inspect(work: () => Promise<ExamImport>) {
     setBusy(true);
@@ -79,6 +92,47 @@ export default function ExamImportPanel({
         answer,
         explanation,
         skill: section,
+        ...(exam === 'MAP'
+          ? {
+              type: mapType,
+              skill: skill.trim() || section,
+              answer: ['multi_select', 'gap_match'].includes(mapType)
+                ? answer
+                    .split('\n')
+                    .map((s) => s.trim())
+                    .filter(Boolean)
+                : answer,
+              ...(mapType === 'multi_select'
+                ? {
+                    selectCount: answer.split('\n').filter((s) => s.trim())
+                      .length,
+                  }
+                : {}),
+              ...(mapType === 'two_part'
+                ? {
+                    parts: [
+                      { prompt, choices, answer },
+                      {
+                        prompt: partB,
+                        choices: partBOptions
+                          .split('\n')
+                          .map((s) => s.trim())
+                          .filter(Boolean),
+                        answer: partBAnswer,
+                      },
+                    ],
+                    answer: [answer, partBAnswer],
+                  }
+                : {}),
+              ...(mapType === 'hot_text'
+                ? {
+                    tokens: choices,
+                    choices: undefined,
+                    correction: correction || undefined,
+                  }
+                : {}),
+            }
+          : {}),
       },
     ]);
     setPrompt('');
@@ -98,8 +152,11 @@ export default function ExamImportPanel({
             ? section === 'Writing'
               ? 'act-writing'
               : 'act'
-            : 'toefl-' + section.toLowerCase(),
-      durationSeconds: minutes * 60,
+            : exam === 'MAP'
+              ? 'map-' + section.toLowerCase().replace(/ /g, '-')
+              : 'toefl-' + section.toLowerCase(),
+      section,
+      durationSeconds: exam === 'MAP' ? 0 : minutes * 60,
       count: items.length,
       questions: items,
     };
@@ -141,7 +198,13 @@ export default function ExamImportPanel({
       </div>
       {mode === 'smart' ? (
         <>
-          <ImportTemplates exam onUse={setSource} />
+          <ImportTemplates
+            exam
+            map={exam === 'MAP'}
+            mapSection={mapSection}
+            grade={grade}
+            onUse={setSource}
+          />
           <label className="field">
             试卷文件
             <input
@@ -169,7 +232,9 @@ export default function ExamImportPanel({
           <button
             className="secondary"
             disabled={busy || !source.trim()}
-            onClick={() => void inspect(() => smartExamText(source, exam))}
+            onClick={() =>
+              void inspect(() => smartExamText(source, exam, mapSection, grade))
+            }
           >
             识别并预览
           </button>
@@ -191,26 +256,56 @@ export default function ExamImportPanel({
                   ? ['Reading and Writing']
                   : exam === 'ACT'
                     ? ['English', 'Reading', 'Writing']
-                    : ['Reading', 'Listening', 'Writing', 'Speaking']
+                    : exam === 'MAP'
+                      ? [mapSection]
+                      : ['Reading', 'Listening', 'Writing', 'Speaking']
                 ).map((s) => (
                   <option key={s}>{s}</option>
                 ))}
               </select>
             </label>
-            <label className="field">
-              时间（分钟）
-              <input
-                type="number"
-                min={1}
-                max={240}
-                value={minutes}
-                onChange={(e) => setMinutes(Number(e.target.value))}
-              />
-            </label>
+            {exam !== 'MAP' && (
+              <label className="field">
+                时间（分钟）
+                <input
+                  type="number"
+                  min={1}
+                  max={240}
+                  value={minutes}
+                  onChange={(e) => setMinutes(Number(e.target.value))}
+                />
+              </label>
+            )}
           </div>
+          {exam === 'MAP' && (
+            <div className="exam-form-grid">
+              <label className="field">
+                题型
+                <select
+                  value={mapType}
+                  onChange={(e) => setMapType(e.target.value)}
+                >
+                  {MAP_TYPES.map(([id, label]) => (
+                    <option value={id} key={id}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="field">
+                具体能力
+                <input
+                  value={skill}
+                  onChange={(e) => setSkill(e.target.value)}
+                  placeholder="例如：Pronoun agreement"
+                />
+              </label>
+            </div>
+          )}
           <p className="muted">
-            表单适合选择题和写作。补词、组句、听力音频与口语请使用试卷文件导入，格式可从上方
-            Skill 复制。
+            {exam === 'MAP'
+              ? '多选答案每行一项；拖放原文用 {{1}}、{{2}} 标空，答案按空格顺序每行一项；选词纠错在原文中用 [word] 标记可选词，选项栏填写这些词。'
+              : '表单适合选择题和写作。补词、组句、听力音频与口语请使用试卷文件导入，格式可从上方 Skill 复制。'}
           </p>
           <label className="field">
             共享材料
@@ -227,12 +322,48 @@ export default function ExamImportPanel({
             />
           </label>
           <label className="field">
-            选项（每行一个；写作留空）
+            {exam === 'MAP'
+              ? '选项 / 词库 / 可选词（每行一项）'
+              : '选项（每行一个；写作留空）'}
             <textarea
               value={options}
               onChange={(e) => setOptions(e.target.value)}
             />
           </label>
+          {exam === 'MAP' && mapType === 'two_part' && (
+            <>
+              <label className="field">
+                Part B 题干
+                <textarea
+                  value={partB}
+                  onChange={(e) => setPartB(e.target.value)}
+                />
+              </label>
+              <label className="field">
+                Part B 选项（每行一项）
+                <textarea
+                  value={partBOptions}
+                  onChange={(e) => setPartBOptions(e.target.value)}
+                />
+              </label>
+              <label className="field">
+                Part B 完整正确选项
+                <input
+                  value={partBAnswer}
+                  onChange={(e) => setPartBAnswer(e.target.value)}
+                />
+              </label>
+            </>
+          )}
+          {exam === 'MAP' && mapType === 'hot_text' && (
+            <label className="field">
+              正确替换词（需要学生输入修正时填写）
+              <input
+                value={correction}
+                onChange={(e) => setCorrection(e.target.value)}
+              />
+            </label>
+          )}
           <label className="field">
             完整正确选项 / 参考答案
             <textarea
@@ -251,17 +382,19 @@ export default function ExamImportPanel({
             <button className="secondary" onClick={addQuestion}>
               加入当前部分（{items.length}）
             </button>
-            <button
-              className="secondary"
-              disabled={!items.length}
-              onClick={() => {
-                setSections([...sections, sectionValue()]);
-                setItems([]);
-                setPassage('');
-              }}
-            >
-              完成此部分
-            </button>
+            {exam !== 'MAP' && (
+              <button
+                className="secondary"
+                disabled={!items.length}
+                onClick={() => {
+                  setSections([...sections, sectionValue()]);
+                  setItems([]);
+                  setPassage('');
+                }}
+              >
+                完成此部分
+              </button>
+            )}
             <button
               className="primary"
               disabled={busy || (!items.length && !sections.length)}
@@ -273,6 +406,7 @@ export default function ExamImportPanel({
                   return parseExamPackage({
                     schemaVersion: 1,
                     exam,
+                    grade,
                     title: title || exam + ' 手动试卷',
                     flow: all.map(({ questions, ...s }) => s),
                     sectionsInline: Object.fromEntries(

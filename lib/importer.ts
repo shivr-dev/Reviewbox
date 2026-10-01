@@ -44,6 +44,7 @@ export const nodeSchema = z.object({
   tags: z.array(z.string()).optional(),
 });
 export const questionSchema = z.object({
+  examTask: z.any().optional(),
   schemaVersion: z.literal(1),
   id: z.string().min(1).max(160),
   nodeId: z.string().min(1).max(160),
@@ -392,9 +393,17 @@ export async function extractFile(
       };
     } catch (cause) {
       const message = String(cause instanceof Error ? cause.message : cause);
-      if (/404|Network error|fetch|importScripts|Worker|Failed to load/i.test(message))
-        throw new Error('本地文字识别文件未能加载。请刷新页面后重试；若仍失败，请检查网站是否已完成更新。');
-      throw new Error('本地文字识别失败。请重拍清晰、正向且光线充足的照片，或换一张图片重试。');
+      if (
+        /404|Network error|fetch|importScripts|Worker|Failed to load/i.test(
+          message,
+        )
+      )
+        throw new Error(
+          '本地文字识别文件未能加载。请刷新页面后重试；若仍失败，请检查网站是否已完成更新。',
+        );
+      throw new Error(
+        '本地文字识别失败。请重拍清晰、正向且光线充足的照片，或换一张图片重试。',
+      );
     } finally {
       await worker?.terminate();
     }
