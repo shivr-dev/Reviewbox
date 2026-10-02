@@ -106,8 +106,10 @@ export default function MapExamRoom({run:initial,paper}:{run:ExamRun;paper:ExamP
   },[connection]);
   return <main className="map-native-host">
     {/* This is the trusted bundled renderer, not imported or AI-authored HTML.
-        Same-origin requests retain the private Sites session for scripts/assets. */}
-    <iframe key={connection} ref={frame} title="MAP 考试" src={assetPath('map-player/index.html')} sandbox="allow-scripts allow-same-origin allow-modals allow-popups" allow="fullscreen" onLoad={()=>send('ping')} />
+        Same-origin requests retain the private Sites session for scripts/assets.
+        allow-forms is required even for preventDefault() submit handlers: browsers
+        otherwise block the form before firing its submit event. */}
+    <iframe key={connection} ref={frame} title="MAP 考试" src={assetPath('map-player/index.html')} sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups" allow="fullscreen" onLoad={()=>send('ping')} />
     {loading&&<div className="map-native-error" role="status">正在加载 MAP 考试界面…<button onClick={()=>navigate('subjects','ce')}>返回 CE</button></div>}
     {error&&<div className="map-native-error" role="alert">{error}<button onClick={()=>setError('')} aria-label="关闭错误提示">×</button><button onClick={()=>{setError('');setConnection(n=>n+1);}}>重新连接</button><button onClick={()=>navigate('subjects','ce')}>返回 CE</button></div>}
   </main>;

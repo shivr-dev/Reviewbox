@@ -225,8 +225,18 @@ test('periodic table has all 118 elements at unique valid positions', () => {
 });
 test('Pages API adapter stays local and never sends a password or AI prompt to GitHub', async () => {
   const prior = (globalThis as any).window;
+  const calls: string[] = [];
   (globalThis as any).window = { __REVIEW_STATIC__: true };
   try {
+    // Before static/main initializes its adapter, fail visibly instead of
+    // falling through to a GitHub Pages network request.
+    assert.equal((await apiFetch('/api/account')).status, 503);
+    (globalThis as any).window.__REVIEW_PAGES_API__ = async (path: string) => {
+      calls.push(path);
+      return path === '/api/account'
+        ? Response.json({aiReady:false})
+        : Response.json({error:'请先解锁站点配置'},{status:503});
+    };
     assert.equal(
       ((await (await apiFetch('/api/account')).json()) as {aiReady:boolean}).aiReady,
       false,
@@ -236,6 +246,7 @@ test('Pages API adapter stays local and never sends a password or AI prompt to G
       body: 'secret prompt',
     });
     assert.equal(r.status, 503);
+    assert.deepEqual(calls, ['/api/account','/api/ai']);
   } finally {
     (globalThis as any).window = prior;
   }
