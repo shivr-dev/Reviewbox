@@ -1,3 +1,4 @@
+import {DET_TEMPLATES,detTemplate} from './det-templates';
 import { IMPORT_EXAMPLE } from './import-skill';
 export function learningTemplate(type: string) {
   const pack: any = structuredClone(IMPORT_EXAMPLE),
@@ -60,6 +61,7 @@ export function learningTemplate(type: string) {
   return JSON.stringify(pack, null, 2);
 }
 export const EXAM_TASK_TEMPLATES: Record<string, any> = {
+ ...DET_TEMPLATES,
   mcq: {
     prompt: 'Why is the library closed?',
     passage: 'The library is closed for maintenance.',
@@ -144,6 +146,7 @@ export const EXAM_TASK_TEMPLATES: Record<string, any> = {
   },
 };
 export function examTaskTemplate(type: string) {
+  if(type.startsWith('det_'))return detTemplate(type);
   const q = EXAM_TASK_TEMPLATES[type];
   const section = [
     'write_email',

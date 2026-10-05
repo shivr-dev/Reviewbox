@@ -12,6 +12,8 @@ import {
 import { EXAM_IMPORT_SKILL } from '@/lib/exam-skill';
 import { currentNamespace } from '@/lib/store';
 import type { ExamKind, ExamPaper } from '@/lib/exam-model';
+import {DET_TASKS} from '@/lib/det-model';
+import {DET_TEMPLATES} from '@/lib/det-templates';
 import { MAP_TYPES } from '@/lib/map-model';
 export default function ExamImportPanel({
   exam,
@@ -50,6 +52,7 @@ export default function ExamImportPanel({
     [partBAnswer, setPartBAnswer] = useState(''),
     [correction, setCorrection] = useState(''),
     [skill, setSkill] = useState('');
+  const [detType,setDetType]=useState('det_read_select'),[detFields,setDetFields]=useState('{}'),[detAudio,setDetAudio]=useState(''),[detWord,setDetWord]=useState('');
   const namespace = useRef(currentNamespace());
   async function inspect(work: () => Promise<ExamImport>) {
     setBusy(true);
@@ -79,6 +82,8 @@ export default function ExamImportPanel({
       setError('请填写题干、答案和解析。');
       return;
     }
+    let native:any={};if(exam==='DET'){try{native=JSON.parse(detFields);if(!native||Array.isArray(native)||typeof native!=='object')throw Error();}catch{setError('扩展字段需要有效的 JSON 对象。');return;}}
+    let detAnswer:any=answer;if(exam==='DET'&&/^\s*\[/.test(answer)){try{detAnswer=JSON.parse(answer);}catch{setError('多空答案需要有效的 JSON 数组。');return;}}
     setItems([
       ...items,
       {
@@ -88,10 +93,11 @@ export default function ExamImportPanel({
           : exam === 'TOEFL'
             ? 'write_email'
             : 'free_response',
+        ...(exam==='DET'?{type:detType,native,word:detWord,audioText:detAudio}:{}),
         prompt,
         passage,
         choices: choices.length ? choices : undefined,
-        answer,
+        answer:detAnswer,
         explanation,
         skill: section,
         ...(exam === 'MAP'
@@ -155,7 +161,7 @@ export default function ExamImportPanel({
             ? section === 'Writing'
               ? 'act-writing'
               : 'act'
-            : exam === 'MAP'
+            : exam === 'DET'?'det':exam === 'MAP'
               ? 'map-' + section.toLowerCase().replace(/ /g, '-')
               : 'toefl-' + section.toLowerCase(),
       section,
@@ -204,6 +210,7 @@ export default function ExamImportPanel({
           <ImportTemplates
             exam
             map={exam === 'MAP'}
+            det={exam === 'DET'}
             mapSection={mapSection}
             grade={grade}
             onUse={setSource}
@@ -280,6 +287,13 @@ export default function ExamImportPanel({
               </label>
             )}
           </div>
+          {exam==='DET'&&<div className="exam-form-grid">
+            <label className="field">Duolingo 题型<select value={detType} onChange={e=>{const t=e.target.value,v=DET_TEMPLATES[t];setDetType(t);setDetFields(JSON.stringify(v.native??{},null,2));setDetWord(v.word??'');setDetAudio(v.audioText??'');setPrompt(v.prompt??'Complete the task.');setPassage(v.passage??'');setOptions(v.choices?.join('\n')??'');setAnswer(Array.isArray(v.answer)?JSON.stringify(v.answer):v.answer??v.choices?.[v.correct]??'');setExplanation(v.explanation??'');}}>{Object.entries(DET_TASKS).map(([type,spec])=><option value={type} key={type}>{spec.route}</option>)}</select></label>
+            <label className="field">单词（Read and Select）<input value={detWord} onChange={e=>setDetWord(e.target.value)}/></label>
+            <label className="field">朗读文本<textarea value={detAudio} onChange={e=>setDetAudio(e.target.value)}/></label>
+            <label className="field">图片（图片写作 / 口语）<input type="file" accept="image/png,image/jpeg,image/webp" onChange={e=>{const f=e.target.files?.[0];if(!f)return;if(f.size>1300000){setError('请选择小于 1.3 MB 的图片。');return;}const reader=new FileReader();reader.onload=()=>{let n:any;try{n=JSON.parse(detFields);}catch{n={};}setDetFields(JSON.stringify({...n,image:reader.result,imageAlt:f.name},null,2));};reader.readAsDataURL(f);}}/></label>
+            <label className="field">扩展字段（可从题型模板填写）<textarea rows={5} value={detFields} onChange={e=>setDetFields(e.target.value)}/><small>例如补词需要 before、prefix、missingLength、after；多空答案填 JSON 数组。可先载入格式模板后编辑。</small></label>
+          </div>}
           {exam === 'MAP' && (
             <div className="exam-form-grid">
               <label className="field">

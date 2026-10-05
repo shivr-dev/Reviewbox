@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="556" height="260" viewBox="0 0 556 260">
+<defs>
+ <clipPath id="glass"><path d="M236 55C236 89 238 110 264 119Q278 124 264 133C239 143 236 160 236 185H316C316 160 313 143 288 133Q274 124 288 119C314 110 316 89 316 55Z"/></clipPath>
+</defs>
+<style>
+.cloud-far{animation:drift-far 6s ease-in-out infinite alternate}.cloud-near{animation:drift-near 7s ease-in-out infinite alternate}.drop{animation:fall 1.15s linear infinite}.drop.b{animation-delay:-.38s}.drop.c{animation-delay:-.76s}.sand-top{animation:upper 5s ease-in-out infinite alternate;transform-origin:276px 120px}.sand-bottom{animation:lower 5s ease-in-out infinite alternate;transform-origin:276px 184px}@keyframes drift-far{to{transform:translateX(12px)}}@keyframes drift-near{to{transform:translateX(-8px)}}@keyframes fall{0%{transform:translateY(-7px);opacity:0}18%{opacity:1}85%{opacity:1}100%{transform:translateY(30px);opacity:0}}@keyframes upper{to{transform:scaleY(.7)}}@keyframes lower{to{transform:scaleY(1.15)}}@media(prefers-reduced-motion:reduce){*{animation:none!important}}
+</style><g transform="translate(0 23)">
+<g class="cloud-far" fill="#e2f2fa"><path d="M92 103a27 27 0 0 1 43-27 21 21 0 0 1 36 1 15 15 0 0 1 16 20 39 39 0 0 1 57 35c0 26-19 42-44 42H91a33 33 0 0 1 1-66Z"/></g>
+<g class="cloud-near" fill="#c9e8f4"><path d="M-15 78a36 36 0 0 1 65-26 29 29 0 0 1 46 19 22 22 0 1 1 6 41H-15Z"/></g>
+<g stroke="#545655" stroke-width="2.6" stroke-linejoin="round">
+ <path d="M232 54C232 89 233 113 260 122Q273 126 260 132C234 143 232 163 232 188H320C320 163 318 143 292 132Q279 126 292 122C319 113 320 89 320 54Z" fill="#fff"/>
+ <g clip-path="url(#glass)" stroke="none">
+  <path d="M232 54h88v137h-88Z" fill="#bee7f3"/>
+  <path class="sand-top" d="M229 77c30 13 49-13 77-6l21 7v48h-98Z" fill="#e36c47"/>
+  <path class="sand-bottom" d="M229 169c23 10 36-11 64-9l34 5v30h-98Z" fill="#e36c47"/>
+ </g>
+ <path d="M239 60c0 22 0 45 17 54M239 163v18" stroke="#fff" stroke-width="5" opacity=".6" fill="none"/>
+ <g fill="#e36c47" stroke="none"><circle class="drop" cx="276" cy="128" r="3.4"/><circle class="drop b" cx="276" cy="128" r="2.6"/><circle class="drop c" cx="276" cy="128" r="2.1"/></g>
+ <path d="M227 37h99v18h-99Z" fill="#999c9b"/><path d="M228 39h97v8h-97Z" fill="#bfc1c0" stroke="none"/>
+ <path d="M227 185h99v18h-99Z" fill="#999c9b"/><path d="M228 187h97v8h-97Z" fill="#bfc1c0" stroke="none"/>
+</g></g></svg>

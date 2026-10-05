@@ -12,16 +12,18 @@ export default function ImportTemplates({
   onUse,
   exam = false,
   map = false,
+  det = false,
   mapSection = 'Reading',
   grade = 8,
 }: {
   onUse: (value: string) => void;
   exam?: boolean;
   map?: boolean;
+  det?: boolean;
   mapSection?: string;
   grade?: number;
 }) {
-  const [type, setType] = useState(exam ? 'mcq' : 'choice');
+  const [type, setType] = useState(det?'det_read_select':exam ? 'mcq' : 'choice');
   return (
     <details className="manual-templates">
       <summary>按格式手动导入（无需 AI）</summary>
@@ -37,7 +39,7 @@ export default function ImportTemplates({
           {(map
             ? MAP_TYPES.map(([id, label]) => ({ id, label }))
             : exam
-              ? Object.keys(EXAM_TASK_TEMPLATES).map((id) => ({
+              ? Object.keys(EXAM_TASK_TEMPLATES).filter(id=>det?id.startsWith("det_"):!id.startsWith("det_")).map((id) => ({
                   id,
                   label: id,
                 }))
@@ -65,7 +67,7 @@ export default function ImportTemplates({
       </div>
       {exam && !map && (
         <p className="muted">
-          模板默认 TOEFL；SAT / ACT 试卷可按考试包 Skill 修改 exam、flow
+          Duolingo 模板采用 DET；其他模板默认 TOEFL。SAT / ACT 试卷可按考试包 Skill 修改 exam、flow
           和对应章节。任意完整 JSON 也可直接粘贴导入。
         </p>
       )}

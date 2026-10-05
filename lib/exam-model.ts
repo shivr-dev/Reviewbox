@@ -1,7 +1,8 @@
+import {detDefinitions,DET_TASKS} from './det-model';
 import type { Node, Question } from './model';
 import { objectiveScore } from './question-tools';
 export const EXAM_FORMAT = 'english-v1' as const;
-export type ExamKind = 'SAT' | 'ACT' | 'TOEFL' | 'MAP';
+export type ExamKind = 'SAT' | 'ACT' | 'TOEFL' | 'MAP' | 'DET';
 export type ExamOptions = {
   writing: boolean;
   stages?: ExamStage[];
@@ -97,6 +98,7 @@ const rw = [
 ];
 export function examStages(exam: ExamKind, options: ExamOptions): ExamStage[] {
   if (options.stages) return options.stages;
+  if(exam==='DET')return detDefinitions().map((d,stage)=>({id:'det'+stage,title:d.title,section:d.title,count:d.types.length,seconds:d.types.reduce((n,t)=>n+DET_TASKS[t].seconds,0),breakAfter:0,adaptive:false,slots:d.types.map((type,index)=>({id:stage+'-standard-'+index,stage,index,domain:type,type:DET_TASKS[type].type,route:'standard' as const,group:stage===3?'det-reading-'+Math.floor(index/6):stage===4?'det-listening-'+Math.floor(index/7):undefined}))}));
   if (exam === 'MAP') {
     const section = options.mapSection ?? 'Reading';
     const count = options.count ?? 43;

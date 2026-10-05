@@ -140,7 +140,7 @@ export function FullExamHub() {
         <FileCheck2 size={25} />
       </div>
       <div className="exam-kind-picker">
-        {(['SAT', 'ACT', 'TOEFL', 'MAP'] as const).map((k) => (
+        {(['SAT', 'ACT', 'TOEFL', 'MAP', 'DET'] as const).map((k) => (
           <button
             key={k}
             disabled={busy}
@@ -150,7 +150,7 @@ export function FullExamHub() {
               setLive(null);
             }}
           >
-            <b>{k}</b>
+            <b>{k==='DET'?'Duolingo':k}</b>
             <span>
               {k === 'SAT'
                 ? 'Reading and Writing · 54 questions'
@@ -158,7 +158,7 @@ export function FullExamHub() {
                   ? 'English & Reading · 86 questions'
                   : k === 'TOEFL'
                     ? 'Reading · Listening · Writing · Speaking'
-                    : 'Reading · Language Usage'}
+                    : k==='DET'?'Reading · Listening · Writing · Speaking':'Reading · Language Usage'}
             </span>
           </button>
         ))}
@@ -233,14 +233,14 @@ export function FullExamHub() {
               {s.count} {s.section === 'Writing' ? '篇' : '题'}
             </b>
             <small>
-              {exam === 'MAP' ? '不设倒计时' : s.seconds / 60 + ' min'}
+              {exam==='DET'?'按任务计时':exam === 'MAP' ? '不设倒计时' : s.seconds / 60 + ' min'}
             </small>
           </div>
         ))}
       </div>
       <p className="muted exam-duration">
         <Clock3 size={14} />{' '}
-        {exam === 'MAP'
+        {exam==='DET'?'完整题型个人模拟，阅读与听力题组共享时间；不换算官方分数。':exam === 'MAP'
           ? '按照个人节奏完成；提交后不能返回上一题。'
           : '作答 ' + stages.reduce((n, s) => n + s.seconds, 0) / 60 + ' 分钟'}
         {exam === 'ACT' && writing ? ' · 写作前休息 5 分钟' : ''}

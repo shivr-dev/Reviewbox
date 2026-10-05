@@ -10,6 +10,7 @@ import {
 import type { Node, Question } from './model';
 import { questionSchema } from './importer';
 import { currentNamespace, saveRecords } from './store';
+import {parseDetQuestion} from './det-model';
 import { parseMapQuestion } from './map-model';
 
 export type ExamImport = {
@@ -26,7 +27,8 @@ export const normalizeExamName = (v: unknown): ExamKind => {
     .replace(/[^A-Z]/g, '');
   if (['TOEFL', 'TOFEL', '托福'].includes(name) || v === '托福') return 'TOEFL';
   if (name === 'SAT' || name === 'ACT' || name === 'MAP') return name;
-  throw new Error('请选择 TOEFL、SAT、ACT 或 MAP 试卷。');
+  if(['DET','DUOLINGO','DUOLINGOENGLISHTEST'].includes(name))return 'DET';
+  throw new Error('请选择 Duolingo、TOEFL、SAT、ACT 或 MAP 试卷。');
 };
 const hash = async (s: string) =>
   Array.from(
@@ -293,6 +295,12 @@ export async function parseExamPackage(
         });
         paper.questions[slot.id] = result.question.id;
         continue;
+      }
+      if(exam==='DET'){
+        if(item.audio){const path=safePath(item.audio);const bytes=files[path];if(!bytes||!/\.(mp3|wav|ogg|webm|m4a)$/i.test(path))throw Error('缺少有效音频资源：'+path);item.audioText ||= '';const assetId=prefix+':audio:'+assets.length,base64=btoa(Array.from(bytes,b=>String.fromCharCode(b)).join('')),parts:string[]=[];for(let i=0;i<base64.length;i+=700000){const id=assetId+':'+parts.length;parts.push(id);assets.push({id,kind:'exam-asset-chunk',data:base64.slice(i,i+700000)});}assets.push({id:assetId,kind:'exam-asset',mime:/\.mp3$/i.test(path)?'audio/mpeg':/\.m4a$/i.test(path)?'audio/mp4':'audio/'+path.split('.').at(-1),parts});item.audio=assetId;}
+        if(item.image&&!item.image.startsWith('data:')){const path=safePath(item.image),bytes=files[path];if(!bytes||!/\.(png|jpe?g|webp)$/i.test(path))throw Error('缺少有效图片资源：'+path);item.image='data:image/'+(/jpe?g$/i.test(path)?'jpeg':path.split('.').at(-1))+';base64,'+btoa(Array.from(bytes,b=>String.fromCharCode(b)).join(''));}
+        const slot={id:stageIndex+'-'+route+'-'+index,stage:stageIndex,index,domain:(text(item.skill)||text(item.type)).slice(0,80),type:'blank' as const,route:route as 'standard',group:text(item.group)||undefined};
+        const result=parseDetQuestion(item,prefix+':q:'+slot.id,slot,stage);questions.push(result.question);nodes.push(result.node);stage.slots.push({...slot,type:result.question.type as 'choice'|'blank'|'subjective'});paper.questions[slot.id]=result.question.id;continue;
       }
       const aliases: Record<string, string> = {
         email: 'write_email',
@@ -664,6 +672,7 @@ export function smartExamText(
       explanation,
     };
   });
+  if(exam==='DET')for(const item of items){item.type='det_reading_idea';(item as any).passage=item.prompt;}
   return parseExamPackage({
     schemaVersion: 1,
     exam,

@@ -1,0 +1,35 @@
+{
+  "version": "1.0.0",
+  "date": "2026-10-05",
+  "viewport": [
+    1536,
+    864
+  ],
+  "card": [
+    1280,
+    720
+  ],
+  "sceneCount": 43,
+  "resources": [
+    {
+      "path": "assets/fonts/DuolingoSansVF.woff2",
+      "type": "font",
+      "origin": "Observed public official font URL; see docs/资源来源.md"
+    },
+    {
+      "path": "assets/photos/park-study.png",
+      "type": "sample-photo",
+      "origin": "Original ImageGen asset; exact prompt in docs/资源来源.md"
+    },
+    {
+      "path": "assets/icons/",
+      "type": "vectors",
+      "origin": "Locally drawn SVG icons and approximate conversation character"
+    },
+    {
+      "path": "assets/sample-question-bank.json",
+      "type": "sample-content",
+      "origin": "Demonstration data"
+    }
+  ]
+}

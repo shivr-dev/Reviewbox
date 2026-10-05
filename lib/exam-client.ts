@@ -1,4 +1,5 @@
-import { apiFetch } from './runtime';
+import {DET_ORAL} from './det-model';
+import { apiFetch,assetPath } from './runtime';
 import { put, currentNamespace, loadData, saveRecords } from './store';
 import {
   EXAM_FORMAT,
@@ -64,6 +65,12 @@ export async function preparePaper(
       snapshot.jobs?.find((j) => j.id === original.id) ?? original,
     );
     const stages = examStages(paper.exam, paper.options);
+    let detPhoto:string|undefined;
+    if(paper.exam==='DET'){
+      const photo=await fetch(assetPath('det-player/assets/photos/park-study.jpg'));
+      if(!photo.ok)throw Error('Duolingo 图片素材未能加载。');
+      detPhoto=await new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result));reader.onerror=()=>reject(Error('图片素材未能读取。'));void photo.blob().then(blob=>reader.readAsDataURL(blob)).catch(reject);});
+    }
     const slots = allSlots(paper);
     for (const slot of slots) {
       if (
@@ -161,6 +168,7 @@ export async function preparePaper(
                 try {
                   const v = await call({
                     action: 'generate',
+                    photo:detPhoto,
                     exam: paper.exam,
                     format: paper.format,
                     options: paper.options,
@@ -333,7 +341,7 @@ export async function gradeExam(
       '整理解析 · ' + stages[slot.stage].section + ' ' + (slot.index + 1),
     );
     const oral =
-      ['listen_repeat', 'interview'].includes(q.examTask?.type ?? '') ||
+      ['listen_repeat', 'interview',...DET_ORAL].includes(q.examTask?.type ?? '') ||
       run.selfScores?.[slot.id] !== undefined;
     if (oral && run.selfScores?.[slot.id] === undefined) continue;
     const grade =

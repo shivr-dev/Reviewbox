@@ -11,6 +11,7 @@ import { questionSchema } from './importer';
 import { assertQuestionFormat } from './question-tools';
 import { z } from 'zod';
 import { mapGenerate, mapSolve, mapJudge } from './map-server';
+import {detGenerate,detPassage,detSolve,detJudge} from './det-server';
 const requestSchema = z.object({
   exam: z.enum(['SAT', 'ACT']),
   options: z.object({ writing: z.boolean() }),
@@ -22,6 +23,7 @@ function context(b: any) {
   return { exam, options, stages };
 }
 export async function examPassage(b: any) {
+  if(b.exam==='DET')return detPassage(b);
   const { exam, stages } = context(b);
   if (
     exam !== 'ACT' ||
@@ -69,6 +71,7 @@ export async function examPassage(b: any) {
   return { passage };
 }
 export async function examGenerate(b: any) {
+  if(b.exam==='DET')return detGenerate(b);
   if (b.exam === 'MAP') return mapGenerate(b);
   const { exam, stages } = context(b);
   const ids = z.array(z.string()).min(1).max(3).parse(b.slots);
@@ -182,6 +185,7 @@ const batchItem = z.object({
     .optional(),
 });
 export async function examSolve(b: any) {
+  if(b.questions?.some((v:any)=>v.question?.examTask?.type?.startsWith('det_')))return detSolve(b);
   if (b.questions?.some((v: any) => v.question?.examTask?.map))
     return mapSolve(b);
   const qs = z
@@ -213,6 +217,7 @@ export async function examSolve(b: any) {
   return { solutions };
 }
 export async function examJudge(b: any) {
+  if(b.questions?.some((v:any)=>v.question?.examTask?.type?.startsWith('det_')))return detJudge(b);
   if (b.questions?.some((v: any) => v.question?.examTask?.map))
     return mapJudge(b);
   const qs = z

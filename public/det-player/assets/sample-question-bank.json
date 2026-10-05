@@ -1,0 +1,270 @@
+{
+  "sections": [
+    {
+      "id": "read-select",
+      "name": "Read and Select",
+      "frequency": "15 to 18",
+      "time": 5
+    },
+    {
+      "id": "fill-blanks",
+      "name": "Fill in the Blanks",
+      "frequency": "6 to 9",
+      "time": 20
+    },
+    {
+      "id": "listen-type",
+      "name": "Listen and Type",
+      "frequency": "6 to 9",
+      "time": 60
+    },
+    {
+      "id": "interactive-reading",
+      "name": "Interactive Reading",
+      "frequency": "2",
+      "countLabel": "Number of passages",
+      "timeLabel": "Time per passage",
+      "time": 480,
+      "displayTime": "7:00 or 8:00"
+    },
+    {
+      "id": "interactive-listening",
+      "name": "Interactive Listening",
+      "frequency": "2",
+      "countLabel": "Number of conversations",
+      "timeLabel": "Time per conversation",
+      "time": 390,
+      "displayTime": "6:30"
+    },
+    {
+      "id": "writing",
+      "name": "Writing",
+      "frequency": "3 photo questions + writing",
+      "time": 60
+    },
+    {
+      "id": "speaking",
+      "name": "Speaking",
+      "frequency": "Image + topic + conversation",
+      "time": 90
+    },
+    {
+      "id": "samples",
+      "name": "Writing and Speaking Samples",
+      "frequency": "2",
+      "time": 300,
+      "displayTime": "5:00 / 3:00"
+    }
+  ],
+  "words": [
+    "respectionally",
+    "discovery",
+    "marvelous",
+    "considerate",
+    "abstention",
+    "perceptible",
+    "relunctant",
+    "thoughtful",
+    "harmless",
+    "abundantly",
+    "transivity",
+    "familiar",
+    "compelling",
+    "recognition",
+    "approachment"
+  ],
+  "sentences": [
+    {
+      "before": "We switched to more efficient light bulbs, thereby",
+      "prefix": "incr",
+      "word": "increasing",
+      "after": "our energy savings."
+    },
+    {
+      "before": "The museum recently opened a new",
+      "prefix": "exhi",
+      "word": "exhibition",
+      "after": "featuring local artists."
+    },
+    {
+      "before": "The team worked together to find a practical",
+      "prefix": "solu",
+      "word": "solution",
+      "after": "to the problem."
+    },
+    {
+      "before": "Regular exercise can have a positive",
+      "prefix": "infl",
+      "word": "influence",
+      "after": "on your mood."
+    },
+    {
+      "before": "The town is famous for its beautiful",
+      "prefix": "arch",
+      "word": "architecture",
+      "after": "and lively markets."
+    },
+    {
+      "before": "The guide encouraged visitors to pay close",
+      "prefix": "atte",
+      "word": "attention",
+      "after": "to the details."
+    }
+  ],
+  "cloze": [
+    "Community gardens provide more than fresh vegetables. They create opp{ortunities} for people to work tog{ether} and learn new skills. In many cities, residents trans{form} unused spaces into welcoming places where neighbors can meet. Growing food requires pat{ience}, but the results can be rewarding.",
+    "A quiet walk can help us notice details we often ignore. The shad{ows} of trees change throughout the day, and small birds move between bran{ches}. Observing our surroundings can make an ordinary rou{tine} feel more interesting."
+  ],
+  "dictation": [
+    "The community center is offering free workshops this summer.",
+    "Our train will arrive at the station shortly after noon.",
+    "The students worked together to prepare a presentation."
+  ],
+  "reading": {
+    "title": "The Community Garden",
+    "paragraphs": [
+      "When a small piece of land became available near the library, residents suggested turning it into a community garden. The site had been empty for years, and many people wanted a place where neighbors could meet.",
+      "Volunteers began by clearing the land and preparing the soil. Some people brought tools, while others shared seeds and gardening advice. Together, they built raised beds and a simple path through the garden.",
+      "The garden soon became a shared outdoor classroom. Children learned how plants grew, and experienced gardeners showed newcomers how to care for seedlings. People who had rarely spoken before started working side by side.",
+      "By the end of the first summer, the garden produced tomatoes, beans, and herbs. The harvest was useful, but many volunteers valued the friendships they had formed even more."
+    ],
+    "sentences": "When a small piece of land became available near the library, residents [0] turning it into a community garden. Volunteers began by preparing the [1]. Neighbors worked [2] and shared their knowledge. The garden became a place for learning and building [3].",
+    "options": [
+      [
+        "suggested",
+        "ignored",
+        "borrowed",
+        "forgot"
+      ],
+      [
+        "soil",
+        "weather",
+        "books",
+        "windows"
+      ],
+      [
+        "together",
+        "never",
+        "apart",
+        "yesterday"
+      ],
+      [
+        "friendships",
+        "factories",
+        "tickets",
+        "machines"
+      ]
+    ],
+    "passageChoices": [
+      "The garden soon became a shared outdoor classroom.",
+      "The library decided to close for the summer.",
+      "The volunteers stopped talking to one another.",
+      "The town had no interest in growing vegetables."
+    ],
+    "highlights": [
+      {
+        "question": "Why did residents want a community garden?",
+        "answer": "a place where neighbors could meet"
+      },
+      {
+        "question": "What did volunteers value more than the harvest?",
+        "answer": "the friendships they had formed"
+      }
+    ],
+    "ideas": [
+      "The garden helped neighbors learn and connect.",
+      "The library needed more space for its books.",
+      "Growing vegetables is always easy.",
+      "Most residents preferred to work alone."
+    ],
+    "titles": [
+      "A Garden That Brought People Together",
+      "The History of the Local Library",
+      "A Guide to Buying Vegetables",
+      "An Empty Piece of Land"
+    ]
+  },
+  "listening": {
+    "scenario": "You are talking to a classmate about joining a weekend volunteer project. Your classmate has helped at a community garden before, and you want to know what to expect.",
+    "audio": "You are talking to a classmate about joining a weekend volunteer project at a community garden. The group meets on Saturday morning. Volunteers will prepare new planting beds and bring their own gloves.",
+    "blanks": [
+      {
+        "text": "The project takes place at a",
+        "answer": "community garden"
+      },
+      {
+        "text": "The volunteers meet on",
+        "answer": "Saturday morning"
+      },
+      {
+        "text": "You should bring your own",
+        "answer": "gloves"
+      }
+    ],
+    "turns": [
+      {
+        "speaker": "classmate",
+        "audio": "I am glad you are interested. Have you worked in a garden before?",
+        "choices": [
+          "Not yet, but I would like to learn.",
+          "The library opens at nine.",
+          "I have already finished the report."
+        ]
+      },
+      {
+        "speaker": "classmate",
+        "audio": "That is fine. We can show you how to prepare a planting bed. Can you come on Saturday morning?",
+        "choices": [
+          "Yes, that time works for me.",
+          "I do not own a planting bed.",
+          "I read about it last year."
+        ]
+      },
+      {
+        "speaker": "classmate",
+        "audio": "Great. Remember to bring gloves and a bottle of water. We will meet outside the garden gate.",
+        "choices": [
+          "Thanks. I will see you at the gate.",
+          "The water is very cold.",
+          "I usually travel by train."
+        ]
+      },
+      {
+        "speaker": "classmate",
+        "audio": "After we finish, everyone shares lunch in the garden. You are welcome to stay.",
+        "choices": [
+          "That sounds nice. I would like to join you.",
+          "The garden is a long book.",
+          "I have never bought a gate."
+        ]
+      },
+      {
+        "speaker": "classmate",
+        "audio": "You can also help us choose what to plant next month. Do you have any ideas?",
+        "choices": [
+          "Perhaps we could grow herbs for everyone to use.",
+          "My computer needs a new battery.",
+          "The next train leaves in ten minutes."
+        ]
+      }
+    ]
+  },
+  "listeningQuestions": [
+    "Where does the volunteer project take place?",
+    "When do the volunteers meet?",
+    "What should you bring with you?"
+  ],
+  "photo": "assets/photos/park-study.png",
+  "writingPrompt": "Describe a place in your community that is important to you. Explain what makes it special and how people use it.",
+  "followup": "How could this place be improved for the people who use it?",
+  "speakingPrompt": "Talk about a skill you would like to learn.\nWhat is the skill?\nWhy do you want to learn it?\nHow would you begin?",
+  "conversation": [
+    "What do you enjoy doing in your free time?",
+    "How did you become interested in that activity?",
+    "Tell me about a memorable experience related to it.",
+    "Do you prefer doing it alone or with other people? Why?",
+    "What would you say to someone who wants to try it?",
+    "How do you think your interests might change in the future?"
+  ],
+  "samplePrompt": "Describe a time when you learned something from another person. What did you learn, and why was the experience useful?"
+}

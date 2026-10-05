@@ -31,9 +31,11 @@ import {
 } from '@/lib/exam-model';
 import { gradeExam } from '@/lib/exam-client';
 import MathText from './math-text';
+import SuppliedExamRoom from './supplied-exam-room';
 import NativeExamRoom from './native-exam-room';
 import { nativeExamPackage } from '@/lib/exam-native';
 import MapExamRoom from './map-native-room';
+import SatExamRoom from './sat-native-room';
 import { mapAnswerText } from '@/lib/map-model';
 
 function HighlightedPassage({
@@ -78,13 +80,17 @@ export default function ExamRoom({ runId }: { runId: string }) {
   ) as ExamPaper | undefined;
   if (run && paper?.exam === 'MAP' && (run.status !== 'complete' || !run.map?.showReport))
     return <MapExamRoom key={runId} run={run} paper={paper} />;
+  if (run && paper?.exam === 'SAT' && (run.status !== 'complete' || (run.native?.finished && !run.native?.showReport)))
+    return <SatExamRoom key={runId} run={run} paper={paper} />;
   if (
     run &&
     paper &&
     ((run.status !== 'complete' && run.native) ||
       (run.native?.finished && !run.native?.showReport))
-  )
+  ) {
+    if(paper.exam==='ACT'||paper.exam==='DET')return <SuppliedExamRoom key={runId} run={run} paper={paper}/>;
     return <NativeExamRoom key={runId} run={run} paper={paper} />;
+  }
   return <LegacyExamRoom runId={runId} />;
 }
 function LegacyExamRoom({ runId }: { runId: string }) {

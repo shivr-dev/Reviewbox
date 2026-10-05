@@ -59,6 +59,9 @@ function numberValue(s: string): number | null {
 export function objectiveScore(q: Question, answer: string): number {
   if (q.examTask?.map) return mapScore(q, answer);
   if (!answer.trim()) return 0;
+  if(['det_read_complete','det_reading_sentences','det_listening_complete'].includes(q.examTask?.type??'')){
+    try{const a=JSON.parse(answer),b=JSON.parse(q.answer);return Array.isArray(b)&&b.length?b.filter((v:string,i:number)=>normalize(String(a[i]??''))===normalize(v)).length/b.length:0;}catch{return 0;}
+  }
   if (q.examTask?.parts) {
     try {
       const a = JSON.parse(answer),
