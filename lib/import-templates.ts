@@ -1,5 +1,5 @@
 import {DET_TEMPLATES,detTemplate} from './det-templates';
-import { IMPORT_EXAMPLE } from './import-skill';
+import { IMPORT_EXAMPLE } from './learning-example';
 export function learningTemplate(type: string) {
   const pack: any = structuredClone(IMPORT_EXAMPLE),
     q = pack.questions[0];
@@ -51,12 +51,19 @@ export function learningTemplate(type: string) {
     n.course = '语文';
     n.unit = '字词';
     n.chapter = '藤野先生字词';
+    n.skills = [{id:'spelling',title:'汉字书写回忆',difficulty:2}];
     q.subject = 'chinese';
+    q.skillId = 'spelling';
+    q.variant = 'pinyin-recall';
+    q.tags = ['字词','藤野先生'];
     q.prompt = 'jǔ sàng';
     q.answer = '沮丧';
     q.explanation = '';
     q.collectionId = 'example-tengye-words';
     q.collectionTitle = '藤野先生字词';
+    const second=structuredClone(n);second.id='my-word-langji';second.title='狼藉';
+    pack.knowledge.push(second);
+    pack.questions.push({...structuredClone(q),id:'manual-pinyin-002',nodeId:second.id,prompt:'láng jí',answer:'狼藉'});
   }
   return JSON.stringify(pack, null, 2);
 }

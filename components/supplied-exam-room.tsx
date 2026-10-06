@@ -19,9 +19,10 @@ export default function SuppliedExamRoom({run:initial,paper}:{run:ExamRun;paper:
   function receive(e:MessageEvent){
    if(e.source!==frame.current?.contentWindow||e.origin!==location.origin||e.data?.channel!==channel)return;
    const m=e.data;
-   if(m.type==='ready'&&!initialized){try{const d=context.current.data;send('init',{pack:det?detPackage(paper,d.questions,d.jobs??[],d.settings.name):actPackage(paper,d.questions,d.settings.name),snapshot:(det?detSnapshot:actSnapshot)(run.current,paper,d.questions)});}catch(e){setError(e instanceof Error?e.message:'试卷未就绪。');}return;}
+   if(m.type==='player-error'&&(!initialized||m.nonce===nonce.current)){setLoading(false);clearTimeout(timeout);clearInterval(probe);setError((det?'Duolingo':'ACT')+' 界面加载失败：'+String(m.message||'请重新连接。').slice(0,400));return;}
+   if(m.type==='ready'&&!initialized){try{const d=context.current.data;send('init',{pack:det?detPackage(paper,d.questions,d.jobs??[],d.settings.name):actPackage(paper,d.questions,d.settings.name),snapshot:(det?detSnapshot:actSnapshot)(run.current,paper,d.questions)});}catch(e){setLoading(false);clearTimeout(timeout);clearInterval(probe);setError(e instanceof Error?e.message:'试卷未就绪。');}return;}
    if(m.nonce!==nonce.current)return;
-   if(m.type==='initialized'){initialized=true;setLoading(false);clearTimeout(timeout);clearInterval(probe);return;}
+   if(m.type==='initialized'){initialized=true;setLoading(false);setError('');clearTimeout(timeout);clearInterval(probe);return;}
    if(!initialized)return;
    if(m.type==='snapshot'){if(!Number.isInteger(m.sequence)||m.sequence<=seen)return;seen=m.sequence;enqueue(()=>persist(m.snapshot));}
    if(m.type==='submit')enqueue(async()=>{await persist(m.snapshot,true);send('submitted',{cloud:'local'});});
@@ -43,5 +44,5 @@ export default function SuppliedExamRoom({run:initial,paper}:{run:ExamRun;paper:
   const probe=setInterval(()=>{if(!initialized)send('ping');},1000),timeout=setTimeout(()=>{if(!initialized){setLoading(false);setError('考试界面未能加载，请重新连接。已保存的作答会保留。');}},12000);
   window.addEventListener('message',receive);return()=>{active=false;clearInterval(probe);clearTimeout(timeout);window.removeEventListener('message',receive);};
  },[paper.id,connection]);
- return <main className="map-native-host"><iframe key={connection} ref={frame} src={assetPath((det?'det-player':'act-player')+'/index.html')} title={det?'Duolingo English Test 个人模拟':'ACT 英语专项模拟'} sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups" allow="microphone; camera; autoplay; fullscreen" onLoad={()=>send('ping')}/><button className="native-exam-exit" aria-label="保存并返回 CE" onClick={()=>send('request-exit')}>×</button>{loading&&<div className="map-native-error" role="status">正在打开考试界面…</div>}{error&&<div className="map-native-error" role="alert">{error}<button onClick={()=>setError('')}>关闭</button><button onClick={()=>{setError('');setConnection(c=>c+1);}}>重新连接</button><button onClick={()=>navigate('subjects','ce')}>返回 CE</button></div>}</main>;
+ return <main className="map-native-host"><iframe key={connection} ref={frame} src={assetPath((det?'det-player':'act-player')+'/')+'?v=20261006'} title={det?'Duolingo English Test 个人模拟':'ACT 英语专项模拟'} sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups" allow="microphone; camera; autoplay; fullscreen" onLoad={()=>send('ping')}/><button className="native-exam-exit" aria-label="保存并返回 CE" onClick={()=>send('request-exit')}>×</button>{loading&&<div className="map-native-error" role="status">正在打开考试界面…</div>}{error&&<div className="map-native-error" role="alert">{error}<button onClick={()=>setError('')}>关闭</button><button onClick={()=>{setError('');setConnection(c=>c+1);}}>重新连接</button><button onClick={()=>navigate('subjects','ce')}>返回 CE</button></div>}</main>;
 }

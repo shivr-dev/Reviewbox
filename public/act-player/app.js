@@ -195,7 +195,20 @@
   window.addEventListener('message',e=>{
     if(e.source!==parent||e.origin!==location.origin||e.data?.channel!=='review-act')return;
     const m=e.data;if(m.type==='ping'){post('ready');return;}
-    if(m.type==='init'&&!initialized){bridge=m.nonce;D=m.pack;state={...initial(),...m.snapshot};scene=state.scene||'notice';breakDeadline=state.breakDeadline||0;fiveMinuteShown=!!state.fiveMinuteShown;helpReturn=state.helpReturn||'';Object.assign(activeTools,state.tools||{});initialized=true;lastAccounted=Date.now();render();post('initialized');return;}
+    if(m.type==='init'&&!initialized){
+      bridge=m.nonce;
+      try{
+        D=m.pack;
+        if(!Array.isArray(D?.sections)||!D.sections.length||D.sections.some(s=>!Number.isInteger(s.count)||s.count<1||!Array.isArray(D.banks?.[s.id])||D.banks[s.id].length!==s.count))throw Error('ACT 试卷内容未完整加载，请返回 CE 重新选择已保存试卷。');
+        state={...initial(),...m.snapshot};
+        state.section=Math.max(0,Math.min(D.sections.length-1,Number.isInteger(state.section)?state.section:0));
+        state.item=Math.max(0,Math.min(sec().count-1,Number.isInteger(state.item)?state.item:0));
+        for(const field of ['answers','flags','eliminated','revealed','highlights','times'])if(!state[field]||typeof state[field]!=='object'||Array.isArray(state[field]))state[field]={};
+        state.essay=typeof state.essay==='string'?state.essay:'';if(!Array.isArray(state.completed))state.completed=[];
+        scene=state.scene||'notice';breakDeadline=state.breakDeadline||0;fiveMinuteShown=!!state.fiveMinuteShown;helpReturn=state.helpReturn||'';Object.assign(activeTools,state.tools||{});lastAccounted=Date.now();render();initialized=true;post('initialized');save();
+      }catch(error){post('player-error',{message:error.message||'ACT 初始化失败，请重新连接。'});}
+      return;
+    }
     if(m.nonce!==bridge||!initialized)return;
     if(m.type==='submitted'){go('complete');}
     if(m.type==='error'){notify(m.message);if(scene==='submitting')dialog('Responses could not be saved', '<p>'+esc(m.message)+'</p>',[{label:'Try again',action:'retry-save',primary:true}]);}

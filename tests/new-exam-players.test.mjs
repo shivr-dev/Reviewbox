@@ -24,6 +24,20 @@ test('ACT source preparation, answer, review, loading, break and final confirmat
   p.click('end');p.click('confirm-end');await p.advance(4500);assert.ok(p.messages.some(m=>m.type==='submit'));assert.equal(p.latest().scene,'submitting');p.receive('submitted');assert.equal(p.latest().scene,'complete');p.click('results');assert.ok(p.messages.some(m=>m.type==='report'));
  }finally{p.close();}
 });
+test('ACT opens a partial resumed state and reports malformed packages instead of silent loading',()=>{
+ const pack={student:'Kevin',sections:[{id:'eng',name:'English',count:1,minutes:35}],banks:{eng:[{prompt:'Choose.',choices:['First','Second']}]}};
+ const p=player('act',pack,{actVersion:1,section:0,item:99,scene:'exam',answers:null,flags:null,highlights:null});try{assert.match(p.w.document.body.textContent,/Choose/);assert.ok(p.messages.some(m=>m.type==='initialized'));p.click('flag');assert.equal(p.latest().flags['eng:0'],true);}finally{p.close();}
+ const bad=player('act',{...pack,banks:{}},{actVersion:1});try{assert.ok(bad.messages.some(m=>m.type==='player-error'));assert.ok(!bad.messages.some(m=>m.type==='initialized'));}finally{bad.close();}
+});
+test('ACT script-load failures reach the host and directory URLs preserve Pages asset paths',()=>{
+ const dom=new JSDOM(readFileSync('public/act-player/index.html','utf8'),{url:'https://example.test/Reviewbox/act-player/?v=20261006',runScripts:'outside-only'}),w=dom.window,messages=[];
+ try{
+  Object.defineProperty(w,'parent',{value:{postMessage:m=>messages.push(m)}});w.eval(readFileSync('public/act-player/boot.js','utf8'));
+  w.dispatchEvent(new w.ErrorEvent('error',{message:'Loading script failed'}));assert.ok(messages.some(m=>m.type==='player-error'&&m.message==='Loading script failed'));
+  assert.ok([...w.document.scripts].every(s=>new URL(s.src).pathname.startsWith('/Reviewbox/act-player/')));
+  const src=readFileSync('components/supplied-exam-room.tsx','utf8');assert.ok(src.includes("+'/')+'?v=20261006'"));
+ }finally{w.close();}
+});
 const detItem=(route,type,key,extra={})=>({route,type,key,slotId:key,stage:0,index:0,seconds:20,prompt:'Manual task.',passage:'',choices:[],native:{},...extra});
 test('Duolingo visits all preparation pages and keeps imported answers until confirmed save',async()=>{
  const pack={student:'Kevin',title:'Manual one-question test',sections:[{name:'Read and Select',frequency:'1',time:5}],items:[detItem('read-select','det_read_select','det:0',{seconds:5,native:{word:'coherent'},choices:['Yes','No']})]};

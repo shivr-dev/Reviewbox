@@ -1,3 +1,4 @@
+import {learningTemplate} from './import-templates';
 import { EXAM_IMPORT_SKILL } from './exam-skill';
 import { validatePack, smartParse } from './importer';
 import type { Subject } from './model';
@@ -21,73 +22,15 @@ export function parseImportText(text: string, subject?: Subject) {
     throw new Error('检测到学习包内容，请复制完整 JSON 或 JSON 代码块。');
   return smartParse(raw, subject);
 }
-export const IMPORT_EXAMPLE = {
-  schemaVersion: 1,
-  manifest: {
-    id: 'my-pack-demo',
-    title: '二次函数练习',
-    version: '1.0.0',
-    subject: 'math',
-    description: '原创练习',
-    changelog: '初版',
-    compatibility: 'Review 1.x',
-  },
-  knowledge: [
-    {
-      id: 'my-quadratic',
-      subject: 'math',
-      course: '数学',
-      unit: '函数',
-      chapter: '二次函数',
-      title: '二次函数顶点',
-      description: '利用配方理解顶点式。',
-      prerequisites: [],
-      relatedNodes: [],
-      importance: 0.8,
-      examWeight: 0.8,
-      skills: [{ id: 'vertex', title: '求顶点', difficulty: 2 }],
-      source: '外部 AI 原创',
-      version: '1.0.0',
-    },
-  ],
-  questions: [
-    {
-      schemaVersion: 1,
-      id: 'my-quadratic-001',
-      nodeId: 'my-quadratic',
-      skillId: 'vertex',
-      subject: 'math',
-      type: 'choice',
-      prompt: '函数 $y=(x-2)^2+3$ 的顶点是什么？',
-      answer: '$(2,3)$',
-      options: ['$(2,3)$', '$(-2,3)$', '$(2,-3)$', '$(-2,-3)$'],
-      explanation: '顶点式 $y=(x-h)^2+k$ 的顶点是 $(h,k)$。',
-      difficulty: 2,
-      expectedSeconds: 30,
-      variant: 'vertex-form',
-      solution: [
-        '已知顶点式。',
-        '比较标准形式。',
-        '$h=2, k=3$。',
-        '检验代入 $x=2$ 得 $y=3$。',
-        '顶点为 $(2,3)$。',
-      ],
-      source: '外部 AI 原创',
-      tags: ['函数'],
-      version: '1.0.0',
-    },
-  ],
-};
-export const IMPORT_SKILL =
-  EXAM_IMPORT_SKILL +
-  '\n\n' +
-  `# Review 学习包出题 Skill · schemaVersion 1
+export {IMPORT_EXAMPLE} from './learning-example';
+import {IMPORT_EXAMPLE} from './learning-example';
+export const LEARNING_IMPORT_SKILL = `# Review 学习包出题 Skill · schemaVersion 1
 
 根据我随后提供的学科、知识范围、难度、题量和题型，制作原创学习包。只输出一个合法 JSON 对象，可放在一个 json 代码块中。不要输出聊天说明，不要输出备份记录或个人掌握度。
 
 ## 必须遵守
 - 顶层为 {schemaVersion:1,manifest:{id,title,version,subject,description,changelog,compatibility},knowledge:[],questions:[]}。compatibility 写 Review 1.x。
-- subject 仅可选 chinese / math / english / ce / physics / chemistry / biology / history。CE 是 SAT/ACT 英语。各学科学习框架一致。
+- subject 仅可选 chinese / math / english / ce / physics / chemistry / biology / history。CE 包含 SAT、ACT、TOEFL、MAP、Duolingo 英语训练。各学科学习框架一致。
 - knowledge 每项字段必须与下面示例一致。节点 ID 唯一；skills 至少一个，包含 id/title/difficulty。importance 和 examWeight 在 0–1。difficulty 是 1–5 整数。
 - questions 必须包含示例中的必填字段，schemaVersion:1。每道题 nodeId 引用本包 knowledge 中的节点，subject 与该节点一致，skillId 必须属于该节点。id 在包内唯一。expectedSeconds 为 1–3600。
 - 题型 type 可选 recall（回忆卡）、choice（选择）、blank（填空）、matching（连线）、pinyin（看拼音写汉字）、subjective（主观表达）。严格遵守我指定的题型范围。
@@ -104,3 +47,6 @@ export const IMPORT_SKILL =
 ## 完整有效示例（更换为我要求的内容）
 ${JSON.stringify(IMPORT_EXAMPLE, null, 2)}
 `;
+
+const learningLabels:Record<string,string>={recall:'回忆卡',choice:'单项选择',blank:'填空',matching:'连线',pinyin:'看拼音写汉字（篇目集合）',subjective:'主观题与评分点'};
+export const IMPORT_SKILL = LEARNING_IMPORT_SKILL+'\n\n## 六种普通学习题型的完整示例\n每个代码块都是可独立导入的完整学习包，不需要拼接。按所需题型选用一个，新增题目时确保节点和能力引用有效。拼音题只显示拼音与汉字，不需要解释，也不需要输入汉字。\n'+Object.entries(learningLabels).map(([type,label])=>'### '+label+'\n```json\n'+learningTemplate(type)+'\n```').join('\n\n')+'\n\n'+EXAM_IMPORT_SKILL;
