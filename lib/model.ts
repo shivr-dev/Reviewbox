@@ -123,6 +123,8 @@ export type RubricItem = {
   skillId: string;
 };
 export type Question = {
+  /** Derived from private review records; never imported as content. */
+  reviewStatus?: 'active' | 'paused';
   /** Q-matrix attributes describe what the task requires, never the learner's error. */
   cognitiveAttributes?: string[];
   conceptIds?: string[];
@@ -177,6 +179,8 @@ export type Grade = {
   model: string;
 };
 export type AnswerEvent = {
+  /** Derived exclusion; raw event and its original score remain immutable. */
+  voidedBy?: { id: string; reason: string };
   learningEvidence?: {
     version: 1;
     assessment: 'objective' | 'rubric' | 'self';
@@ -193,6 +197,9 @@ export type AnswerEvent = {
     conceptIds?: string[];
     contextId?: string;
     transferFrom?: string;
+    remediationId?: string;
+    remediationGroup?: string;
+    remediationPhase?: 'practice' | 'verify';
   };
   id: string;
   questionId: string;
@@ -313,6 +320,9 @@ export type StudyData = {
   settings: { dailyMinutes: number; name: string; surprise: boolean };
 };
 export type QueueItem = {
+  remediationId?: string;
+  remediationGroup?: string;
+  remediationPhase?: 'practice' | 'verify';
   verificationOf?: string;
   predictedSuccess?: number;
   question: Question;

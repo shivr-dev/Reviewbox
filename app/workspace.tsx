@@ -25,6 +25,7 @@ import { ReviewContext } from '@/components/review-context';
 import AssessmentRoom from '@/components/assessment-room';
 import ExamRoom from '@/components/exam-room';
 import CourseRoom from '@/components/course-room';
+import RemediationCourse from '@/components/remediation-course';
 import HomeView from '@/components/home-view';
 import StudyView from '@/components/study-view';
 import SubjectsView from '@/components/subjects-view';
@@ -224,11 +225,13 @@ export default function Workspace() {
       mode: 'review' | 'test' = 'review',
       title = '模拟测试',
     ) => {
+      items = items.filter((x) => x.question.reviewStatus !== 'paused');
       if (!items.length) {
         notify('当前没有可用题目，请选择其他范围或导入内容');
         return;
       }
       const next = { id: uid(), items, mode, title };
+      const sessionNamespace = currentNamespace();
       void put(
         'job',
         {
@@ -238,8 +241,11 @@ export default function Workspace() {
           createdAt: new Date().toISOString(),
         },
         'active-session',
+        false,
+        sessionNamespace,
       )
         .then(() => {
+          if (sessionNamespace !== currentNamespace()) return;
           setSession(next);
           navigate('study');
         })
@@ -284,11 +290,12 @@ export default function Workspace() {
           'exam',
           'assessment',
           'course',
+          'remedy',
         ].includes(p)
       ) {
         setPage(p);
         setSubject(
-          p === 'exam' || p === 'assessment' || p === 'course'
+          p === 'exam' || p === 'assessment' || p === 'course' || p === 'remedy'
             ? s
             : SUBJECTS.some((x) => x.id === s)
               ? s
@@ -531,6 +538,12 @@ export default function Workspace() {
                 <div className="storage-loading">正在读取本地学习数据…</div>
               )}
               {page === 'home' && <HomeView />}
+              {page === 'remedy' && ready && (
+                <RemediationCourse
+                  key={cloudUser?.id ?? 'local'}
+                  courseId={subject}
+                />
+              )}
               {page === 'course' && ready && (
                 <CourseRoom
                   key={subject + currentNamespace()}

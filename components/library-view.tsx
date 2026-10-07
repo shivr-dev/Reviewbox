@@ -1,5 +1,6 @@
 'use client';
 import ManualImport from './manual-import';
+import QuestionReviewButton from './question-review';
 import { parseImportText } from '@/lib/import-skill';
 import {
   assertQuestionFormat,
@@ -457,6 +458,7 @@ export default function LibraryView() {
                       练习这道题
                       <ArrowRight size={14} />
                     </button>
+                    <QuestionReviewButton question={q} />
                     <span className="muted">
                       {q.source}
                       {q.verified ? ' · 已核验' : ''}

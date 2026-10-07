@@ -2,6 +2,7 @@ import { sameOrigin, readBody, requireSiteUser, fail } from '@/lib/server';
 import { generate, solve, judge, grade } from '@/lib/ai-server';
 import { questionSchema } from '@/lib/importer';
 import { seedQuestions } from '@/lib/seed';
+import { diagnoseProcess } from '@/lib/process-server';
 const limits = new Map<string, { at: number; count: number }>();
 export async function POST(req: Request) {
   try {
@@ -13,6 +14,8 @@ export async function POST(req: Request) {
     if (++rate.count > 40) throw new Error('请求较多，请稍后重试');
     limits.set(u.userId, rate);
     const b = await readBody(req, 100000);
+    if (b.action === 'diagnose-process')
+      return Response.json({ diagnosis: await diagnoseProcess(b) });
     if (b.action === 'generate')
       return Response.json({ question: await generate(b) });
     const q = questionSchema.parse(

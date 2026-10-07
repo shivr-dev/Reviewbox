@@ -2,6 +2,7 @@
 @import 'tw-animate-css';
 @import './map-exam.css';
 @import './learning-intelligence.css';
+@import './learning-repair.css';
 @import 'shadcn/tailwind.css';
 @theme inline {
   --color-background: var(--background);
@@ -420,7 +421,10 @@ small {
 .focus-circle {
   width: 180px;
   height: 180px;
-  background: conic-gradient(var(--focus-accent, #9daf8d) var(--focus-progress, 0%), #ebefe6 0);
+  background: conic-gradient(
+    var(--focus-accent, #9daf8d) var(--focus-progress, 0%),
+    #ebefe6 0
+  );
   outline: 1px solid #edf0e7;
   border-radius: 50%;
   display: flex;
@@ -438,7 +442,10 @@ small {
   border-radius: 50%;
   z-index: 0;
 }
-.focus-circle > * { position: relative; z-index: 1; }
+.focus-circle > * {
+  position: relative;
+  z-index: 1;
+}
 .focus-circle strong {
   font-size: 28px;
   font-weight: 550;

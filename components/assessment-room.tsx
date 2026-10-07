@@ -20,6 +20,8 @@ import {
 import MathText from './math-text';
 import MatchingInput from './matching-input';
 import Diagram from './diagram';
+import QuestionReviewButton from './question-review';
+import { RemediationLauncher } from './remediation-course';
 export default function AssessmentRoom({
   session,
   finish,
@@ -202,6 +204,9 @@ export default function AssessmentRoom({
             {busy ? '正在按评分标准批改…' : '继续批改'}
           </button>
         )}
+        {!pending.length && (
+          <RemediationLauncher sessionId={session.id} title={session.title} />
+        )}
         {session.items.map(({ question: q }, i) => {
           const e = events.find(
             (e) => e.id === assessmentEventId(session.id, q),
@@ -239,6 +244,13 @@ export default function AssessmentRoom({
                   <MathText>{draft.answers[q.id] || '未作答'}</MathText>
                 </p>
               )}
+              {e?.voidedBy && (
+                <p className="muted">
+                  旧题证据已撤销：{e.voidedBy.reason}
+                  。原作答与分数保留用于追溯。
+                </p>
+              )}
+              <QuestionReviewButton question={q} />
               <p className="answer-label">参考答案</p>
               <h3>
                 <MathText>

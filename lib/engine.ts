@@ -18,6 +18,7 @@ import {
   verificationCandidate,
   cleanEvents,
 } from './learning-intelligence';
+import { dueRemediation } from './remediation';
 export const DAY = 86400000;
 const clamp = (x: number, a = 0, b = 1) => Math.max(a, Math.min(b, x));
 export function initial(nodeId: string, skillId: string): Mastery {
@@ -42,6 +43,7 @@ export function initial(nodeId: string, skillId: string): Mastery {
 }
 export function applyAnswer(old: Mastery, e: AnswerEvent): Mastery {
   const s = { ...old };
+  if (e.voidedBy) return s;
   const now = Date.parse(e.occurredAt);
   if (
     !Number.isFinite(now) ||
@@ -187,6 +189,7 @@ export function computeMastery(nodes: Node[], events: AnswerEvent[]) {
     (a, b) =>
       a.occurredAt.localeCompare(b.occurredAt) || a.id.localeCompare(b.id),
   )) {
+    if (e.voidedBy) continue;
     if (seen.has(e.id)) continue;
     seen.add(e.id);
     const targets = e.targets?.length
@@ -231,6 +234,7 @@ export function priority(
   exams: Exam[],
   now: number,
 ) {
+  events = events.filter((e) => !e.voidedBy);
   const today = localDay(new Date(now));
   const done = events.filter(
     (e) => e.nodeId === n.id && e.skillId === s.skillId && e.localDay === today,
@@ -291,6 +295,10 @@ export function buildQueue(
     test?: boolean;
   } = {},
 ): QueueItem[] {
+  data = {
+    ...data,
+    questions: data.questions.filter((q) => q.reviewStatus !== 'paused'),
+  };
   const now = opts.now ?? Date.now(),
     today = localDay(new Date(now));
   const states = computeMastery(data.nodes, data.events);
@@ -531,5 +539,14 @@ export function buildQueue(
       });
     }
   }
+  if (!opts.test)
+    for (const item of dueRemediation(data, now).filter((x) =>
+      active.some((n) => n.id === x.question.nodeId),
+    )) {
+      const same = queue.findIndex((x) => x.question.id === item.question.id);
+      if (same >= 0) queue.splice(same, 1);
+      if (queue.length >= target) queue.pop();
+      queue.push(item);
+    }
   return queue;
 }

@@ -31,6 +31,8 @@ import {
 } from '@/lib/exam-model';
 import { gradeExam } from '@/lib/exam-client';
 import MathText from './math-text';
+import QuestionReviewButton from './question-review';
+import { RemediationLauncher } from './remediation-course';
 import SuppliedExamRoom from './supplied-exam-room';
 import NativeExamRoom from './native-exam-room';
 import { nativeExamPackage } from '@/lib/exam-native';
@@ -78,9 +80,18 @@ export default function ExamRoom({ runId }: { runId: string }) {
   const paper = data.jobs?.find(
     (j) => j.id === run?.paperId && j.kind === 'exam-paper',
   ) as ExamPaper | undefined;
-  if (run && paper?.exam === 'MAP' && (run.status !== 'complete' || !run.map?.showReport))
+  if (
+    run &&
+    paper?.exam === 'MAP' &&
+    (run.status !== 'complete' || !run.map?.showReport)
+  )
     return <MapExamRoom key={runId} run={run} paper={paper} />;
-  if (run && paper?.exam === 'SAT' && (run.status !== 'complete' || (run.native?.finished && !run.native?.showReport)))
+  if (
+    run &&
+    paper?.exam === 'SAT' &&
+    (run.status !== 'complete' ||
+      (run.native?.finished && !run.native?.showReport))
+  )
     return <SatExamRoom key={runId} run={run} paper={paper} />;
   if (
     run &&
@@ -88,7 +99,8 @@ export default function ExamRoom({ runId }: { runId: string }) {
     ((run.status !== 'complete' && run.native) ||
       (run.native?.finished && !run.native?.showReport))
   ) {
-    if(paper.exam==='ACT'||paper.exam==='DET')return <SuppliedExamRoom key={runId} run={run} paper={paper}/>;
+    if (paper.exam === 'ACT' || paper.exam === 'DET')
+      return <SuppliedExamRoom key={runId} run={run} paper={paper} />;
     return <NativeExamRoom key={runId} run={run} paper={paper} />;
   }
   return <LegacyExamRoom runId={runId} />;
@@ -339,6 +351,10 @@ function LegacyExamRoom({ runId }: { runId: string }) {
             <p className="muted">本地模拟试卷，不换算官方量表分数。</p>
           </div>
         </div>
+        <RemediationLauncher
+          sessionId={run.id}
+          title={paper.exam + ' 英语专项模拟'}
+        />
         {(grading || gradeError) && (
           <div className="paper-progress" role="status">
             {grading || gradeError}
@@ -350,6 +366,12 @@ function LegacyExamRoom({ runId }: { runId: string }) {
           </div>
         )}
         <div className="exam-domain-results">
+          {events.some((e) => e.voidedBy) && (
+            <p className="muted">
+              存在已撤销的旧题证据；原卷分数保留用于追溯，掌握度与认知分析已排除这些记录。
+            </p>
+          )}
+          {q && <QuestionReviewButton question={q} />}
           {stages.map((s, stageIndex) => {
             const stageEvents = events.filter((e) =>
               stageSlots(paper, run, stageIndex).some(

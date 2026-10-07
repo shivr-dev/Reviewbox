@@ -45,6 +45,9 @@ import {
 import { gradeAnswer } from '@/lib/ai-client';
 import Diagram from './diagram';
 import { Empty, Heading } from './shared';
+import QuestionReviewButton from './question-review';
+import ProcessNotebook from './process-notebook';
+import { RemediationLauncher } from './remediation-course';
 export default function StudyView({
   session,
   finish,
@@ -57,7 +60,8 @@ export default function StudyView({
   } | null;
   finish: () => void;
 }) {
-  const { data, start, refresh, notify, aiReady } = useReview();
+  const { data, start, refresh, notify, aiReady, navigate } = useReview();
+  const [processHint, setProcessHint] = useState(false);
   const [index, setIndex] = useState(0),
     [focusMode, setFocusMode] = useState(true),
     [scratchOpen, setScratchOpen] = useState(false),
@@ -98,6 +102,7 @@ export default function StudyView({
   const q = item?.question;
   const node = data.nodes.find((n) => n.id === q?.nodeId);
   const reset = () => {
+    setProcessHint(false);
     setRevealed(false);
     setAnswerPanelOpen(false);
     setSolution(false);
@@ -214,7 +219,16 @@ export default function StudyView({
         expectedSeconds: q.expectedSeconds,
         difficulty: q.difficulty,
         variant: q.variant,
-        usedHint: !!item?.scaffold,
+        usedHint:
+          !!item?.scaffold ||
+          processHint ||
+          !!data.jobs?.some(
+            (j) =>
+              j.kind === 'process-evidence' &&
+              j.questionId === q.id &&
+              j.sessionId === session.id &&
+              !j.afterReveal,
+          ),
         reason: item?.reason ?? '复习',
         sessionId: session.id,
         localDay: localDay(),
@@ -228,6 +242,9 @@ export default function StudyView({
               ? 'objective'
               : 'self',
           verificationOf: item?.verificationOf,
+          remediationId: item?.remediationId,
+          remediationGroup: item?.remediationGroup,
+          remediationPhase: item?.remediationPhase,
           policy: schedule.policy,
           intervalFactor: schedule.factor,
           memoryFamily: schedule.family,
@@ -261,6 +278,11 @@ export default function StudyView({
           weight: value.max / g.maxScore,
         }));
       }
+      const fresh = await (
+        await import('@/lib/store')
+      ).loadData(originNamespace.current);
+      if (fresh.questions.find((x) => x.id === q.id)?.reviewStatus === 'paused')
+        throw new Error('这道题已暂停，请保存退出后重新安排练习');
       await put('event', e, e.id, false, originNamespace.current);
       const all = [...results, e];
       setResults(all);
@@ -634,6 +656,22 @@ export default function StudyView({
             </details>
           ))}
         </div>
+        {session.mode === 'test' && (
+          <RemediationLauncher sessionId={session.id} title={session.title} />
+        )}
+        {sessionItems.find((x) => x.remediationId) && (
+          <button
+            className="secondary"
+            onClick={() =>
+              navigate(
+                'remedy',
+                sessionItems.find((x) => x.remediationId)!.remediationId,
+              )
+            }
+          >
+            返回补救课程
+          </button>
+        )}
         <button className="primary" onClick={finish}>
           回到学习工作台
           <ArrowRight size={16} />
@@ -689,6 +727,10 @@ export default function StudyView({
         className="session-progress"
       />
       <div className="question-meta">
+        {data.questions.find((x) => x.id === q.id)?.reviewStatus ===
+          'paused' && (
+          <span role="alert">这道题已暂停，请保存退出后重新安排练习。</span>
+        )}
         {item?.verificationOf && <span>交叉验证 · 用另一道题确认理解</span>}
         {item?.reason === '跨语境迁移' && <span>跨语境迁移</span>}
         <span>{node?.skills.find((s) => s.id === q.skillId)?.title}</span>
@@ -949,6 +991,7 @@ export default function StudyView({
                   ) : (
                     <>
                       <p className="answer-label">参考答案</p>
+                      <QuestionReviewButton question={q} />
                       <h3>
                         <MathText>
                           {q.type === 'matching' ? '配对结果' : q.answer}
@@ -1057,9 +1100,21 @@ export default function StudyView({
             document.body,
           )}
       </article>
-      {!isTest && scratchOpen && (
-        <Scratchpad key={q.id} onClose={() => setScratchOpen(false)} />
-      )}
+      {!isTest && <QuestionReviewButton question={q} />}
+      {!isTest &&
+        scratchOpen &&
+        (['math', 'physics'].includes(q.subject) ? (
+          <ProcessNotebook
+            key={q.id}
+            question={q}
+            sessionId={session.id}
+            revealed={revealed}
+            onAssistance={() => setProcessHint(true)}
+            onClose={() => setScratchOpen(false)}
+          />
+        ) : (
+          <Scratchpad key={q.id} onClose={() => setScratchOpen(false)} />
+        ))}
       <div className="gentle-note">
         <Clock3 size={14} />
         只和自己的昨天相比。

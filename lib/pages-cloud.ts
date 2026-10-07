@@ -191,6 +191,12 @@ export async function pagesApi(
       const { generate, solve, judge, grade } = await import('./ai-server');
       const { questionSchema } = await import('./importer');
       const { seedQuestions } = await import('./seed');
+      if (body.action === 'diagnose-process')
+        return Response.json({
+          diagnosis: await (
+            await import('./process-server')
+          ).diagnoseProcess(body),
+        });
       if (body.action === 'generate')
         return Response.json({ question: await generate(body) });
       const question = questionSchema.parse(

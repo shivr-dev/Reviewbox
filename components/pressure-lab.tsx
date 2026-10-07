@@ -13,6 +13,8 @@ import {
 import MatchingInput from './matching-input';
 import MathText from './math-text';
 import Diagram from './diagram';
+import { RemediationLauncher } from './remediation-course';
+import QuestionReviewButton from './question-review';
 
 type Run = {
   id: string;
@@ -372,9 +374,14 @@ export default function PressureLab({ subject }: { subject?: string }) {
                     </article>
                   ))}
                   <h2>逐题对照</h2>
+                  <RemediationLauncher
+                    sessionId={run.id}
+                    title="考前压力测试"
+                  />
                   {run.questions.map((question) => (
                     <details key={question.id}>
                       <summary>{question.prompt.slice(0, 100)}</summary>
+                      <QuestionReviewButton question={question} />
                       <p>
                         本次作答：
                         <MathText>

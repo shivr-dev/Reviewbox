@@ -16,13 +16,14 @@ export function wrongQuestions(data: StudyData) {
   const latest = new Map<string, StudyData['events'][number]>();
   for (const e of data.events)
     if (
-      !latest.has(e.questionId) ||
-      latest.get(e.questionId)!.occurredAt < e.occurredAt
+      !e.voidedBy &&
+      (!latest.has(e.questionId) ||
+        latest.get(e.questionId)!.occurredAt < e.occurredAt)
     )
       latest.set(e.questionId, e);
   return data.questions.filter((q) => {
     const e = latest.get(q.id);
-    return e && e.score < 0.85;
+    return q.reviewStatus !== 'paused' && e && e.score < 0.85;
   });
 }
 export function blindSpots(data: StudyData) {
@@ -31,7 +32,7 @@ export function blindSpots(data: StudyData) {
     (q) =>
       wrong.has(q.id) &&
       data.events
-        .filter((e) => e.questionId === q.id)
+        .filter((e) => !e.voidedBy && e.questionId === q.id)
         .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))[0]
         ?.predictedConfidence === 'sure',
   );
@@ -59,8 +60,25 @@ function numberValue(s: string): number | null {
 export function objectiveScore(q: Question, answer: string): number {
   if (q.examTask?.map) return mapScore(q, answer);
   if (!answer.trim()) return 0;
-  if(['det_read_complete','det_reading_sentences','det_listening_complete'].includes(q.examTask?.type??'')){
-    try{const a=JSON.parse(answer),b=JSON.parse(q.answer);return Array.isArray(b)&&b.length?b.filter((v:string,i:number)=>normalize(String(a[i]??''))===normalize(v)).length/b.length:0;}catch{return 0;}
+  if (
+    [
+      'det_read_complete',
+      'det_reading_sentences',
+      'det_listening_complete',
+    ].includes(q.examTask?.type ?? '')
+  ) {
+    try {
+      const a = JSON.parse(answer),
+        b = JSON.parse(q.answer);
+      return Array.isArray(b) && b.length
+        ? b.filter(
+            (v: string, i: number) =>
+              normalize(String(a[i] ?? '')) === normalize(v),
+          ).length / b.length
+        : 0;
+    } catch {
+      return 0;
+    }
   }
   if (q.examTask?.parts) {
     try {

@@ -47,6 +47,7 @@ export function cleanEvents(events: AnswerEvent[], now = Date.now()) {
       seen.add(e.id);
       const at = Date.parse(e.occurredAt);
       return (
+        !e.voidedBy &&
         Number.isFinite(at) &&
         at <= now &&
         Number.isFinite(e.score) &&
@@ -104,6 +105,7 @@ export function objective(q: Question) {
 }
 export function reusable(q: Question, now = Date.now()) {
   return (
+    q.reviewStatus !== 'paused' &&
     !q.tags?.some((t) =>
       ['exam-only', 'course-check', 'course-content'].includes(t),
     ) &&

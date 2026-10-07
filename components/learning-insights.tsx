@@ -14,6 +14,7 @@ import {
 import { subjectName, keyOf } from '@/lib/model';
 import MathText from './math-text';
 import PressureLab from './pressure-lab';
+import { directProcessEvidence } from '@/lib/process-diagnosis';
 
 export default function LearningInsights({ subject }: { subject?: string }) {
   const { data, states, start } = useReview();
@@ -29,8 +30,12 @@ export default function LearningInsights({ subject }: { subject?: string }) {
     [data, subject],
   );
   const fingerprint = insights.fingerprints.find((f) => f.family === family)!;
+  const processEvidence = directProcessEvidence(data, subject);
   const suspects = data.events.filter(
-    (e) => (!subject || e.subject === subject) && e.learningEvidence?.suspect,
+    (e) =>
+      !e.voidedBy &&
+      (!subject || e.subject === subject) &&
+      e.learningEvidence?.suspect,
   );
   const verified = suspects.filter((e) =>
     data.events.some((x) => x.learningEvidence?.verificationOf === e.id),
@@ -86,6 +91,30 @@ export default function LearningInsights({ subject }: { subject?: string }) {
           <span>同日连对不计入</span>
         </div>
       </div>
+      {processEvidence.length > 0 && (
+        <details className="intelligence-detail">
+          <summary>
+            草稿中的直接证据 <span>{processEvidence.length} 份过程记录</span>
+          </summary>
+          {processEvidence.slice(0, 8).map((j) => (
+            <article className="diagnosis-row" key={j.id}>
+              <b>
+                第 {(j.result.firstStep ?? 0) + 1} 步 ·{' '}
+                {j.result.status === 'gap' ? '依据缺口' : '可能的首个错误'}
+              </b>
+              <blockquote>
+                <MathText>{j.result.quote}</MathText>
+              </blockquote>
+              <p>
+                <MathText>{j.result.explanation}</MathText>
+              </p>
+              <small className="muted">
+                来自实际步骤，仅作为过程证据，不替代独立作答成绩。
+              </small>
+            </article>
+          ))}
+        </details>
+      )}
       <details className="intelligence-detail" open={leaders.length > 0}>
         <summary>
           认知诊断{' '}

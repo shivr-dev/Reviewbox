@@ -4,6 +4,7 @@ import { SUBJECTS, keyOf } from '@/lib/model';
 import { computeMastery, forgettingRisk, DAY } from '@/lib/engine';
 import { Heading, Empty, Meter, dateLabel } from './shared';
 import LearningInsights from './learning-insights';
+import { RemediationLauncher } from './remediation-course';
 export default function AnalyticsView({
   subject,
   embedded = false,
@@ -13,7 +14,9 @@ export default function AnalyticsView({
 }) {
   const { data, states, navigate } = useReview();
   const nodes = data.nodes.filter((n) => !subject || n.subject === subject),
-    events = data.events.filter((e) => !subject || e.subject === subject);
+    events = data.events.filter(
+      (e) => !e.voidedBy && (!subject || e.subject === subject),
+    );
   const skills = Object.values(states).filter(
     (s) => s.attemptCount && nodes.some((n) => n.id === s.nodeId),
   );
@@ -191,23 +194,29 @@ export default function AnalyticsView({
             {data.tests.map((t) => {
               const es = events.filter((e) => t.eventIds.includes(e.id));
               return es.length ? (
-                <div className="queue-row" key={t.id}>
-                  <div className="grow">
-                    <h3>{t.title}</h3>
-                    <p className="muted">
-                      {dateLabel(t.at)} · {es.length} 题 · 思考{' '}
+                <div key={t.id}>
+                  <div className="queue-row">
+                    <div className="grow">
+                      <h3>{t.title}</h3>
+                      <p className="muted">
+                        {dateLabel(t.at)} · {es.length} 题 · 思考{' '}
+                        {Math.round(
+                          es.reduce((a, e) => a + e.activeThinkMs, 0) / 1000,
+                        )}{' '}
+                        秒
+                      </p>
+                    </div>
+                    <b>
                       {Math.round(
-                        es.reduce((a, e) => a + e.activeThinkMs, 0) / 1000,
-                      )}{' '}
-                      秒
-                    </p>
+                        (es.reduce((a, e) => a + e.score, 0) / es.length) * 100,
+                      )}
+                      %
+                    </b>
                   </div>
-                  <b>
-                    {Math.round(
-                      (es.reduce((a, e) => a + e.score, 0) / es.length) * 100,
-                    )}
-                    %
-                  </b>
+                  <RemediationLauncher
+                    sessionId={t.sessionId}
+                    title={t.title}
+                  />
                 </div>
               ) : null;
             })}

@@ -1,6 +1,7 @@
 import { apiFetch } from './runtime';
 import { openDB, type IDBPDatabase } from 'idb';
 import { corePack } from './seed';
+import { projectQuality } from './question-quality';
 import {
   type LocalRecord,
   type StudyData,
@@ -11,6 +12,9 @@ let dbPromise: Promise<IDBPDatabase> | undefined;
 let namespace = 'local';
 const clearing = new Set<string>();
 export const currentNamespace = () => namespace;
+export function assertWritable(ns = namespace) {
+  if (clearing.has(ns)) throw new Error('学习数据正在清理，请等待页面刷新');
+}
 export function database() {
   return (dbPromise ??= openDB('review-learning-v1', 1, {
     upgrade(db) {
@@ -116,7 +120,7 @@ export async function loadData(ns = namespace): Promise<StudyData> {
         }
       : j,
   );
-  return {
+  return projectQuality({
     jobs: hydrated,
     nodes: get('node'),
     questions: get('question'),
@@ -132,7 +136,7 @@ export async function loadData(ns = namespace): Promise<StudyData> {
       surprise: true,
       ...get('setting').reduce((a, b) => ({ ...a, ...b }), {}),
     },
-  };
+  });
 }
 export async function installPack(pack: Pack) {
   const existing = await allRecords();
