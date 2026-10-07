@@ -1,6 +1,9 @@
 'use client';
 import ManualImport from './manual-import';
-import { pinyinCollections, pinyinPracticeQueue } from '@/lib/pinyin-collections';
+import {
+  pinyinCollections,
+  pinyinPracticeQueue,
+} from '@/lib/pinyin-collections';
 import {
   wrongQuestions,
   isPinyin,
@@ -34,6 +37,12 @@ import { SUBJECTS, keyOf, uid, type Node, type Subject } from '@/lib/model';
 import { nodeMastery, buildQueue, forgettingRisk } from '@/lib/engine';
 import { put } from '@/lib/store';
 import { generateVerified, resumeVerifiedJob } from '@/lib/ai-client';
+import {
+  flowDifficulty,
+  transferCandidates,
+  transferTarget,
+} from '@/lib/learning-intelligence';
+import PressureLab from './pressure-lab';
 import { reactions } from '@/lib/seed';
 import {
   Choice,
@@ -52,7 +61,7 @@ export default function SubjectsView() {
     [node, setNode] = useState<Node | null>(null),
     [note, setNote] = useState(''),
     [noteNode, setNoteNode] = useState(''),
-    [difficulty, setDifficulty] = useState('2'),
+    [difficulty, setDifficulty] = useState('auto'),
     [style, setStyle] = useState('SAT'),
     [count, setCount] = useState('5'),
     [skillId, setSkillId] = useState(''),
@@ -78,28 +87,47 @@ export default function SubjectsView() {
       practiceType === 'all' ||
       (practiceType === 'pinyin' ? isPinyin(q) : q.type === practiceType),
   );
-  const subjectQuestions = selectedQuestions.filter((q) => !s || q.subject === s.id);
-  const collections = s?.id === 'chinese' ? pinyinCollections(data.questions, data.nodes) : [];
-  const fullPinyin = s?.id === 'chinese' && subjectQuestions.length > 0 &&
+  const subjectQuestions = selectedQuestions.filter(
+    (q) => !s || q.subject === s.id,
+  );
+  const collections =
+    s?.id === 'chinese' ? pinyinCollections(data.questions, data.nodes) : [];
+  const fullPinyin =
+    s?.id === 'chinese' &&
+    subjectQuestions.length > 0 &&
     (practiceType === 'pinyin' || subjectQuestions.every(isPinyin));
   const queue = fullPinyin
     ? pinyinPracticeQueue(subjectQuestions, pinyinCollection).map((item) => ({
         ...item,
-        reason: practiceSource === 'wrong' ? '错题专项' : practiceSource === 'blind' ? '信心校准' : '篇目字词',
+        reason:
+          practiceSource === 'wrong'
+            ? '错题专项'
+            : practiceSource === 'blind'
+              ? '信心校准'
+              : '篇目字词',
       }))
     : practiceSource === 'all'
       ? buildQueue(
           { ...data, questions: selectedQuestions },
           { subject: s?.id, practice: true },
         )
-      : subjectQuestions
-          .slice(0, 20)
-          .map((q) => ({
-            question: q,
-            reason: practiceSource === 'blind' ? '信心校准' : '错题专项',
-            priority: 1,
-          }));
+      : subjectQuestions.slice(0, 20).map((q) => ({
+          question: q,
+          reason: practiceSource === 'blind' ? '信心校准' : '错题专项',
+          priority: 1,
+        }));
   async function transfer() {
+    const cached = transferCandidates(data, s?.id)[0];
+    if (cached) {
+      start([
+        {
+          question: { ...cached.target, transferFrom: cached.source.id },
+          reason: '跨语境迁移',
+          priority: 1,
+        },
+      ]);
+      return;
+    }
     const q =
       wrongQuestions(data).find((q) => q.subject === s?.id) ??
       data.questions.find((q) => q.subject === s?.id);
@@ -108,19 +136,34 @@ export default function SubjectsView() {
       notify('先完成一道练习，再进行迁移挑战');
       return;
     }
+    if (!aiReady) {
+      notify('暂无已核验迁移题，连接学习服务后可准备新题');
+      return;
+    }
+    const target = transferTarget(data, q);
     try {
       setGenerating('正在准备迁移挑战');
       const next = await generateVerified(
-        n,
-        n.skills.find((sk) => sk.id === q.skillId)!,
+        target?.node ?? n,
+        target?.skill ?? n.skills.find((sk) => sk.id === q.skillId)!,
         q.difficulty,
         '迁移挑战',
         [q.prompt],
         setGenerating,
-        { questionType: q.type, transferFrom: q },
+        {
+          questionType: q.type,
+          transferFrom: q,
+          transferConcept: target?.concept,
+        },
       );
       await refresh();
-      start([{ question: next, reason: '迁移挑战', priority: 1 }]);
+      start([
+        {
+          question: next,
+          reason: target ? '跨语境迁移' : '迁移挑战',
+          priority: 1,
+        },
+      ]);
     } catch (e) {
       notify(e instanceof Error ? e.message : '暂未完成');
     } finally {
@@ -156,7 +199,14 @@ export default function SubjectsView() {
         await generateVerified(
           n,
           sk,
-          Number(difficulty),
+          difficulty === 'auto'
+            ? flowDifficulty(
+                data,
+                n.id,
+                sk.id,
+                states[keyOf(n.id, sk.id)]?.mastery ?? 0.35,
+              ).difficulty
+            : Number(difficulty),
           s.id === 'ce' ? style : '专项训练',
           data.events
             .filter((e) => e.nodeId === n.id && e.score < 0.6)
@@ -433,12 +483,24 @@ export default function SubjectsView() {
                 </div>
                 <span className="muted">按篇目完整练习</span>
               </div>
-              <p className="muted">篇目是字词集合；每个字词单独记录掌握度。整篇练习会覆盖全部字词，不受每日推荐题量限制。</p>
+              <p className="muted">
+                篇目是字词集合；每个字词单独记录掌握度。整篇练习会覆盖全部字词，不受每日推荐题量限制。
+              </p>
               <div className="pinyin-collection-list">
                 {collections.map((collection) => (
                   <div className="pinyin-collection-row" key={collection.id}>
-                    <div><strong>{collection.title}</strong><span>{collection.count} 个字词</span></div>
-                    <button className="secondary" onClick={() => start(pinyinPracticeQueue(data.questions, collection.id))}>
+                    <div>
+                      <strong>{collection.title}</strong>
+                      <span>{collection.count} 个字词</span>
+                    </div>
+                    <button
+                      className="secondary"
+                      onClick={() =>
+                        start(
+                          pinyinPracticeQueue(data.questions, collection.id),
+                        )
+                      }
+                    >
                       练完整篇 <ArrowRight size={15} />
                     </button>
                   </div>
@@ -483,7 +545,13 @@ export default function SubjectsView() {
                     label="字词篇目"
                     value={pinyinCollection}
                     onChange={setPinyinCollection}
-                    options={[{ value: 'all', label: '全部篇目' }, ...collections.map((collection) => ({ value: collection.id, label: collection.title }))]}
+                    options={[
+                      { value: 'all', label: '全部篇目' },
+                      ...collections.map((collection) => ({
+                        value: collection.id,
+                        label: collection.title,
+                      })),
+                    ]}
                   />
                 )}
               </div>
@@ -502,7 +570,10 @@ export default function SubjectsView() {
               <div className="innovation-action">
                 <button
                   className="quiet"
-                  disabled={!aiReady || !!generating}
+                  disabled={
+                    !!generating ||
+                    (!aiReady && !transferCandidates(data, s.id).length)
+                  }
                   onClick={() => void transfer()}
                 >
                   迁移挑战 <ArrowUpRight size={15} />
@@ -566,12 +637,15 @@ export default function SubjectsView() {
                     label="难度"
                     value={difficulty}
                     onChange={setDifficulty}
-                    options={['1', '2', '3', '4', '5'].map((n) => ({
-                      value: n,
-                      label: ['基础', '容易', '标准', '进阶', '综合'][
-                        Number(n) - 1
-                      ],
-                    }))}
+                    options={[
+                      { value: 'auto', label: '自适应挑战区' },
+                      ...['1', '2', '3', '4', '5'].map((n) => ({
+                        value: n,
+                        label: ['基础', '容易', '标准', '进阶', '综合'][
+                          Number(n) - 1
+                        ],
+                      })),
+                    ]}
                   />
                 </label>
                 {s.id === 'ce' && (
@@ -771,6 +845,9 @@ export default function SubjectsView() {
           </Empty>
         </TabsContent>
         <TabsContent value="tests">
+          <section className="panel">
+            <PressureLab subject={s.id} />
+          </section>
           {s.id === 'ce' && <FullExamHub />}
           <details className="panel custom-test-settings" open={s.id !== 'ce'}>
             <summary>

@@ -41,22 +41,30 @@ export async function runJSON(
   const accountId = accounts[slot % accounts.length];
   if (!/^[a-f0-9]{32}$/i.test(accountId))
     throw new Error('Cloudflare 账户配置不正确');
-  const onPages = typeof window !== 'undefined' && (window as any).__REVIEW_STATIC__ === true;
-  const pages = onPages ? await (await import('./pages-vault')).pagesConfig() : null;
+  const onPages =
+    typeof window !== 'undefined' && (window as any).__REVIEW_STATIC__ === true;
+  const pages = onPages
+    ? await (await import('./pages-vault')).pagesConfig()
+    : null;
   if (onPages && !pages) throw new Error('请先在「我的」解锁私有学习配置');
   const r = await fetch(
-    onPages ? pages!.supabaseUrl + '/functions/v1/review-ai-proxy' :
-      `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${MODEL}`,
+    onPages
+      ? pages!.supabaseUrl + '/functions/v1/review-ai-proxy'
+      : `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${MODEL}`,
     {
       method: 'POST',
       headers: {
-        ...(onPages ? {} : {Authorization: 'Bearer ' + tokens[slot % tokens.length]}),
+        ...(onPages
+          ? {}
+          : { Authorization: 'Bearer ' + tokens[slot % tokens.length] }),
         'Content-Type': 'application/json',
-        ...(onPages ? {
-          apikey: pages!.publishableKey,
-          'X-Cloudflare-Token': tokens[slot % tokens.length],
-          'X-Cloudflare-Account': accountId,
-        } : {}),
+        ...(onPages
+          ? {
+              apikey: pages!.publishableKey,
+              'X-Cloudflare-Token': tokens[slot % tokens.length],
+              'X-Cloudflare-Account': accountId,
+            }
+          : {}),
       },
       body: JSON.stringify({
         messages: [
@@ -87,14 +95,19 @@ export async function runJSON(
     },
   );
   if (!r.ok) {
-    const failure = await r.json().catch(()=>null) as {error?:string}|null;
+    const failure = (await r.json().catch(() => null)) as {
+      error?: string;
+    } | null;
     throw new Error(
       r.status === 429
         ? 'Cloudflare 请求较多或额度暂不可用，请稍后重试'
-        : typeof failure?.error === 'string' ? failure.error
-        : r.status === 401 || r.status === 403 ? 'Cloudflare 凭据已失效或没有模型权限，请更新私有配置'
-        : r.status === 404 ? 'AI 连接服务尚未部署，请检查私有配置'
-        : '题目生成连接暂时不可用（'+r.status+'）',
+        : typeof failure?.error === 'string'
+          ? failure.error
+          : r.status === 401 || r.status === 403
+            ? 'Cloudflare 凭据已失效或没有模型权限，请更新私有配置'
+            : r.status === 404
+              ? 'AI 连接服务尚未部署，请检查私有配置'
+              : '题目生成连接暂时不可用（' + r.status + '）',
     );
   }
   const body = (await r.json()) as any;
@@ -178,6 +191,10 @@ export async function generate(input: any): Promise<Question> {
             }
           : undefined,
       transferFrom: input.transferFrom,
+      transferConcept: input.transferConcept,
+      transferInstruction: input.transferConcept
+        ? 'Test the specified shared concept in the TARGET node and subject. Preserve that conceptual operation, not the original surface problem. Do not require source-subject facts not taught in the target. Output conceptIds with the shared concept and contextId with this distinct context. All node/skill references belong to the TARGET node.'
+        : undefined,
       outputLanguage: ['english', 'ce'].includes(node.subject)
         ? 'English only, including question, options and explanations. CE means SAT/ACT/TOEFL English reading and writing, not Chinese language.'
         : 'Simplified Chinese',
@@ -285,7 +302,11 @@ export async function solve(question: Question, slot: number): Promise<Solver> {
     ),
   );
 }
-export async function judge(q: Question, solvers: Solver[]) {
+export async function judge(
+  q: Question,
+  solvers: Solver[],
+  transfer?: { source: Question; concept?: string },
+) {
   solvers = z.array(solverSchema).min(1).max(3).parse(solvers);
   if (
     q.type === 'choice' &&
@@ -320,7 +341,19 @@ export async function judge(q: Question, solvers: Solver[]) {
     return { pass: false, reason: '缺少完整的五步解法' };
   const v = await runJSON(
     'Judge this educational problem and independent solutions. Check conditions, correctness, uniqueness, and that the authored answer and example solution are correct. For CE independently substitute EACH option into the passage. Reject if multiple options are grammatically and logically possible; stylistic preference alone does not make an alternative wrong. Reject malformed blanks, duplicated words or missing source text. Check natural language, distractor quality, style and difficulty. Do not rewrite the problem. Only pass if the original question and original answer are reliable. Return {pass:boolean,reason:string}.',
-    { question: q, solvers },
+    {
+      question: q,
+      solvers,
+      transfer: transfer
+        ? {
+            sourcePrompt: transfer.source.prompt,
+            sourceSubject: transfer.source.subject,
+            sharedConcept: transfer.concept,
+            requirement:
+              'Reject unless the target question tests the same underlying conceptual operation in a genuinely different context. For cross-subject transfer it must be valid within the target curriculum, not merely relabelled.',
+          }
+        : undefined,
+    },
     0,
     true,
   );

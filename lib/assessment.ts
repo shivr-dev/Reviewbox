@@ -4,6 +4,7 @@ import {
   currentNamespace,
   completeActiveSession,
 } from './store';
+import { learningSchedule, objective } from './learning-intelligence';
 import {
   type QueueItem,
   type AnswerEvent,
@@ -80,6 +81,7 @@ export async function scoreAssessment(
           ? grade.score / grade.maxScore
           : objectiveScore(q, answer);
       const at = d.submittedAt!;
+      const schedule = learningSchedule(snapshot, q, Date.parse(at));
       const event: AnswerEvent = {
         id,
         questionId: q.id,
@@ -103,6 +105,17 @@ export async function scoreAssessment(
         sessionId: s.id,
         localDay: localDay(new Date(at)),
         version: 1,
+        learningEvidence: {
+          version: 1,
+          assessment: grade ? 'rubric' : objective(q) ? 'objective' : 'self',
+          policy: schedule.policy,
+          intervalFactor: schedule.factor,
+          memoryFamily: schedule.family,
+          cognitiveAttributes: schedule.cognitiveAttributes,
+          conceptIds: schedule.conceptIds,
+          contextId: schedule.contextId,
+          transferFrom: schedule.transferFrom,
+        },
       };
       if (grade && q.rubric) {
         const grouped = new Map<string, { points: number; max: number }>();

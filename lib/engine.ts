@@ -8,6 +8,16 @@ import {
   type StudyData,
   type QueueItem,
 } from './model';
+import {
+  attributesFor,
+  cognitiveDiagnosis,
+  flowDifficulty,
+  memoryFingerprint,
+  memoryFamily,
+  transferCandidates,
+  verificationCandidate,
+  cleanEvents,
+} from './learning-intelligence';
 export const DAY = 86400000;
 const clamp = (x: number, a = 0, b = 1) => Math.max(a, Math.min(b, x));
 export function initial(nodeId: string, skillId: string): Mastery {
@@ -48,6 +58,15 @@ export function applyAnswer(old: Mastery, e: AnswerEvent): Mastery {
   let quality = e.source === 'rubric' ? 0.95 : 0.85;
   if (!validTime || e.activeThinkMs < minMs) quality *= 0.2;
   if (e.usedHint) quality *= 0.65;
+  if (e.learningEvidence?.suspect || e.predictedConfidence === 'guess') {
+    const confidenceWeight =
+      e.learningEvidence?.policy === 'cautious'
+        ? 0.3
+        : e.learningEvidence?.policy === 'expansive'
+          ? 0.5
+          : 0.4;
+    quality *= confidenceWeight;
+  }
   const fluency = clamp(
     Math.sqrt(
       (e.expectedSeconds * 1000) /
@@ -137,6 +156,17 @@ export function applyAnswer(old: Mastery, e: AnswerEvent): Mastery {
               clamp(quality / 0.85, 0.25, 1),
           );
   let due = now + interval * DAY;
+  if (
+    e.score >= 0.65 &&
+    e.learningEvidence?.intervalFactor &&
+    !e.learningEvidence.suspect
+  ) {
+    interval = Math.min(
+      cap,
+      interval * clamp(e.learningEvidence.intervalFactor, 0.55, 1.5),
+    );
+    due = now + interval * DAY;
+  }
   if (s.stage < 3 && s.checkpoint)
     due = Math.min(due, Date.parse(s.checkpoint) + [1, 3, 7][s.stage] * DAY);
   if (sameDay && old.nextReview && !advanced)
@@ -168,7 +198,7 @@ export function computeMastery(nodes: Node[], events: AnswerEvent[]) {
         ...e,
         skillId: target.skillId,
         score: target.score,
-        evidenceWeight: target.weight,
+        evidenceWeight: target.weight * (e.evidenceWeight ?? 1),
       });
     }
   }
@@ -264,6 +294,9 @@ export function buildQueue(
   const now = opts.now ?? Date.now(),
     today = localDay(new Date(now));
   const states = computeMastery(data.nodes, data.events);
+  const events = cleanEvents(data.events, now);
+  const fingerprints = memoryFingerprint(data, now);
+  const diagnosis = cognitiveDiagnosis(data, opts.subject, now);
   const target =
     opts.limit ??
     Math.max(5, Math.floor((data.settings.dailyMinutes * 60) / 55));
@@ -278,7 +311,7 @@ export function buildQueue(
   for (const n of active)
     for (const skill of n.skills) {
       const s = states[keyOf(n.id, skill.id)] ?? initial(n.id, skill.id);
-      const history = data.events.filter(
+      const history = events.filter(
         (e) => e.nodeId === n.id && e.skillId === skill.id,
       );
       const practiced = history.filter((e) => e.localDay === today);
@@ -301,8 +334,8 @@ export function buildQueue(
         )
           continue;
       }
-      const desired =
-        s.mastery < 0.45 ? 1 : s.mastery < 0.65 ? 2 : s.mastery < 0.85 ? 3 : 4;
+      const flow = flowDifficulty(data, n.id, skill.id, s.mastery, now, events);
+      const desired = flow.difficulty;
       const qs = data.questions
         .filter(
           (q) =>
@@ -348,6 +381,21 @@ export function buildQueue(
               ? '间隔复习'
               : '专项练习';
         let p = priority(n, s, data.events, data.exams, now);
+        const weakness = diagnosis.find(
+          (d) =>
+            d.subject === n.subject &&
+            d.identifiable &&
+            d.deficit > 0.7 &&
+            attributesFor(q, n).includes(d.attribute),
+        );
+        if (weakness && !opts.test) {
+          p += 0.12;
+          reason = '能力诊断 · ' + weakness.title;
+        }
+        const fingerprint = fingerprints.find(
+          (f) => f.family === memoryFamily(q, n),
+        );
+        if (fingerprint?.ready && fingerprint.factor < 0.9) p += 0.04;
         const recent = history
           .slice()
           .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))[0];
@@ -378,6 +426,9 @@ export function buildQueue(
           priority: p,
           reason,
           scaffold: s.mastery < 0.35 ? n.description : undefined,
+          predictedSuccess: flow.levels.find(
+            (l) => l.difficulty === q.difficulty,
+          )?.probability,
         };
         if (high && !due && !opts.practice && !opts.test) {
           item.reason = '随机抽查';
@@ -444,6 +495,41 @@ export function buildQueue(
     used.add(k);
     if (queue.length >= target) queue.pop();
     queue.splice(Math.min(queue.length, Math.floor(queue.length * 0.65)), 0, c);
+  }
+  if (!opts.test) {
+    const pending = events
+      .filter(
+        (e) =>
+          e.learningEvidence?.suspect && active.some((n) => n.id === e.nodeId),
+      )
+      .reverse();
+    for (const e of pending) {
+      const q = verificationCandidate(data, e, [], now);
+      if (!q) continue;
+      const existing = queue.findIndex((x) => x.question.id === q.id);
+      if (existing >= 0) queue.splice(existing, 1);
+      if (queue.length >= target) queue.pop();
+      queue.splice(Math.min(2, queue.length), 0, {
+        question: q,
+        reason: '变式交叉验证',
+        priority: 1,
+        verificationOf: e.id,
+      });
+      break;
+    }
+    const transfer = transferCandidates(data, opts.subject, now).find(
+      (t) =>
+        active.some((n) => n.id === t.target.nodeId) &&
+        !queue.some((x) => x.question.id === t.target.id),
+    );
+    if (transfer && queue.length >= 4) {
+      if (queue.length >= target) queue.pop();
+      queue.push({
+        question: { ...transfer.target, transferFrom: transfer.source.id },
+        priority: 0.5,
+        reason: '跨语境迁移',
+      });
+    }
   }
   return queue;
 }

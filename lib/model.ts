@@ -123,6 +123,11 @@ export type RubricItem = {
   skillId: string;
 };
 export type Question = {
+  /** Q-matrix attributes describe what the task requires, never the learner's error. */
+  cognitiveAttributes?: string[];
+  conceptIds?: string[];
+  contextId?: string;
+  memoryFamily?: 'formula' | 'vocabulary' | 'fact' | 'reasoning';
   examTask?: import('./exam-model').ExamTask;
   schemaVersion: 1;
   id: string;
@@ -172,6 +177,23 @@ export type Grade = {
   model: string;
 };
 export type AnswerEvent = {
+  learningEvidence?: {
+    version: 1;
+    assessment: 'objective' | 'rubric' | 'self';
+    suspect?: boolean;
+    signals?: string[];
+    verificationOf?: string;
+    pressure?: boolean;
+    timedOut?: boolean;
+    policy?: 'cautious' | 'balanced' | 'expansive';
+    intervalFactor?: number;
+    predictedSuccess?: number;
+    memoryFamily?: 'formula' | 'vocabulary' | 'fact' | 'reasoning';
+    cognitiveAttributes?: string[];
+    conceptIds?: string[];
+    contextId?: string;
+    transferFrom?: string;
+  };
   id: string;
   questionId: string;
   nodeId: string;
@@ -291,6 +313,8 @@ export type StudyData = {
   settings: { dailyMinutes: number; name: string; surprise: boolean };
 };
 export type QueueItem = {
+  verificationOf?: string;
+  predictedSuccess?: number;
   question: Question;
   reason: string;
   priority: number;

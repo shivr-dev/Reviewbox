@@ -25,7 +25,16 @@ export async function POST(req: Request) {
     if (b.action === 'judge') {
       if (!Array.isArray(b.solvers) || b.solvers.length > 3)
         throw new Error('核验结果不正确');
-      return Response.json(await judge(q as any, b.solvers));
+      const transfer = b.transferSource
+        ? {
+            source: questionSchema.parse(b.transferSource) as any,
+            concept:
+              typeof b.transferConcept === 'string'
+                ? b.transferConcept.slice(0, 100)
+                : undefined,
+          }
+        : undefined;
+      return Response.json(await judge(q as any, b.solvers, transfer));
     }
     if (b.action === 'grade') {
       if (typeof b.answer !== 'string' || b.answer.length > 16000)

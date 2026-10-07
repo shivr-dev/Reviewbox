@@ -3,6 +3,7 @@ import { useReview } from './review-context';
 import { SUBJECTS, keyOf } from '@/lib/model';
 import { computeMastery, forgettingRisk, DAY } from '@/lib/engine';
 import { Heading, Empty, Meter, dateLabel } from './shared';
+import LearningInsights from './learning-insights';
 export default function AnalyticsView({
   subject,
   embedded = false,
@@ -69,6 +70,7 @@ export default function AnalyticsView({
           description="找到薄弱能力、遗忘风险与经过时间验证的掌握。"
         />
       )}
+      <LearningInsights subject={subject} />
       {!events.length ? (
         <section className="panel">
           <Empty title="第一条学习记录，会让这里开始生长">

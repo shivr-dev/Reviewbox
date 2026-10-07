@@ -35,6 +35,7 @@ import AnalyticsView from '@/components/analytics-view';
 import { SUBJECTS, uid, type StudyData, type QueueItem } from '@/lib/model';
 import { seedNodes, seedQuestions } from '@/lib/seed';
 import { generateVerified } from '@/lib/ai-client';
+import { flowDifficulty } from '@/lib/learning-intelligence';
 import { computeMastery, buildQueue, priority, initial } from '@/lib/engine';
 import {
   restoreNamespace,
@@ -77,7 +78,8 @@ function CloseMobileNavigation({
 }
 export default function Workspace() {
   useEffect(() => {
-    document.documentElement.dataset.reviewTheme = localStorage.getItem('review-visual-theme') || 'editorial';
+    document.documentElement.dataset.reviewTheme =
+      localStorage.getItem('review-visual-theme') || 'editorial';
   }, []);
   const [data, setData] = useState<StudyData>(base),
     [page, setPage] = useState('home'),
@@ -144,7 +146,8 @@ export default function Workspace() {
             await generateVerified(
               t.n,
               t.sk,
-              t.state.mastery < 0.5 ? 2 : 3,
+              flowDifficulty(snapshot, t.n.id, t.sk.id, t.state.mastery)
+                .difficulty,
               t.n.subject === 'ce' ? 'SAT' : '自适应复习',
               snapshot.events
                 .filter(

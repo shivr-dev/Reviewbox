@@ -1,4 +1,4 @@
-import {learningTemplate} from './import-templates';
+import { learningTemplate } from './import-templates';
 import { EXAM_IMPORT_SKILL } from './exam-skill';
 import { validatePack, smartParse } from './importer';
 import type { Subject } from './model';
@@ -22,8 +22,8 @@ export function parseImportText(text: string, subject?: Subject) {
     throw new Error('检测到学习包内容，请复制完整 JSON 或 JSON 代码块。');
   return smartParse(raw, subject);
 }
-export {IMPORT_EXAMPLE} from './learning-example';
-import {IMPORT_EXAMPLE} from './learning-example';
+export { IMPORT_EXAMPLE } from './learning-example';
+import { IMPORT_EXAMPLE } from './learning-example';
 export const LEARNING_IMPORT_SKILL = `# Review 学习包出题 Skill · schemaVersion 1
 
 根据我随后提供的学科、知识范围、难度、题量和题型，制作原创学习包。只输出一个合法 JSON 对象，可放在一个 json 代码块中。不要输出聊天说明，不要输出备份记录或个人掌握度。
@@ -44,9 +44,34 @@ export const LEARNING_IMPORT_SKILL = `# Review 学习包出题 Skill · schemaVe
 - 除 pinyin 外，每题必须有清楚的 explanation。题干、答案、解释与评分标准须一致。不要写 verified:true 或伪造核验结果。
 - 内容更新使用相同的节点/题目 ID 和更高 version；新增内容使用新 ID。输出前自行检查 JSON、ID 引用、题量、题型与答案唯一性。
 
+## 可选：认知诊断、记忆指纹与跨语境迁移
+- 不修改 schemaVersion；每道普通学习题可增加 cognitiveAttributes、conceptIds、contextId、memoryFamily。旧包省略这些字段仍有效。
+- cognitiveAttributes 是题目需要的底层能力（Q-matrix），不是给学生贴错误标签。仅可选 symbolic（符号与逐步推导）、calculation（运算）、evidence（证据提取）、vocabulary（词义）、syntax（语法）、recall（回忆）、causal（因果）、application（应用），数组最多 8 项。不要所有题都标同一组；提供单能力题与不同组合的题，让系统能区分缺口。不得声称学生“跳步”或捏造诊断。
+- conceptIds 用稳定概念 ID，例如 vector、proportion、conservation、causality、evidence、structure-function；自建 ID 也可用。跨学科题必须真正检验同一概念操作，不是给原题改一个学科标签。
+- contextId 是该题的具体情境 ID；variant 与参数/情境一起更换。memoryFamily 仅 formula / vocabulary / fact / reasoning。
+- 示例：比例题可附加 {"cognitiveAttributes":["calculation","application"],"conceptIds":["proportion"],"contextId":"math:recipe-ratio","memoryFamily":"formula"}；物理密度应用题附加 {"cognitiveAttributes":["calculation","application"],"conceptIds":["proportion"],"contextId":"physics:density-lab","memoryFamily":"formula"}。两题仍各自关联本学科的 nodeId × skillId。
+- 不输出 learningEvidence、用户事件、掌握度、策略分配或核验结果。这些由系统记录。外部导入题不会自动取得“已核验”资格。
+
 ## 完整有效示例（更换为我要求的内容）
 ${JSON.stringify(IMPORT_EXAMPLE, null, 2)}
 `;
 
-const learningLabels:Record<string,string>={recall:'回忆卡',choice:'单项选择',blank:'填空',matching:'连线',pinyin:'看拼音写汉字（篇目集合）',subjective:'主观题与评分点'};
-export const IMPORT_SKILL = LEARNING_IMPORT_SKILL+'\n\n## 六种普通学习题型的完整示例\n每个代码块都是可独立导入的完整学习包，不需要拼接。按所需题型选用一个，新增题目时确保节点和能力引用有效。拼音题只显示拼音与汉字，不需要解释，也不需要输入汉字。\n'+Object.entries(learningLabels).map(([type,label])=>'### '+label+'\n```json\n'+learningTemplate(type)+'\n```').join('\n\n')+'\n\n'+EXAM_IMPORT_SKILL;
+const learningLabels: Record<string, string> = {
+  recall: '回忆卡',
+  choice: '单项选择',
+  blank: '填空',
+  matching: '连线',
+  pinyin: '看拼音写汉字（篇目集合）',
+  subjective: '主观题与评分点',
+};
+export const IMPORT_SKILL =
+  LEARNING_IMPORT_SKILL +
+  '\n\n## 六种普通学习题型的完整示例\n每个代码块都是可独立导入的完整学习包，不需要拼接。按所需题型选用一个，新增题目时确保节点和能力引用有效。拼音题只显示拼音与汉字，不需要解释，也不需要输入汉字。\n' +
+  Object.entries(learningLabels)
+    .map(
+      ([type, label]) =>
+        '### ' + label + '\n```json\n' + learningTemplate(type) + '\n```',
+    )
+    .join('\n\n') +
+  '\n\n' +
+  EXAM_IMPORT_SKILL;

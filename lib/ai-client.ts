@@ -1,6 +1,11 @@
 import { apiFetch } from './runtime';
 import { put, currentNamespace } from './store';
 import { type Node, type Skill, type Question, type Grade } from './model';
+import {
+  attributesFor,
+  conceptsFor,
+  memoryFamily,
+} from './learning-intelligence';
 export type GenerationJob = {
   id: string;
   kind: 'generation';
@@ -17,6 +22,7 @@ export type GenerationJob = {
   error?: string;
   questionType?: string;
   transferFrom?: Question;
+  transferConcept?: string;
   rejectedQuestions?: { prompt: string; reason: string }[];
 };
 async function call(body: any): Promise<any> {
@@ -63,6 +69,7 @@ export async function resumeVerifiedJob(
             rejectedQuestions: job.rejectedQuestions,
             questionType: job.questionType,
             transferFrom: job.transferFrom,
+            transferConcept: job.transferConcept,
           });
         } catch (e) {
           const message = e instanceof Error ? e.message : '';
@@ -107,6 +114,8 @@ export async function resumeVerifiedJob(
         action: 'judge',
         question: q,
         solvers: job.solvers,
+        transferSource: job.transferFrom,
+        transferConcept: job.transferConcept,
       });
       if (!verdict.pass) {
         job.attempt++;
@@ -122,6 +131,12 @@ export async function resumeVerifiedJob(
       }
       const ready: Question = {
         ...q,
+        cognitiveAttributes: attributesFor(q, job.node),
+        memoryFamily: memoryFamily(q, job.node),
+        conceptIds: job.transferConcept
+          ? [job.transferConcept]
+          : conceptsFor(q, job.node),
+        contextId: q.contextId ?? job.node.subject + ':' + q.variant,
         ...(job.transferFrom
           ? { transferFrom: job.transferFrom.id, tags: [...q.tags, '迁移挑战'] }
           : {}),
@@ -156,7 +171,11 @@ export async function generateVerified(
   style: string,
   previousErrors: string[],
   progress: (s: string) => void,
-  options: { questionType?: string; transferFrom?: Question } = {},
+  options: {
+    questionType?: string;
+    transferFrom?: Question;
+    transferConcept?: string;
+  } = {},
 ) {
   const job: GenerationJob = {
     id: 'job:' + crypto.randomUUID(),

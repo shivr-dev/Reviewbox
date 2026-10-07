@@ -22,6 +22,12 @@ import { Progress } from '@/components/ui/progress';
 import { useReview } from './review-context';
 import { buildQueue } from '@/lib/engine';
 import {
+  guessingSignals,
+  learningSchedule,
+  objective,
+  verificationCandidate,
+} from '@/lib/learning-intelligence';
+import {
   type QueueItem,
   type AnswerEvent,
   type Grade,
@@ -70,6 +76,8 @@ export default function StudyView({
   const lock = useRef(false);
   const answerCloseRef = useRef<HTMLButtonElement>(null);
   const originNamespace = useRef(currentNamespace());
+  const [extraItems, setExtraItems] = useState<QueueItem[]>([]);
+  const sessionItems = extraItems.length ? extraItems : (session?.items ?? []);
   const timing = useRef({
     displayed: '',
     revealed: '',
@@ -86,7 +94,7 @@ export default function StudyView({
       return !current;
     });
   };
-  const item = session?.items[index];
+  const item = sessionItems[index];
   const q = item?.question;
   const node = data.nodes.find((n) => n.id === q?.nodeId);
   const reset = () => {
@@ -105,6 +113,7 @@ export default function StudyView({
     };
   };
   useEffect(() => {
+    setExtraItems([]);
     const saved = data.events
       .filter((e) => e.sessionId === session?.id)
       .sort((a, b) => a.occurredAt.localeCompare(b.occurredAt));
@@ -183,6 +192,7 @@ export default function StudyView({
         outcome =
           autoScore >= 0.85 ? 'correct' : autoScore >= 0.4 ? 'unsure' : 'wrong';
       }
+      const schedule = learningSchedule(data, q);
       const e: AnswerEvent = {
         id: 'answer:' + session.id + ':' + index,
         questionId: q.id,
@@ -210,7 +220,30 @@ export default function StudyView({
         localDay: localDay(),
         version: 1,
         predictedConfidence: confidence,
+        learningEvidence: {
+          version: 1,
+          assessment: g
+            ? 'rubric'
+            : objective(q) && answer.trim()
+              ? 'objective'
+              : 'self',
+          verificationOf: item?.verificationOf,
+          policy: schedule.policy,
+          intervalFactor: schedule.factor,
+          memoryFamily: schedule.family,
+          cognitiveAttributes: schedule.cognitiveAttributes,
+          conceptIds: schedule.conceptIds,
+          contextId: schedule.contextId,
+          transferFrom: schedule.transferFrom,
+          predictedSuccess: item?.predictedSuccess,
+        },
       };
+      const signals = guessingSignals(q, e, data.events);
+      if (signals.length) {
+        e.learningEvidence!.suspect = true;
+        e.learningEvidence!.signals = signals;
+        e.evidenceWeight = 0.3;
+      }
       if (g && q.rubric) {
         const groups = new Map<string, { score: number; max: number }>();
         for (const r of q.rubric) {
@@ -231,7 +264,43 @@ export default function StudyView({
       await put('event', e, e.id, false, originNamespace.current);
       const all = [...results, e];
       setResults(all);
-      if (index + 1 >= session.items.length) {
+      let nextItems = sessionItems;
+      const verifying = sessionItems.some((x) => x.verificationOf);
+      if (session.mode !== 'test' && signals.length && !verifying) {
+        const variant = verificationCandidate(
+          { ...data, events: [...data.events, e] },
+          e,
+          sessionItems.slice(0, index + 1).map((x) => x.question.id),
+        );
+        if (variant) {
+          nextItems = [...sessionItems];
+          const existing = nextItems.findIndex(
+            (x, i) => i > index && x.question.id === variant.id,
+          );
+          if (existing >= 0) nextItems.splice(existing, 1);
+          nextItems.splice(Math.min(index + 3, nextItems.length), 0, {
+            question: variant,
+            reason: '变式交叉验证',
+            priority: 1,
+            verificationOf: e.id,
+          });
+          await put(
+            'job',
+            {
+              ...session,
+              items: nextItems,
+              kind: 'session',
+              status: 'active',
+              createdAt: t.displayed,
+            },
+            'active-session',
+            false,
+            originNamespace.current,
+          );
+          setExtraItems(nextItems);
+        }
+      }
+      if (index + 1 >= nextItems.length) {
         if (session.mode === 'test')
           await put(
             'test',
@@ -374,19 +443,51 @@ export default function StudyView({
           eyebrow="STUDY SESSION"
           title="给回忆，一点专注。"
           description="想一想，揭晓答案，再如实判断自己的掌握情况。"
-          action={<span className="muted">{selectedSubjects.length ? `已选 ${selectedSubjects.length} 门学科` : '全部学科'}</span>}
+          action={
+            <span className="muted">
+              {selectedSubjects.length
+                ? `已选 ${selectedSubjects.length} 门学科`
+                : '全部学科'}
+            </span>
+          }
         />
         <details className="study-subject-filter">
-          <summary>选择本次练习学科 <span>{selectedSubjects.length ? SUBJECTS.filter((subject) => selectedSubjects.includes(subject.id)).map((subject) => subject.name).join('、') : '全部学科'}</span></summary>
+          <summary>
+            选择本次练习学科{' '}
+            <span>
+              {selectedSubjects.length
+                ? SUBJECTS.filter((subject) =>
+                    selectedSubjects.includes(subject.id),
+                  )
+                    .map((subject) => subject.name)
+                    .join('、')
+                : '全部学科'}
+            </span>
+          </summary>
           <div className="study-subject-options">
-            <button className={!selectedSubjects.length ? 'selected' : ''} onClick={() => setSelectedSubjects([])}>全部</button>
+            <button
+              className={!selectedSubjects.length ? 'selected' : ''}
+              onClick={() => setSelectedSubjects([])}
+            >
+              全部
+            </button>
             {SUBJECTS.map((subject) => (
               <button
                 key={subject.id}
-                className={selectedSubjects.includes(subject.id) ? 'selected' : ''}
+                className={
+                  selectedSubjects.includes(subject.id) ? 'selected' : ''
+                }
                 aria-pressed={selectedSubjects.includes(subject.id)}
-                onClick={() => setSelectedSubjects((current) => current.includes(subject.id) ? current.filter((id) => id !== subject.id) : [...current, subject.id])}
-              >{subject.name}</button>
+                onClick={() =>
+                  setSelectedSubjects((current) =>
+                    current.includes(subject.id)
+                      ? current.filter((id) => id !== subject.id)
+                      : [...current, subject.id],
+                  )
+                }
+              >
+                {subject.name}
+              </button>
             ))}
           </div>
         </details>
@@ -409,7 +510,10 @@ export default function StudyView({
                 </span>
                 <div className="grow">
                   <h3>
-                    {questionTopicTitle(item.question, data.nodes.find((n) => n.id === item.question.nodeId))}
+                    {questionTopicTitle(
+                      item.question,
+                      data.nodes.find((n) => n.id === item.question.nodeId),
+                    )}
                   </h3>
                   <p className="muted">
                     {subjectName(item.question.subject)} ·{' '}
@@ -493,6 +597,19 @@ export default function StudyView({
                   {data.questions.find((q) => q.id === e.questionId)?.prompt}
                 </MathText>
               </p>
+              {e.learningEvidence?.suspect && (
+                <p className="muted">
+                  本次正确结果的掌握证据权重已降低，等待不同题目的交叉验证。
+                </p>
+              )}
+              {e.learningEvidence?.verificationOf && (
+                <p className="muted">
+                  交叉验证：
+                  {e.score >= 0.85 && e.predictedConfidence !== 'guess'
+                    ? '本次变式已答对，长期掌握仍需间隔验证。'
+                    : '仍需巩固理解，下一次复习已根据表现调整。'}
+                </p>
+              )}
               <p>
                 参考答案：
                 <MathText>
@@ -529,7 +646,8 @@ export default function StudyView({
   return (
     <div
       className={
-        'study-surface ' + (isTest ? 'assessment-surface' : 'practice-surface') +
+        'study-surface ' +
+        (isTest ? 'assessment-surface' : 'practice-surface') +
         (!isTest && focusMode ? ' focus-mode' : '')
       }
     >
@@ -545,22 +663,34 @@ export default function StudyView({
         </span>
         <b>
           {index + 1}
-          <span> / {session.items.length}</span>
+          <span> / {sessionItems.length}</span>
         </b>
-        {!isTest && <div className="study-view-controls">
-          <button className="quiet" onClick={() => setScratchOpen((v) => !v)} aria-expanded={scratchOpen}>
-            <PencilLine size={15} /> 草稿纸
-          </button>
-          <button className="quiet" onClick={toggleFocus} aria-pressed={focusMode}>
-            {focusMode ? '退出沉浸' : '沉浸模式'}
-          </button>
-        </div>}
+        {!isTest && (
+          <div className="study-view-controls">
+            <button
+              className="quiet"
+              onClick={() => setScratchOpen((v) => !v)}
+              aria-expanded={scratchOpen}
+            >
+              <PencilLine size={15} /> 草稿纸
+            </button>
+            <button
+              className="quiet"
+              onClick={toggleFocus}
+              aria-pressed={focusMode}
+            >
+              {focusMode ? '退出沉浸' : '沉浸模式'}
+            </button>
+          </div>
+        )}
       </div>
       <Progress
-        value={(index / session.items.length) * 100}
+        value={(index / sessionItems.length) * 100}
         className="session-progress"
       />
       <div className="question-meta">
+        {item?.verificationOf && <span>交叉验证 · 用另一道题确认理解</span>}
+        {item?.reason === '跨语境迁移' && <span>跨语境迁移</span>}
         <span>{node?.skills.find((s) => s.id === q.skillId)?.title}</span>
         <span>难度 {'·'.repeat(q.difficulty)}</span>
         {q.verified && (
@@ -719,183 +849,217 @@ export default function StudyView({
         )}
         {revealed && !answerPanelOpen && !isTest && (
           <div className="reveal-area">
-            <button className="primary" onClick={() => setAnswerPanelOpen(true)}>
+            <button
+              className="primary"
+              onClick={() => setAnswerPanelOpen(true)}
+            >
               <Eye size={17} /> 查看参考答案
             </button>
           </div>
         )}
-        {revealed && answerPanelOpen && createPortal(
-          <div className="answer-modal-backdrop" onMouseDown={() => setAnswerPanelOpen(false)}>
-            <section
-              className="answer-modal"
-              role="dialog"
-              aria-modal="true"
-              aria-label="参考答案与核对"
-              onMouseDown={(event) => event.stopPropagation()}
+        {revealed &&
+          answerPanelOpen &&
+          createPortal(
+            <div
+              className="answer-modal-backdrop"
+              onMouseDown={() => setAnswerPanelOpen(false)}
             >
-              <header className="answer-modal-head">
-                <div><span>核对答案</span><small>第 {index + 1} / {session.items.length} 题</small></div>
-                <button ref={answerCloseRef} className="quiet" onClick={() => setAnswerPanelOpen(false)} aria-label="关闭参考答案弹窗"><X size={18} /></button>
-              </header>
-              <div className="answer-reveal" style={{ '--answer-font-size': `${Math.max(21, Math.round(44 - Math.sqrt(Array.from(q.answer).length) * 2))}px` } as React.CSSProperties}>
-            {grade ? (
-              <>
-                <div className="grade-heading">
+              <section
+                className="answer-modal"
+                role="dialog"
+                aria-modal="true"
+                aria-label="参考答案与核对"
+                onMouseDown={(event) => event.stopPropagation()}
+              >
+                <header className="answer-modal-head">
                   <div>
-                    <p className="eyebrow">RUBRIC FEEDBACK</p>
-                    <h3>{grade.label}</h3>
+                    <span>核对答案</span>
+                    <small>
+                      第 {index + 1} / {sessionItems.length} 题
+                    </small>
                   </div>
-                  <strong>
-                    {grade.score}
-                    <span> / {grade.maxScore}</span>
-                  </strong>
-                </div>
-                {grade.criteria.map((c) => (
-                  <div className="criterion" key={c.id}>
-                    <div>
-                      <b>{q.rubric?.find((r) => r.id === c.id)?.title}</b>
-                      <span>
-                        {c.score} / {q.rubric?.find((r) => r.id === c.id)?.max}
-                      </span>
-                    </div>
-                    {c.evidence && (
-                      <p className="evidence">命中：{c.evidence}</p>
-                    )}
-                    {c.missing && <p>遗漏：{c.missing}</p>}
-                    <p className="muted">{c.suggestion}</p>
-                  </div>
-                ))}
-                <p>{grade.feedback}</p>
-                <details>
-                  <summary>查看示例答案</summary>
-                  <p>{grade.exampleAnswer}</p>
-                </details>
-                <button
-                  className="primary"
-                  disabled={busy}
-                  onClick={() =>
-                    record(
-                      grade.score / grade.maxScore >= 0.85
-                        ? 'correct'
-                        : grade.score / grade.maxScore >= 0.4
-                          ? 'unsure'
-                          : 'wrong',
-                      grade,
-                    )
+                  <button
+                    ref={answerCloseRef}
+                    className="quiet"
+                    onClick={() => setAnswerPanelOpen(false)}
+                    aria-label="关闭参考答案弹窗"
+                  >
+                    <X size={18} />
+                  </button>
+                </header>
+                <div
+                  className="answer-reveal"
+                  style={
+                    {
+                      '--answer-font-size': `${Math.max(21, Math.round(44 - Math.sqrt(Array.from(q.answer).length) * 2))}px`,
+                    } as React.CSSProperties
                   }
                 >
-                  保存反馈，下一题
-                  <ArrowRight size={16} />
-                </button>
-              </>
-            ) : (
-              <>
-                <p className="answer-label">参考答案</p>
-                <h3>
-                  <MathText>
-                    {q.type === 'matching' ? '配对结果' : q.answer}
-                  </MathText>
-                </h3>
-                {q.type === 'matching' &&
-                  q.matching?.left.map((l) => (
-                    <p key={l.id}>
-                      <MathText>
-                        {l.text +
-                          ' → ' +
-                          (q.matching?.right.find(
-                            (r) => r.id === JSON.parse(q.answer)[l.id],
-                          )?.text ?? '')}
-                      </MathText>
-                    </p>
-                  ))}
-                {!isPinyin(q) && q.explanation && <p className="answer-explanation">
-                  <MathText>{q.explanation}</MathText>
-                </p>}
-                {answer && (
-                  <p className="answer-check">
-                    本次作答：
-                    {objectiveScore(q, answer) === 1
-                      ? '正确'
-                      : objectiveScore(q, answer) > 0
-                        ? '部分正确'
-                        : '需要订正'}
-                    {confidence === 'sure' && objectiveScore(q, answer) < 0.6
-                      ? ' · 已发现一个值得校准的信心盲点'
-                      : ''}
-                  </p>
-                )}
-                {q.transferFrom && (
-                  <details>
-                    <summary>迁移挑战 · 对照原题</summary>
-                    <p>
-                      <MathText>
-                        {
-                          data.questions.find((x) => x.id === q.transferFrom)
-                            ?.prompt
+                  {grade ? (
+                    <>
+                      <div className="grade-heading">
+                        <div>
+                          <p className="eyebrow">RUBRIC FEEDBACK</p>
+                          <h3>{grade.label}</h3>
+                        </div>
+                        <strong>
+                          {grade.score}
+                          <span> / {grade.maxScore}</span>
+                        </strong>
+                      </div>
+                      {grade.criteria.map((c) => (
+                        <div className="criterion" key={c.id}>
+                          <div>
+                            <b>{q.rubric?.find((r) => r.id === c.id)?.title}</b>
+                            <span>
+                              {c.score} /{' '}
+                              {q.rubric?.find((r) => r.id === c.id)?.max}
+                            </span>
+                          </div>
+                          {c.evidence && (
+                            <p className="evidence">命中：{c.evidence}</p>
+                          )}
+                          {c.missing && <p>遗漏：{c.missing}</p>}
+                          <p className="muted">{c.suggestion}</p>
+                        </div>
+                      ))}
+                      <p>{grade.feedback}</p>
+                      <details>
+                        <summary>查看示例答案</summary>
+                        <p>{grade.exampleAnswer}</p>
+                      </details>
+                      <button
+                        className="primary"
+                        disabled={busy}
+                        onClick={() =>
+                          record(
+                            grade.score / grade.maxScore >= 0.85
+                              ? 'correct'
+                              : grade.score / grade.maxScore >= 0.4
+                                ? 'unsure'
+                                : 'wrong',
+                            grade,
+                          )
                         }
-                      </MathText>
-                    </p>
-                    <p className="muted">
-                      同一种能力，换了情境。比较两题共同的方法。
-                    </p>
-                  </details>
-                )}
-                {q.solution?.length && (
-                  <>
-                    <button
-                      className="quiet solution-toggle"
-                      onClick={() => setSolution(!solution)}
-                    >
-                      <ChevronDown size={15} />
-                      查看解题过程
-                    </button>
-                    {solution && (
-                      <ol className="solution-steps">
-                        {q.solution.map((step, i) => (
-                          <li key={i}>
-                            <span>STEP {i + 1}</span>
-                            <MathText>{step}</MathText>
-                          </li>
+                      >
+                        保存反馈，下一题
+                        <ArrowRight size={16} />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <p className="answer-label">参考答案</p>
+                      <h3>
+                        <MathText>
+                          {q.type === 'matching' ? '配对结果' : q.answer}
+                        </MathText>
+                      </h3>
+                      {q.type === 'matching' &&
+                        q.matching?.left.map((l) => (
+                          <p key={l.id}>
+                            <MathText>
+                              {l.text +
+                                ' → ' +
+                                (q.matching?.right.find(
+                                  (r) => r.id === JSON.parse(q.answer)[l.id],
+                                )?.text ?? '')}
+                            </MathText>
+                          </p>
                         ))}
-                      </ol>
-                    )}
-                  </>
-                )}
-                <div className="rating-actions">
-                  <button
-                    className="wrong"
-                    disabled={busy}
-                    onClick={() => record('wrong')}
-                  >
-                    <X size={17} />
-                    答错<kbd>1</kbd>
-                  </button>
-                  <button
-                    className="unsure"
-                    disabled={busy}
-                    onClick={() => record('unsure')}
-                  >
-                    <Minus size={17} />
-                    不确定<kbd>2</kbd>
-                  </button>
-                  <button
-                    className="correct"
-                    disabled={busy}
-                    onClick={() => record('correct')}
-                  >
-                    <Check size={17} />
-                    答对<kbd>3</kbd>
-                  </button>
+                      {!isPinyin(q) && q.explanation && (
+                        <p className="answer-explanation">
+                          <MathText>{q.explanation}</MathText>
+                        </p>
+                      )}
+                      {answer && (
+                        <p className="answer-check">
+                          本次作答：
+                          {objectiveScore(q, answer) === 1
+                            ? '正确'
+                            : objectiveScore(q, answer) > 0
+                              ? '部分正确'
+                              : '需要订正'}
+                          {confidence === 'sure' &&
+                          objectiveScore(q, answer) < 0.6
+                            ? ' · 已发现一个值得校准的信心盲点'
+                            : ''}
+                        </p>
+                      )}
+                      {q.transferFrom && (
+                        <details>
+                          <summary>迁移挑战 · 对照原题</summary>
+                          <p>
+                            <MathText>
+                              {
+                                data.questions.find(
+                                  (x) => x.id === q.transferFrom,
+                                )?.prompt
+                              }
+                            </MathText>
+                          </p>
+                          <p className="muted">
+                            同一种能力，换了情境。比较两题共同的方法。
+                          </p>
+                        </details>
+                      )}
+                      {q.solution?.length && (
+                        <>
+                          <button
+                            className="quiet solution-toggle"
+                            onClick={() => setSolution(!solution)}
+                          >
+                            <ChevronDown size={15} />
+                            查看解题过程
+                          </button>
+                          {solution && (
+                            <ol className="solution-steps">
+                              {q.solution.map((step, i) => (
+                                <li key={i}>
+                                  <span>STEP {i + 1}</span>
+                                  <MathText>{step}</MathText>
+                                </li>
+                              ))}
+                            </ol>
+                          )}
+                        </>
+                      )}
+                      <div className="rating-actions">
+                        <button
+                          className="wrong"
+                          disabled={busy}
+                          onClick={() => record('wrong')}
+                        >
+                          <X size={17} />
+                          答错<kbd>1</kbd>
+                        </button>
+                        <button
+                          className="unsure"
+                          disabled={busy}
+                          onClick={() => record('unsure')}
+                        >
+                          <Minus size={17} />
+                          不确定<kbd>2</kbd>
+                        </button>
+                        <button
+                          className="correct"
+                          disabled={busy}
+                          onClick={() => record('correct')}
+                        >
+                          <Check size={17} />
+                          答对<kbd>3</kbd>
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </div>
-              </>
-            )}
-              </div>
-            </section>
-          </div>,
-          document.body,
-        )}
+              </section>
+            </div>,
+            document.body,
+          )}
       </article>
-      {!isTest && scratchOpen && <Scratchpad key={q.id} onClose={() => setScratchOpen(false)} />}
+      {!isTest && scratchOpen && (
+        <Scratchpad key={q.id} onClose={() => setScratchOpen(false)} />
+      )}
       <div className="gentle-note">
         <Clock3 size={14} />
         只和自己的昨天相比。
@@ -925,7 +1089,17 @@ function Scratchpad({ onClose }: { onClose: () => void }) {
       const context = element.getContext('2d');
       context?.setTransform(ratio, 0, 0, ratio, 0, 0);
       if (saved.width && saved.height)
-        context?.drawImage(saved, 0, 0, saved.width, saved.height, 0, 0, width, height);
+        context?.drawImage(
+          saved,
+          0,
+          0,
+          saved.width,
+          saved.height,
+          0,
+          0,
+          width,
+          height,
+        );
     };
     const observer = new ResizeObserver(resize);
     observer.observe(element);
@@ -934,35 +1108,56 @@ function Scratchpad({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     const element = canvas.current;
     if (!element) return;
-    element.getContext('2d')?.clearRect(0, 0, element.clientWidth, element.clientHeight);
+    element
+      .getContext('2d')
+      ?.clearRect(0, 0, element.clientWidth, element.clientHeight);
   }, [clearCount]);
   const point = (event: React.PointerEvent<HTMLCanvasElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
     return { x: event.clientX - rect.left, y: event.clientY - rect.top };
   };
-  return <aside className="study-scratchpad" aria-label="草稿纸">
-    <div className="scratchpad-head"><span>草稿纸</span><div>
-      <button onClick={() => setClearCount((n) => n + 1)}>清空</button>
-      <button onClick={onClose} aria-label="关闭草稿纸">关闭</button>
-    </div></div>
-    <canvas ref={canvas} aria-label="可用鼠标或触控笔书写的草稿纸"
-      onPointerDown={(event) => {
-        drawing.current = true;
-        event.currentTarget.setPointerCapture(event.pointerId);
-        const p = point(event), context = event.currentTarget.getContext('2d');
-        if (!context) return;
-        context.beginPath(); context.moveTo(p.x, p.y);
-        context.lineWidth = 2; context.lineCap = 'round'; context.lineJoin = 'round';
-        context.strokeStyle = '#324238';
-      }}
-      onPointerMove={(event) => {
-        if (!drawing.current) return;
-        const p = point(event), context = event.currentTarget.getContext('2d');
-        context?.lineTo(p.x, p.y); context?.stroke();
-      }}
-      onPointerUp={() => { drawing.current = false; }}
-      onPointerCancel={() => { drawing.current = false; }}
-    />
-    <p>仅作当前题的思考草稿，不计入评分。</p>
-  </aside>;
+  return (
+    <aside className="study-scratchpad" aria-label="草稿纸">
+      <div className="scratchpad-head">
+        <span>草稿纸</span>
+        <div>
+          <button onClick={() => setClearCount((n) => n + 1)}>清空</button>
+          <button onClick={onClose} aria-label="关闭草稿纸">
+            关闭
+          </button>
+        </div>
+      </div>
+      <canvas
+        ref={canvas}
+        aria-label="可用鼠标或触控笔书写的草稿纸"
+        onPointerDown={(event) => {
+          drawing.current = true;
+          event.currentTarget.setPointerCapture(event.pointerId);
+          const p = point(event),
+            context = event.currentTarget.getContext('2d');
+          if (!context) return;
+          context.beginPath();
+          context.moveTo(p.x, p.y);
+          context.lineWidth = 2;
+          context.lineCap = 'round';
+          context.lineJoin = 'round';
+          context.strokeStyle = '#324238';
+        }}
+        onPointerMove={(event) => {
+          if (!drawing.current) return;
+          const p = point(event),
+            context = event.currentTarget.getContext('2d');
+          context?.lineTo(p.x, p.y);
+          context?.stroke();
+        }}
+        onPointerUp={() => {
+          drawing.current = false;
+        }}
+        onPointerCancel={() => {
+          drawing.current = false;
+        }}
+      />
+      <p>仅作当前题的思考草稿，不计入评分。</p>
+    </aside>
+  );
 }

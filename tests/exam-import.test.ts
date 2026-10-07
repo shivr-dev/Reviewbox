@@ -42,7 +42,14 @@ test('all general and TOEFL manual templates import without AI, examples remain 
     assert.equal(p.questions[0].type, type.id);
   }
   for (const type of Object.keys(EXAM_TASK_TEMPLATES)) {
-    const value = await parseExamPackage(examTaskTemplate(type));
+    const raw = JSON.parse(examTaskTemplate(type));
+    // Photo templates intentionally require a learner-supplied image. Supply a local fixture.
+    if (type.endsWith('_photo'))
+      for (const section of Object.values(raw.sectionsInline) as any[])
+        for (const q of section.questions)
+          q.native.image =
+            'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl6ZAAAAABJRU5ErkJggg==';
+    const value = await parseExamPackage(raw);
     assert.equal(value.questions.length, 1);
     assert.equal(paperReady(value.paper, value.questions), true);
     const pkg = nativeExamPackage(value.paper, value.questions, [], 'Learner');
@@ -234,11 +241,12 @@ test('Pages API adapter stays local and never sends a password or AI prompt to G
     (globalThis as any).window.__REVIEW_PAGES_API__ = async (path: string) => {
       calls.push(path);
       return path === '/api/account'
-        ? Response.json({aiReady:false})
-        : Response.json({error:'请先解锁站点配置'},{status:503});
+        ? Response.json({ aiReady: false })
+        : Response.json({ error: '请先解锁站点配置' }, { status: 503 });
     };
     assert.equal(
-      ((await (await apiFetch('/api/account')).json()) as {aiReady:boolean}).aiReady,
+      ((await (await apiFetch('/api/account')).json()) as { aiReady: boolean })
+        .aiReady,
       false,
     );
     const r = await apiFetch('/api/ai', {
@@ -246,7 +254,7 @@ test('Pages API adapter stays local and never sends a password or AI prompt to G
       body: 'secret prompt',
     });
     assert.equal(r.status, 503);
-    assert.deepEqual(calls, ['/api/account','/api/ai']);
+    assert.deepEqual(calls, ['/api/account', '/api/ai']);
   } finally {
     (globalThis as any).window = prior;
   }

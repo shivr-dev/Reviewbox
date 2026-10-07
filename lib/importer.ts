@@ -44,6 +44,26 @@ export const nodeSchema = z.object({
   tags: z.array(z.string()).optional(),
 });
 export const questionSchema = z.object({
+  cognitiveAttributes: z
+    .array(
+      z.enum([
+        'symbolic',
+        'calculation',
+        'evidence',
+        'vocabulary',
+        'syntax',
+        'recall',
+        'causal',
+        'application',
+      ]),
+    )
+    .max(8)
+    .optional(),
+  conceptIds: z.array(z.string().min(1).max(100)).max(8).optional(),
+  contextId: z.string().min(1).max(160).optional(),
+  memoryFamily: z
+    .enum(['formula', 'vocabulary', 'fact', 'reasoning'])
+    .optional(),
   examTask: z.any().optional(),
   schemaVersion: z.literal(1),
   id: z.string().min(1).max(160),
@@ -340,10 +360,13 @@ export async function extractFile(
     return { text };
   }
   if (ext === 'xlsx' || ext === 'xls') {
-    const moduleURL = typeof document === 'undefined'
-      ? new URL('../public/vendor/xlsx.mjs', import.meta.url).href
-      : new URL('vendor/xlsx.mjs', document.baseURI).href;
-    const XLSX = await import(/* @vite-ignore */ moduleURL) as typeof import('../public/vendor/xlsx.mjs');
+    const moduleURL =
+      typeof document === 'undefined'
+        ? new URL('../public/vendor/xlsx.mjs', import.meta.url).href
+        : new URL('vendor/xlsx.mjs', document.baseURI).href;
+    const XLSX = (await import(
+      /* @vite-ignore */ moduleURL
+    )) as typeof import('../public/vendor/xlsx.mjs');
     const wb = XLSX.read(await file.arrayBuffer(), {
       type: 'array',
       dense: true,
