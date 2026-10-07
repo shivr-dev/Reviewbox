@@ -1,8 +1,10 @@
 import { env as workerEnv } from 'cloudflare:workers';
 import { cookies } from 'next/headers';
 import { getChatGPTUser } from '@/app/chatgpt-auth';
+import { installAIEnvironment } from './ai-environment';
 export const env = (name: string) =>
   String((workerEnv as any)[name] ?? process.env[name] ?? '');
+installAIEnvironment(env);
 export async function requireSiteUser() {
   const u = await getChatGPTUser();
   if (!u) throw new Error('请先登录学习空间');

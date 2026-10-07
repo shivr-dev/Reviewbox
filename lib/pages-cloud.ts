@@ -100,6 +100,30 @@ export async function pagesApi(
       });
     }
     const body = init?.body ? JSON.parse(String(init.body)) : null;
+    if (path === '/api/game' && method === 'POST') {
+      if (!config) throw new Error('请先在「我的」解锁站点配置');
+      const current = await session();
+      if (!current) throw new Error('请先登录学习账户');
+      const response = await fetch(
+        config.supabaseUrl + '/rest/v1/rpc/review_game',
+        {
+          method: 'POST',
+          headers: {
+            apikey: config.publishableKey,
+            Authorization: 'Bearer ' + current.access_token,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            action: body.action,
+            payload: body.payload ?? {},
+          }),
+          signal: AbortSignal.timeout(15000),
+        },
+      );
+      const result: any = await response.json();
+      if (!response.ok) throw new Error(result.message ?? '奖励服务暂时不可用');
+      return Response.json(result);
+    }
     if (path === '/api/account' && method === 'POST') {
       if (body?.action === 'logout') {
         const current = stored();

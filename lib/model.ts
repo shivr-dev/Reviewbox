@@ -200,6 +200,7 @@ export type AnswerEvent = {
     remediationId?: string;
     remediationGroup?: string;
     remediationPhase?: 'practice' | 'verify';
+    gameRecovery?: boolean;
   };
   id: string;
   questionId: string;
@@ -317,9 +318,19 @@ export type StudyData = {
   materials: Material[];
   tests: TestResult[];
   packs: Pack['manifest'][];
-  settings: { dailyMinutes: number; name: string; surprise: boolean };
+  settings: {
+    dailyMinutes: number;
+    name: string;
+    surprise: boolean;
+    dailyQuestionGoal?: number;
+    superPromoDismissed?: boolean;
+    gameSound?: boolean;
+    gameHearts?: boolean;
+    gameSkin?: string;
+  };
 };
 export type QueueItem = {
+  gameRecovery?: boolean;
   remediationId?: string;
   remediationGroup?: string;
   remediationPhase?: 'practice' | 'verify';

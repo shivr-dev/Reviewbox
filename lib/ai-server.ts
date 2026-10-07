@@ -1,4 +1,5 @@
-import { env } from './server';
+import { aiEnvironment as env } from './ai-environment';
+import { usesPrivateCloud } from './runtime';
 import { z } from 'zod';
 import { questionSchema, nodeSchema } from './importer';
 import { type Question, type Grade } from './model';
@@ -41,8 +42,7 @@ export async function runJSON(
   const accountId = accounts[slot % accounts.length];
   if (!/^[a-f0-9]{32}$/i.test(accountId))
     throw new Error('Cloudflare 账户配置不正确');
-  const onPages =
-    typeof window !== 'undefined' && (window as any).__REVIEW_STATIC__ === true;
+  const onPages = usesPrivateCloud();
   const pages = onPages
     ? await (await import('./pages-vault')).pagesConfig()
     : null;

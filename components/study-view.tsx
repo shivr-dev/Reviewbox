@@ -48,6 +48,15 @@ import { Empty, Heading } from './shared';
 import QuestionReviewButton from './question-review';
 import ProcessNotebook from './process-notebook';
 import { RemediationLauncher } from './remediation-course';
+import {
+  ComboCelebration,
+  Penguin,
+  RewardFlash,
+  type RewardFeedback,
+} from './learning-game';
+import { learningGame } from '@/lib/learning-game';
+import { rewardSound } from '@/lib/game-client';
+import { Heart, Zap, Volume2, VolumeX } from 'lucide-react';
 export default function StudyView({
   session,
   finish,
@@ -62,6 +71,13 @@ export default function StudyView({
 }) {
   const { data, start, refresh, notify, aiReady, navigate } = useReview();
   const [processHint, setProcessHint] = useState(false);
+  const [reward, setReward] = useState<RewardFeedback | null>(null);
+  const [gameNow, setGameNow] = useState(Date.now());
+  const game = learningGame(data, gameNow);
+  useEffect(() => {
+    const t = setInterval(() => setGameNow(Date.now()), 15000);
+    return () => clearInterval(t);
+  }, []);
   const [index, setIndex] = useState(0),
     [focusMode, setFocusMode] = useState(true),
     [scratchOpen, setScratchOpen] = useState(false),
@@ -99,7 +115,10 @@ export default function StudyView({
     });
   };
   const item = sessionItems[index];
-  const q = item?.question;
+  const q =
+    item?.gameRecovery && item.question.type === 'subjective'
+      ? { ...item.question, type: 'recall' }
+      : item?.question;
   const node = data.nodes.find((n) => n.id === q?.nodeId);
   const reset = () => {
     setProcessHint(false);
@@ -118,12 +137,18 @@ export default function StudyView({
     };
   };
   useEffect(() => {
-    setExtraItems([]);
+    const persisted = data.jobs?.find(
+      (j) =>
+        j.kind === 'session' && j.id === session?.id && Array.isArray(j.items),
+    );
+    const restoredItems: QueueItem[] = persisted?.items ?? session?.items ?? [];
+    setExtraItems(restoredItems);
+    setReward(null);
     const saved = data.events
       .filter((e) => e.sessionId === session?.id)
       .sort((a, b) => a.occurredAt.localeCompare(b.occurredAt));
     setIndex(saved.length);
-    setDone(!!session && saved.length >= session.items.length);
+    setDone(!!session && saved.length >= restoredItems.length);
     setResults(saved);
     originNamespace.current = currentNamespace();
     reset();
@@ -245,6 +270,7 @@ export default function StudyView({
           remediationId: item?.remediationId,
           remediationGroup: item?.remediationGroup,
           remediationPhase: item?.remediationPhase,
+          gameRecovery: item?.gameRecovery,
           policy: schedule.policy,
           intervalFactor: schedule.factor,
           memoryFamily: schedule.family,
@@ -283,7 +309,39 @@ export default function StudyView({
       ).loadData(originNamespace.current);
       if (fresh.questions.find((x) => x.id === q.id)?.reviewStatus === 'paused')
         throw new Error('这道题已暂停，请保存退出后重新安排练习');
+      const beforeGame = learningGame(fresh);
+      if (
+        fresh.settings.gameHearts !== false &&
+        session.mode === 'review' &&
+        !item.gameRecovery &&
+        beforeGame.hearts === 0
+      ) {
+        setGameNow(Date.now());
+        setAnswerPanelOpen(false);
+        throw new Error('生命值已用完，可通过恢复练习补回');
+      }
       await put('event', e, e.id, false, originNamespace.current);
+      if (
+        session.mode === 'review' &&
+        !fresh.events.some((x) => x.id === e.id)
+      ) {
+        const afterGame = learningGame({
+          ...fresh,
+          events: [...fresh.events, e],
+        });
+        const gained = afterGame.rewards.get(e.id);
+        if (gained) {
+          setReward({
+            ...gained,
+            id: e.id,
+            goalDone: !beforeGame.goalDone && afterGame.goalDone,
+            levelUp:
+              afterGame.level > beforeGame.level ? afterGame.level : undefined,
+          });
+          if (fresh.settings.gameSound !== false) rewardSound(gained.correct);
+        }
+        setGameNow(Date.now());
+      }
       const all = [...results, e];
       setResults(all);
       let nextItems = sessionItems;
@@ -358,6 +416,81 @@ export default function StudyView({
       setBusy(false);
     }
   }
+  async function restoreHearts() {
+    if (
+      !session ||
+      !q ||
+      lock.current ||
+      currentNamespace() !== originNamespace.current
+    )
+      return;
+    lock.current = true;
+    setBusy(true);
+    try {
+      const fresh = await (
+        await import('@/lib/store')
+      ).loadData(originNamespace.current);
+      const available = fresh.questions
+        .filter(
+          (x) =>
+            x.reviewStatus !== 'paused' &&
+            !x.examTask &&
+            x.nodeId === q.nodeId &&
+            x.skillId === q.skillId,
+        )
+        .sort((a, b) => a.difficulty - b.difficulty);
+      const candidates = available.length ? available : [q];
+      const recovery = Array.from({ length: 3 }, (_, i) => ({
+        question: candidates[i % candidates.length],
+        reason: '恢复练习',
+        priority: 1,
+        gameRecovery: true,
+        scaffold:
+          '先对照参考答案，重新梳理关键步骤，再尝试回忆。恢复练习会标记为辅助学习。',
+      }));
+      const updated = [...sessionItems];
+      updated.splice(index, 0, ...recovery);
+      await put(
+        'job',
+        {
+          ...session,
+          items: updated,
+          kind: 'session',
+          status: 'active',
+          createdAt: new Date().toISOString(),
+        },
+        'active-session',
+        false,
+        originNamespace.current,
+      );
+      if (currentNamespace() !== originNamespace.current) return;
+      setExtraItems(updated);
+      reset();
+      await refresh();
+    } catch (e) {
+      notify(e instanceof Error ? e.message : '恢复练习未能打开');
+    } finally {
+      lock.current = false;
+      setBusy(false);
+    }
+  }
+  async function toggleSound() {
+    const ns = originNamespace.current;
+    try {
+      const fresh = await (await import('@/lib/store')).loadData(ns);
+      if (currentNamespace() !== ns) return;
+      await put(
+        'setting',
+        { ...fresh.settings, gameSound: fresh.settings.gameSound === false },
+        'settings',
+        false,
+        ns,
+      );
+      await refresh();
+    } catch (e) {
+      notify(e instanceof Error ? e.message : '设置未保存');
+    }
+  }
   async function submitSubjective() {
     if (!q || !answer.trim()) return;
     setBusy(true);
@@ -423,6 +556,10 @@ export default function StudyView({
   useEffect(() => {
     if (!q || done) return;
     const keys = (e: KeyboardEvent) => {
+      if (document.querySelector('.combo-screen')) {
+        if (e.code === 'Space') e.preventDefault();
+        return;
+      }
       if (
         ['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName) ||
         busy
@@ -568,6 +705,26 @@ export default function StudyView({
       : 0;
     return (
       <div className="session-summary">
+        <RewardFlash reward={reward} />
+        <ComboCelebration reward={reward} />
+        {session.mode !== 'test' && (
+          <>
+            <Penguin skin={game.skin} className="summary-penguin" />
+            <div className="game-session-earned">
+              <Zap />+
+              {results.reduce(
+                (a, e) => a + (game.rewards.get(e.id)?.xp ?? 0),
+                0,
+              )}{' '}
+              XP{' '}
+              <span>
+                {game.goalDone
+                  ? '每日目标达成！'
+                  : `${game.daily.count} / ${game.goal} 每日目标`}
+              </span>
+            </div>
+          </>
+        )}
         <span className="summary-icon">
           <CheckCheck size={29} />
         </span>
@@ -584,7 +741,7 @@ export default function StudyView({
           <div>
             <strong>{score}%</strong>
             <span>
-              {session.mode === 'test' ? '本次得分率' : '本次掌握反馈'}
+              {session.mode === 'test' ? '本次得分率' : '本次自评得分率'}
             </span>
           </div>
           <div>
@@ -672,8 +829,14 @@ export default function StudyView({
             返回补救课程
           </button>
         )}
-        <button className="primary" onClick={finish}>
-          回到学习工作台
+        <button
+          className="primary"
+          onClick={() => {
+            finish();
+            if (session.mode !== 'test') navigate('chest', session.id);
+          }}
+        >
+          {session.mode === 'test' ? '回到学习工作台' : '打开练习宝箱'}
           <ArrowRight size={16} />
         </button>
       </div>
@@ -681,6 +844,59 @@ export default function StudyView({
   }
   if (!q) return null;
   const isTest = session.mode === 'test';
+  if (
+    !isTest &&
+    data.settings.gameHearts !== false &&
+    game.hearts === 0 &&
+    !item.gameRecovery
+  )
+    return (
+      <div
+        className="game-recovery-screen"
+        role="region"
+        aria-label="恢复生命值"
+      >
+        <button className="quiet recovery-back" onClick={finish}>
+          <ArrowLeft size={18} />
+          保存并退出
+        </button>
+        <RewardFlash reward={reward} />
+        <div className="recovery-content">
+          <div className="recovery-heart">
+            <Heart size={30} fill="currentColor" />
+            <span>0 / {game.maxHearts}</span>
+          </div>
+          <Penguin skin={game.skin} action="thinking" actionKey="recovery" />
+          <h1>稍作巩固，再次出发</h1>
+          <p>
+            通过三道恢复练习补回一颗生命值。
+            <br />
+            你的原练习与作答进度已经保留。
+          </p>
+          <button
+            className="primary"
+            disabled={busy}
+            onClick={() => void restoreHearts()}
+          >
+            开始恢复练习 <Heart size={18} />
+          </button>
+          <button className="secondary" onClick={() => navigate('shop')}>
+            打开点数商店
+          </button>
+          <button className="quiet" onClick={() => navigate('you')}>
+            调整生命值挑战
+          </button>
+          <small>
+            约{' '}
+            {Math.max(
+              1,
+              Math.ceil(((game.nextHeartAt ?? gameNow) - gameNow) / 60000),
+            )}{' '}
+            分钟后自动恢复一颗
+          </small>
+        </div>
+      </div>
+    );
   return (
     <div
       className={
@@ -689,6 +905,8 @@ export default function StudyView({
         (!isTest && focusMode ? ' focus-mode' : '')
       }
     >
+      <RewardFlash reward={reward} />
+      <ComboCelebration reward={reward} />
       <div className="session-top">
         <button className="quiet" onClick={finish}>
           <ArrowLeft size={16} />
@@ -726,6 +944,48 @@ export default function StudyView({
         value={(index / sessionItems.length) * 100}
         className="session-progress"
       />
+      {!isTest && (
+        <div className="game-session-hud">
+          <span className="game-gems">
+            <Zap size={18} />
+            {results.reduce(
+              (a, e) => a + (game.rewards.get(e.id)?.xp ?? 0),
+              0,
+            )}{' '}
+            XP
+          </span>
+          <span>
+            {item.gameRecovery
+              ? `恢复练习 · 已完成 ${game.recovery} / 3`
+              : `每日目标 ${game.daily.count} / ${game.goal}`}
+          </span>
+          {data.settings.gameHearts !== false && (
+            <span className="game-heart" aria-label={`${game.hearts} 颗生命值`}>
+              {Array.from({ length: game.maxHearts }, (_, i) => (
+                <Heart
+                  key={i}
+                  size={18}
+                  fill={i < game.hearts ? 'currentColor' : 'none'}
+                  style={{ opacity: i < game.hearts ? 1 : 0.3 }}
+                />
+              ))}
+            </span>
+          )}
+          <button
+            className="quiet"
+            aria-label={
+              data.settings.gameSound === false ? '开启音效' : '关闭音效'
+            }
+            onClick={() => void toggleSound()}
+          >
+            {data.settings.gameSound === false ? (
+              <VolumeX size={18} />
+            ) : (
+              <Volume2 size={18} />
+            )}
+          </button>
+        </div>
+      )}
       <div className="question-meta">
         {data.questions.find((x) => x.id === q.id)?.reviewStatus ===
           'paused' && (

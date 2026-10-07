@@ -6,6 +6,8 @@ import './upgrade.css';
 import './courses.css';
 import './exam-import.css';
 import './editorial.css';
+import './learning-game.css';
+import './rewards.css';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',

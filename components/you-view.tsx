@@ -4,6 +4,7 @@ import { pagesConfig, unlockPages, lockPages } from '@/lib/pages-vault';
 import { checkPagesAI } from '@/lib/pages-ai-check';
 import ClearDataCard from './clear-data-card';
 import ImportSkillCard from './import-skill-card';
+import { GameProfile } from './learning-game';
 import { useEffect, useState } from 'react';
 import {
   Plus,
@@ -47,7 +48,9 @@ export default function YouView() {
     aiReady,
   } = useReview();
   const [examOpen, setExamOpen] = useState(false),
-    [visualTheme, setVisualTheme] = useState<'editorial' | 'classic'>('editorial'),
+    [visualTheme, setVisualTheme] = useState<
+      'editorial' | 'classic' | 'playful'
+    >('playful'),
     [vaultReady, setVaultReady] = useState<boolean | null>(null),
     [checkingAI, setCheckingAI] = useState(false),
     [aiCheck, setAiCheck] = useState(''),
@@ -59,23 +62,31 @@ export default function YouView() {
     [minutes, setMinutes] = useState(String(data.settings.dailyMinutes));
   const nodes = data.nodes.filter((n) => n.subject === subject);
   useEffect(() => {
-    if (isStaticSite()) void pagesConfig().then((value) => setVaultReady(!!value));
-    setVisualTheme(localStorage.getItem('review-visual-theme') === 'classic' ? 'classic' : 'editorial');
+    void pagesConfig().then((value) => setVaultReady(!!value));
+    const saved = localStorage.getItem('review-visual-theme');
+    setVisualTheme(
+      saved === 'classic' || saved === 'editorial' ? saved : 'playful',
+    );
   }, []);
-  const chooseTheme = (theme:'editorial'|'classic') => {
+  const chooseTheme = (theme: 'editorial' | 'classic' | 'playful') => {
     setVisualTheme(theme);
-    localStorage.setItem('review-visual-theme',theme);
-    document.documentElement.dataset.reviewTheme=theme;
+    localStorage.setItem('review-visual-theme', theme);
+    document.documentElement.dataset.reviewTheme = theme;
   };
   async function unlock(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setBusy(true);
     try {
-      await unlockPages(String(new FormData(e.currentTarget).get('passphrase')));
+      await unlockPages(
+        String(new FormData(e.currentTarget).get('passphrase')),
+      );
+      if (!isStaticSite()) localStorage.setItem('review-private-cloud', '1');
       location.reload();
     } catch (error) {
       notify(error instanceof Error ? error.message : '无法解锁站点配置');
-    } finally { setBusy(false); }
+    } finally {
+      setBusy(false);
+    }
   }
   async function login(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -138,35 +149,135 @@ export default function YouView() {
         title="学习，按自己的节奏。"
         description="管理考试计划、每日学习目标与个人数据。"
       />
-      {isStaticSite() && (
-        <section className="panel">
+      {
+        <section className="panel private-config-panel">
           <h2>私有学习配置</h2>
-          {vaultReady ? <>
-            <p>当前设备已解锁，可使用 AI。登录学习账户后可同步学习记录。</p>
-            <button className="secondary" disabled={checkingAI} onClick={async()=>{
-              setCheckingAI(true);setAiCheck('');
-              try {const count=await checkPagesAI();setAiCheck('连接正常：'+count+' 个凭据可访问所选模型。此次检查不生成内容。');}
-              catch(error){setAiCheck(error instanceof Error?error.message:'网络连接未完成，请重试。');}
-              finally{setCheckingAI(false);}
-            }}>{checkingAI?'正在检查连接':'检查 AI 连接'}</button>
-            {aiCheck && <p role="status">{aiCheck} <button className="text-button" onClick={()=>setAiCheck('')}>关闭</button></p>}
-            <button className="secondary" onClick={async () => { await lockPages(); location.reload(); }}>锁定当前设备</button>
-          </> : <>
-            <p>首次在此设备使用时，输入网站配置口令。口令不会上传至 GitHub。</p>
-            <form onSubmit={unlock} className="pages-unlock-form">
-              <input type="password" name="passphrase" minLength={12} autoComplete="off" placeholder="网站配置口令" required />
-              <button className="primary" disabled={busy}>解锁云端配置</button>
-            </form>
-          </>}
+          {vaultReady ? (
+            <>
+              <p>当前设备的私有配置已解锁，AI 与账户可使用同一份配置连接。</p>
+              <button
+                className="secondary"
+                disabled={checkingAI}
+                onClick={async () => {
+                  setCheckingAI(true);
+                  setAiCheck('');
+                  try {
+                    const count = await checkPagesAI();
+                    setAiCheck(
+                      '连接正常：' +
+                        count +
+                        ' 个凭据可访问所选模型。此次检查不生成内容。',
+                    );
+                  } catch (error) {
+                    setAiCheck(
+                      error instanceof Error
+                        ? error.message
+                        : '网络连接未完成，请重试。',
+                    );
+                  } finally {
+                    setCheckingAI(false);
+                  }
+                }}
+              >
+                {checkingAI ? '正在检查连接' : '检查 AI 连接'}
+              </button>
+              {aiCheck && (
+                <p role="status">
+                  {aiCheck}{' '}
+                  <button
+                    className="text-button"
+                    onClick={() => setAiCheck('')}
+                  >
+                    关闭
+                  </button>
+                </p>
+              )}
+              <button
+                className="secondary"
+                onClick={async () => {
+                  await lockPages();
+                  localStorage.removeItem('review-private-cloud');
+                  location.reload();
+                }}
+              >
+                锁定当前设备
+              </button>
+            </>
+          ) : (
+            <>
+              <p>
+                输入网站配置口令，解锁 GitHub Pages 的私有云连接。口令不是
+                Supabase token，也不是账户密码。
+              </p>
+              <form onSubmit={unlock} className="pages-unlock-form">
+                <input
+                  type="password"
+                  name="passphrase"
+                  aria-label="网站配置口令"
+                  minLength={12}
+                  autoComplete="off"
+                  placeholder="网站配置口令"
+                  required
+                />
+                <button className="primary" disabled={busy}>
+                  解锁云端配置
+                </button>
+              </form>
+            </>
+          )}
+          {vaultReady && (
+            <details className="config-reunlock">
+              <summary>重新输入网站配置口令</summary>
+              <form onSubmit={unlock} className="pages-unlock-form">
+                <input
+                  type="password"
+                  name="passphrase"
+                  aria-label="网站配置口令"
+                  minLength={12}
+                  autoComplete="off"
+                  placeholder="网站配置口令"
+                  required
+                />
+                <button className="primary" disabled={busy}>
+                  重新解锁
+                </button>
+              </form>
+            </details>
+          )}
         </section>
-      )}
+      }
       <section className="panel appearance-card">
-        <div><h2>界面风格</h2><p className="muted">选择适合自己的阅读环境。复习时还可单独切换沉浸模式。</p></div>
+        <div>
+          <h2>界面风格</h2>
+          <p className="muted">
+            选择适合自己的阅读环境。复习时还可单独切换沉浸模式。
+          </p>
+        </div>
         <div className="appearance-options" role="group" aria-label="界面风格">
-          <button aria-pressed={visualTheme==='editorial'} className={visualTheme==='editorial'?'selected':''} onClick={()=>chooseTheme('editorial')}>暖纸</button>
-          <button aria-pressed={visualTheme==='classic'} className={visualTheme==='classic'?'selected':''} onClick={()=>chooseTheme('classic')}>经典</button>
+          <button
+            aria-pressed={visualTheme === 'playful'}
+            className={visualTheme === 'playful' ? 'selected' : ''}
+            onClick={() => chooseTheme('playful')}
+          >
+            冒险
+          </button>
+          <button
+            aria-pressed={visualTheme === 'editorial'}
+            className={visualTheme === 'editorial' ? 'selected' : ''}
+            onClick={() => chooseTheme('editorial')}
+          >
+            暖纸
+          </button>
+          <button
+            aria-pressed={visualTheme === 'classic'}
+            className={visualTheme === 'classic' ? 'selected' : ''}
+            onClick={() => chooseTheme('classic')}
+          >
+            经典
+          </button>
         </div>
       </section>
+      <GameProfile />
       <section className="panel account-card">
         <div className="account-avatar">
           {(data.settings.name || 'K').slice(0, 1)}
@@ -362,7 +473,9 @@ export default function YouView() {
           <span>动态题目与评分标准批改</span>
           <span className={aiReady ? 'outcome correct' : 'muted'}>
             {aiReady
-              ? isStaticSite() ? '配置已解锁' : '已连接'
+              ? isStaticSite()
+                ? '配置已解锁'
+                : '已连接'
               : isStaticSite()
                 ? '请先解锁私有配置'
                 : '等待 Cloudflare 账户配置'}

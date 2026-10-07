@@ -1,4 +1,5 @@
 'use client';
+import SubjectIcon from './subject-icon';
 import ManualImport from './manual-import';
 import {
   pinyinCollections,
@@ -255,7 +256,9 @@ export default function SubjectsView() {
                 onClick={() => navigate('subjects', s.id)}
               >
                 <div className="section-head">
-                  <span className={'subject-icon s' + i}>{s.glyph}</span>
+                  <span className={'subject-icon s' + i}>
+                    <SubjectIcon subject={s.id} />
+                  </span>
                   <ArrowUpRight size={17} />
                 </div>
                 <h2>{s.name}</h2>

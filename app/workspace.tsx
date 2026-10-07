@@ -11,6 +11,8 @@ import {
   X,
   Check,
   RefreshCw,
+  ShoppingBag,
+  Gift,
 } from 'lucide-react';
 import {
   SidebarProvider,
@@ -31,8 +33,16 @@ import StudyView from '@/components/study-view';
 import SubjectsView from '@/components/subjects-view';
 import LibraryView from '@/components/library-view';
 import YouView from '@/components/you-view';
+import ShopView from '@/components/shop-view';
+import RewardsView, {
+  RewardsBridge,
+  SuperPromo,
+} from '@/components/rewards-view';
+import ChestView from '@/components/chest-view';
 import { assetPath } from '@/lib/runtime';
 import AnalyticsView from '@/components/analytics-view';
+import SubjectIcon from '@/components/subject-icon';
+import { GameStatus } from '@/components/learning-game';
 import { SUBJECTS, uid, type StudyData, type QueueItem } from '@/lib/model';
 import { seedNodes, seedQuestions } from '@/lib/seed';
 import { generateVerified } from '@/lib/ai-client';
@@ -64,6 +74,8 @@ const navigation = [
   { id: 'study', label: '复习', Icon: BookOpen },
   { id: 'subjects', label: '学科', Icon: Layers3 },
   { id: 'library', label: '资料库', Icon: Library },
+  { id: 'shop', label: '商店', Icon: ShoppingBag },
+  { id: 'redeem', label: '兑换码', Icon: Gift },
   { id: 'you', label: '我的', Icon: UserRound },
 ];
 function CloseMobileNavigation({
@@ -79,8 +91,20 @@ function CloseMobileNavigation({
 }
 export default function Workspace() {
   useEffect(() => {
+    if (!localStorage.getItem('review-playful-intro-v1')) {
+      localStorage.setItem('review-visual-theme', 'playful');
+      localStorage.setItem('review-playful-intro-v1', '1');
+    }
     document.documentElement.dataset.reviewTheme =
-      localStorage.getItem('review-visual-theme') || 'editorial';
+      localStorage.getItem('review-visual-theme') || 'playful';
+    const font = new FontFace(
+      'Review Duo',
+      `url("${assetPath('det-player/assets/fonts/DuolingoSansVF.woff2')}")`,
+    );
+    void font
+      .load()
+      .then((loaded) => document.fonts.add(loaded))
+      .catch(() => {});
   }, []);
   const [data, setData] = useState<StudyData>(base),
     [page, setPage] = useState('home'),
@@ -422,6 +446,7 @@ export default function Workspace() {
         preparing,
       }}
     >
+      {ready && <RewardsBridge />}
       {page === 'exam' && ready ? (
         <ExamRoom key={subject + currentNamespace()} runId={subject} />
       ) : (
@@ -469,7 +494,9 @@ export default function Workspace() {
                   key={s.id}
                   onClick={() => navigate('subjects', s.id)}
                 >
-                  <span className={'subject-dot s' + i} />
+                  <span className={'nav-subject-icon s' + i}>
+                    <SubjectIcon subject={s.id} size={20} />
+                  </span>
                   {s.name}
                 </button>
               ))}
@@ -513,12 +540,16 @@ export default function Workspace() {
                   aria-label="收起或展开侧边栏"
                   title="收起 / 展开侧边栏"
                 />
-                <span>学习工作台</span>
-                <span className="slash">/</span>
                 <b>
                   {page === 'analytics'
                     ? '学习分析'
-                    : navigation.find((n) => n.id === page)?.label}
+                    : ((
+                        {
+                          admin: '兑换码管理',
+                          super: 'SuperReview',
+                          chest: '练习奖励',
+                        } as Record<string, string>
+                      )[page] ?? navigation.find((n) => n.id === page)?.label)}
                 </b>
                 {page === 'subjects' && subject !== 'all' && (
                   <>
@@ -527,7 +558,7 @@ export default function Workspace() {
                   </>
                 )}
               </div>
-              <span className="muted">自主学习 · 持续复习</span>
+              <GameStatus />
             </header>
             <div
               className={
@@ -536,6 +567,9 @@ export default function Workspace() {
             >
               {!ready && (
                 <div className="storage-loading">正在读取本地学习数据…</div>
+              )}
+              {ready && !['study', 'assess', 'chest'].includes(page) && (
+                <SuperPromo />
               )}
               {page === 'home' && <HomeView />}
               {page === 'remedy' && ready && (
@@ -582,8 +616,12 @@ export default function Workspace() {
                   session={session}
                   finish={() => {
                     if (
-                      data.events.filter((e) => e.sessionId === session.id)
-                        .length >= session.items.length
+                      data.jobs?.some(
+                        (j) =>
+                          j.kind === 'session' &&
+                          j.id === session.id &&
+                          j.status === 'complete',
+                      )
                     )
                       setSession(null);
                     navigate('home');
@@ -596,8 +634,12 @@ export default function Workspace() {
                   finish={() => {
                     if (
                       session &&
-                      data.events.filter((e) => e.sessionId === session.id)
-                        .length >= session.items.length
+                      data.jobs?.some(
+                        (j) =>
+                          j.kind === 'session' &&
+                          j.id === session.id &&
+                          j.status === 'complete',
+                      )
                     )
                       setSession(null);
                     navigate('home');
@@ -607,6 +649,19 @@ export default function Workspace() {
               {page === 'subjects' && <SubjectsView key={subject} />}{' '}
               {page === 'library' && <LibraryView />}
               {page === 'you' && <YouView />}
+              {page === 'shop' && <ShopView />}
+              {['redeem', 'admin', 'super'].includes(page) && (
+                <RewardsView
+                  key={page + currentNamespace()}
+                  mode={page as 'redeem' | 'admin' | 'super'}
+                />
+              )}
+              {page === 'chest' && (
+                <ChestView
+                  key={subject + currentNamespace()}
+                  sessionId={subject}
+                />
+              )}
               {page === 'analytics' && <AnalyticsView />}
             </div>
           </main>
