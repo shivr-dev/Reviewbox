@@ -5,18 +5,24 @@ import { dailyStudyPlan, weeklyLearningGpa } from '@/lib/study-assistant';
 import { subjectName } from '@/lib/model';
 import PressureLab from './pressure-lab';
 
-export default function DailyAssistant() {
+export default function DailyAssistant({
+  embedded = false,
+}: {
+  embedded?: boolean;
+}) {
   const { data, navigate, start } = useReview(),
     plan = dailyStudyPlan(data),
     weekly = weeklyLearningGpa(data);
   const unknown = plan.skills.filter((s) => s.state === 'unknown').length,
     retained = plan.skills.filter((s) => s.state === 'retained').length;
   return (
-    <section className="daily-assistant" aria-label="私人学习助理">
+    <section
+      className={'daily-assistant' + (embedded ? ' embedded' : '')}
+      aria-label="私人学习助理"
+    >
       <div className="assistant-heading">
         <div>
-          <span className="assistant-kicker">PERSONAL STUDY PLAN</span>
-          <h2>今天，按这个顺序学习</h2>
+          {!embedded && <h2>今日学习计划</h2>}
           <small>{plan.status}</small>
         </div>
         <button className="quiet" onClick={() => navigate('onboarding')}>
@@ -61,7 +67,7 @@ export default function DailyAssistant() {
         </p>
       )}
       <div className="button-row">
-        {plan.queue.length > 0 && (
+        {!embedded && plan.queue.length > 0 && (
           <button className="primary" onClick={() => start(plan.queue)}>
             按计划开始 <ArrowRight size={17} />
           </button>
@@ -87,34 +93,39 @@ export default function DailyAssistant() {
           )}
         </div>
       ))}
-      <aside className="assistant-gpa" aria-label="每周学习 GPA">
-        <span className="assistant-kicker">MONDAY REVIEW · 每周一发布</span>
-        <strong>
-          {weekly.value === null
-            ? '暂未形成 GPA'
-            : weekly.value.toFixed(2) + ' / 4.00'}
-        </strong>
-        <span>{weekly.label}</span>
-        <p className="assistant-evidence-note">
-          {weekly.period.startDate} — {weekly.period.endDate} ·
-          本周一发布上周学习报告
-        </p>
-        <details>
-          <summary>查看依据与计算方式</summary>
-          <p>{weekly.reason}</p>
-          <p>
-            {weekly.sample} 次可靠间隔作答 · {weekly.days} 个学习日 · 覆盖{' '}
-            {weekly.testedSkills} / {weekly.availableSkills} 项能力
+      <details className="assistant-weekly-fold">
+        <summary>上周学习回顾</summary>
+        <aside className="assistant-gpa" aria-label="每周学习 GPA">
+          <span className="assistant-kicker">MONDAY REVIEW · 每周一发布</span>
+          <strong>
+            {weekly.value === null
+              ? '暂未形成 GPA'
+              : weekly.value.toFixed(2) + ' / 4.00'}
+          </strong>
+          <span>{weekly.label}</span>
+          <p className="assistant-evidence-note">
+            {weekly.period.startDate} — {weekly.period.endDate} ·
+            本周一发布上周学习报告
           </p>
-          {Object.values(weekly.components).map((c) => (
-            <p key={c.title}>
-              {c.title}（权重 {Math.round(c.weight * 100)}%）：
-              {c.value === null ? '证据不足' : Math.round(c.value * 100) + '%'}
+          <details>
+            <summary>查看依据与计算方式</summary>
+            <p>{weekly.reason}</p>
+            <p>
+              {weekly.sample} 次可靠间隔作答 · {weekly.days} 个学习日 · 覆盖{' '}
+              {weekly.testedSkills} / {weekly.availableSkills} 项能力
             </p>
-          ))}
-          <p>{weekly.caveat}</p>
-        </details>
-      </aside>
+            {Object.values(weekly.components).map((c) => (
+              <p key={c.title}>
+                {c.title}（权重 {Math.round(c.weight * 100)}%）：
+                {c.value === null
+                  ? '证据不足'
+                  : Math.round(c.value * 100) + '%'}
+              </p>
+            ))}
+            <p>{weekly.caveat}</p>
+          </details>
+        </aside>
+      </details>
       <details className="assistant-evidence-note">
         <summary>计划如何决定下一步</summary>
         <p>

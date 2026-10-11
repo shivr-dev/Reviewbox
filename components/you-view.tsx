@@ -4,6 +4,8 @@ import { pagesConfig, unlockPages, lockPages } from '@/lib/pages-vault';
 import { checkPagesAI } from '@/lib/pages-ai-check';
 import ClearDataCard from './clear-data-card';
 import ImportSkillCard from './import-skill-card';
+import ExamResults from './exam-results';
+import { saveDailyTime } from '@/lib/exam-outcome-client';
 import { GameProfile } from './learning-game';
 import { useEffect, useState } from 'react';
 import {
@@ -150,7 +152,15 @@ export default function YouView() {
         title="学习，按自己的节奏。"
         description="管理考试计划、每日学习目标与个人数据。"
       />
-      <section className="panel"><h2>私人学习助理</h2><p>调整学科权重、每日时间与首次能力诊断。每周一的学习 GPA 可在首页查看。</p><button className="secondary" onClick={()=>navigate('onboarding')}>学习重点与新手引导 <ArrowRight size={16}/></button></section>
+      <section className="panel">
+        <h2>私人学习助理</h2>
+        <p>
+          调整学科权重、每日时间与首次能力诊断。每周一的学习 GPA 可在首页查看。
+        </p>
+        <button className="secondary" onClick={() => navigate('onboarding')}>
+          学习重点与新手引导 <ArrowRight size={16} />
+        </button>
+      </section>
       {
         <section className="panel private-config-panel">
           <h2>私有学习配置</h2>
@@ -340,13 +350,13 @@ export default function YouView() {
               value={minutes}
               onChange={async (v) => {
                 setMinutes(v);
-                await put(
-                  'setting',
-                  { ...data.settings, dailyMinutes: Number(v) },
-                  'settings',
-                );
-                await refresh();
-                notify('每日复习安排已更新');
+                try {
+                  await saveDailyTime(Number(v));
+                  await refresh();
+                  notify('每日复习安排已更新');
+                } catch (e) {
+                  notify(e instanceof Error ? e.message : '未能保存时间');
+                }
               }}
               options={['10', '15', '20', '30', '45', '60'].map((v) => ({
                 value: v,
@@ -423,6 +433,7 @@ export default function YouView() {
             添加考试
           </button>
         </div>
+        <ExamResults />
         {data.exams.length ? (
           data.exams
             .slice()
@@ -442,6 +453,12 @@ export default function YouView() {
                   </p>
                   <p className="muted">
                     {e.date} · 建议每日 {e.dailyMinutes} 分钟
+                    {e.result && (
+                      <>
+                        {' '}
+                        · 实际得分 {e.result.score} / {e.result.maxScore}
+                      </>
+                    )}
                   </p>
                 </div>
                 <button

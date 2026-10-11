@@ -6,6 +6,7 @@ import { createRequire } from 'node:module';
 import { ReviewContext } from '../components/review-context';
 import OnboardingView from '../components/onboarding-view';
 import DailyAssistant from '../components/daily-assistant';
+import HomeView from '../components/home-view';
 import { loadData, put, switchAccount } from '../lib/store';
 import { parseImportText } from '../lib/import-skill';
 import { learningTemplate } from '../lib/import-templates';
@@ -24,12 +25,24 @@ test('onboarding saves weights, imports first diagnostic without generation; wee
     'HTMLElement',
     'Element',
     'Node',
+    'Document',
+    'MutationObserver',
+    'HTMLInputElement',
+    'HTMLTextAreaElement',
+    'Image',
+    'FormData',
+    'getComputedStyle',
     'localStorage',
     'IS_REACT_ACT_ENVIRONMENT',
   ]) {
     previous.set(key, Object.getOwnPropertyDescriptor(globalThis, key));
     Object.defineProperty(globalThis, key, {
-      value: key === 'IS_REACT_ACT_ENVIRONMENT' ? true : dom.window[key],
+      value:
+        key === 'IS_REACT_ACT_ENVIRONMENT'
+          ? true
+          : key === 'getComputedStyle'
+            ? dom.window.getComputedStyle.bind(dom.window)
+            : dom.window[key],
       writable: true,
       configurable: true,
     });
@@ -68,7 +81,13 @@ test('onboarding saves weights, imports first diagnostic without generation; wee
             preparing: '',
           }}
         >
-          {view === 'onboarding' ? <OnboardingView /> : <DailyAssistant />}
+          {view === 'onboarding' ? (
+            <OnboardingView />
+          ) : view === 'home' ? (
+            <HomeView />
+          ) : (
+            <DailyAssistant />
+          )}
         </ReviewContext.Provider>,
       ),
     );
@@ -98,7 +117,23 @@ test('onboarding saves weights, imports first diagnostic without generation; wee
     assert.match(document.body.textContent!, /认识几个标志/);
     await click('下一步');
     assert.match(document.body.textContent!, /每天留多少时间/);
+    const time = [
+      ...document.querySelectorAll<HTMLButtonElement>(
+        '.onboarding-time-options button',
+      ),
+    ].find((b) => b.querySelector('strong')?.textContent === '45')!;
+    assert.ok(time);
+    await act(async () => time.click());
+    assert.equal(time.getAttribute('aria-pressed'), 'true');
+    assert.equal(
+      document.querySelectorAll(
+        '.onboarding-time-options button[aria-pressed="true"]',
+      ).length,
+      1,
+    );
     await click('下一步');
+    assert.equal((await loadData()).settings.dailyMinutes, 45);
+    assert.equal((await loadData()).settings.assistant?.dailyMinutes, 45);
     const select: any = document.querySelector('[aria-label="数学学习权重"]')!;
     await act(async () => {
       const setter = Object.getOwnPropertyDescriptor(
@@ -136,6 +171,70 @@ test('onboarding saves weights, imports first diagnostic without generation; wee
     assert.match(document.body.textContent!, /暂未形成 GPA/);
     await click('按计划开始');
     assert.ok(started.items.length);
+    const date = new Date(Date.now() - 2 * 86400000).toLocaleDateString(
+      'en-CA',
+    );
+    await put('exam', {
+      id: 'ui-exam',
+      title: '数学月考',
+      subject: 'math',
+      date,
+      scope: [],
+      target: 80,
+      dailyMinutes: 20,
+    });
+    view = 'home';
+    await render();
+    assert.equal(document.querySelectorAll('.game-main-action').length, 1);
+    assert.equal(document.querySelectorAll('.quest-card').length, 0);
+    assert.ok(
+      document.querySelector('.hero-plan-expand .daily-assistant.embedded'),
+    );
+    assert.ok(
+      !document.querySelector('details.hero-plan-expand')!.hasAttribute('open'),
+    );
+    assert.doesNotMatch(
+      document.body.textContent!,
+      /PERSONAL STUDY PLAN|DAILY QUEST/,
+    );
+    await click('1 场考试待录入成绩');
+    function fill(label: string, value: string) {
+      const el = document.querySelector<HTMLInputElement>(
+        '[aria-label="' + label + '"]',
+      )!;
+      assert.ok(el, label);
+      Object.getOwnPropertyDescriptor(
+        dom.window.HTMLInputElement.prototype,
+        'value',
+      )!.set!.call(el, value);
+      el.dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+    }
+    await act(async () => {
+      fill('实际得分', '120');
+      fill('试卷满分', '150');
+      fill('学分或权重', '2');
+    });
+    await click('保存成绩');
+    assert.match(notice, /成绩已保存/);
+    assert.equal(
+      (await loadData()).exams.find((e) => e.id === 'ui-exam')!.result!.score,
+      120,
+    );
+    assert.match(
+      document.querySelector('.real-gpa-summary')!.textContent!,
+      /3.20/,
+    );
+    await click('GPA 公式');
+    await act(async () => {
+      fill('GPA 满分', '5');
+      fill('GPA 换算公式', 'ratio * scale');
+    });
+    await click('保存公式');
+    assert.match(notice, /公式已保存/);
+    assert.match(
+      document.querySelector('.real-gpa-summary')!.textContent!,
+      /4.00 \/ 5.00/,
+    );
     assert.equal(requests, 0);
   } finally {
     await act(async () => root.unmount());

@@ -254,6 +254,13 @@ export type Exam = {
   scope: string[];
   target: number;
   dailyMinutes: number;
+  result?: {
+    score: number;
+    maxScore: number;
+    credits: number;
+    recordedAt: string;
+  };
+  scoreReminderAfter?: string;
 };
 export type Note = { id: string; nodeId: string; body: string };
 export type Material = {
@@ -327,6 +334,13 @@ export type StudyData = {
     gameSound?: boolean;
     gameHearts?: boolean;
     gameSkin?: string;
+    examGpa?: {
+      scale: number;
+      formula: string;
+      weighted: boolean;
+      from?: string;
+      to?: string;
+    };
     assistant?: {
       version: 1;
       onboardedAt?: string;

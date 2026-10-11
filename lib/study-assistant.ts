@@ -19,6 +19,7 @@ import {
   type Subject,
 } from './model';
 import { isPinyin } from './question-tools';
+import { examFeedback } from './exam-outcomes';
 
 export type AssistantSettings = {
   version: 1;
@@ -270,7 +271,7 @@ export function dailyStudyPlan(data: StudyData, now = Date.now()) {
             : delayed && info.state === 'developing'
               ? 'verify'
               : 'learn';
-    const reason =
+    const baseReason =
       kind === 'prerequisite'
         ? info.state === 'unknown'
           ? '先确认后续学习需要的前置能力；未测不等于不会。'
@@ -284,6 +285,10 @@ export function dailyStudyPlan(data: StudyData, now = Date.now()) {
               : info.state === 'unknown'
                 ? '尚无作答证据，先诊断再决定学习深度。'
                 : '近期作答提示需要巩固；同日练习不会被认作长期掌握。';
+    const feedback = examFeedback(data, q.subject, n.id, now);
+    const reason = feedback?.boost
+      ? baseReason + ' ' + feedback.reason
+      : baseReason;
     const exam = Math.min(
       ...data.exams
         .filter(
@@ -305,7 +310,8 @@ export function dailyStudyPlan(data: StudyData, now = Date.now()) {
         ? 0.35 * clamp(1 - exam / 28) * clamp(n.examWeight)
         : 0) +
       (state ? forgettingRisk(state, now) * 0.2 : 0) +
-      (fingerprint?.ready && fingerprint.factor < 1 ? 0.05 : 0);
+      (fingerprint?.ready && fingerprint.factor < 1 ? 0.05 : 0) +
+      (feedback?.boost ?? 0);
     return [
       {
         kind,

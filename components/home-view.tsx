@@ -8,7 +8,6 @@ import {
   Gem,
   Plus,
   Star,
-  Target,
   Zap,
 } from 'lucide-react';
 import { useReview } from './review-context';
@@ -19,14 +18,19 @@ import { questionTopicTitle } from '@/lib/pinyin-collections';
 import SubjectIcon from './subject-icon';
 import { Penguin } from './learning-game';
 import DailyAssistant from './daily-assistant';
-import {dailyStudyPlan} from '@/lib/study-assistant';
+import { dailyStudyPlan } from '@/lib/study-assistant';
+import ExamResults from './exam-results';
 export default function HomeView() {
   const { data, states, start, navigate, prepare, preparing, aiReady } =
     useReview();
   const [subject, setSubject] = useState('all'),
     [expanded, setExpanded] = useState(false);
   const g = learningGame(data),
-    queue = subject === 'all' ? dailyStudyPlan(data).queue : buildQueue(data, { subjects: [subject] });
+    plan = dailyStudyPlan(data),
+    queue =
+      subject === 'all'
+        ? plan.queue
+        : buildQueue(data, { subjects: [subject] });
   const active = data.jobs?.find(
     (j) =>
       j.kind === 'session' &&
@@ -84,7 +88,7 @@ export default function HomeView() {
       </div>
       <section className="learning-hero">
         <div>
-          <span className="game-unit-label">DAILY QUEST · 每日挑战</span>
+          <span className="game-unit-label">今日学习计划</span>
           <h2>
             {!data.questions.length
               ? '和企鹅一起，迈出第一步'
@@ -95,8 +99,8 @@ export default function HomeView() {
           <p>
             {!data.questions.length
               ? '导入教材、字词或题目，即可开启你的个人学习路线。'
-              : queue.length
-                ? '路线会优先安排薄弱能力和到期知识。奖励每次认真尝试，掌握仍靠真实验证。'
+              : plan.queue.length
+                ? '按时间预算、记忆状态和考试安排，走好今天的每一步。'
                 : '到期复习已经完成。可以进行专项巩固，也可以让记忆沉淀。'}
           </p>
           <div className="daily-quest-progress">
@@ -131,33 +135,44 @@ export default function HomeView() {
               onClick={() => {
                 if (!data.questions.length) navigate('library');
                 else if (active) navigate('study');
-                else if (queue.length) start(queue);
+                else if (plan.queue.length) start(plan.queue);
                 else navigate('subjects');
               }}
             >
               {!data.questions.length
                 ? '导入我的第一份内容'
                 : active
-                  ? '继续上次冒险'
-                  : queue.length
-                    ? '开始今日挑战'
+                  ? '继续学习'
+                  : plan.queue.length
+                    ? '开始今日学习'
                     : '选择专项练习'}
               <ArrowRight size={20} />
             </button>
-            {queue.length > 0 && (
+            {plan.queue.length > 0 && (
               <span className="muted">
                 <Clock3 size={14} />约{' '}
                 {Math.max(
                   1,
                   Math.ceil(
-                    queue.reduce((a, i) => a + i.question.expectedSeconds, 0) /
-                      60,
+                    plan.queue.reduce(
+                      (a, i) => a + i.question.expectedSeconds,
+                      0,
+                    ) / 60,
                   ),
                 )}{' '}
                 分钟
               </span>
             )}
           </div>
+          <div className="hero-plan-meta">
+            <span>每日预算 {plan.settings.dailyMinutes} 分钟</span>
+            <span>
+              <Zap size={14} />
+              {g.daily.xp} XP · <Gem size={14} />
+              {g.daily.coins} 点数
+            </span>
+          </div>
+          <ExamResults compact />
         </div>
         <div className="hero-companion">
           <div className="penguin-bubble">
@@ -174,8 +189,11 @@ export default function HomeView() {
           />
           <span className="companion-ground" />
         </div>
+        <details className="hero-plan-expand">
+          <summary>查看今日学习安排</summary>
+          <DailyAssistant embedded />
+        </details>
       </section>
-      <DailyAssistant />
       <div className="learning-grid">
         <section className="learning-path-section">
           <div className="section-head">
@@ -333,33 +351,6 @@ export default function HomeView() {
           )}
         </section>
         <aside className="learning-sidebar">
-          <section className="panel quest-card">
-            <span className="game-quest-icon">
-              <Target size={28} />
-            </span>
-            <h3>今天的小目标</h3>
-            <p>完成 {g.goal} 道有效练习</p>
-            <div className="quest-count">
-              <strong>{Math.min(g.daily.count, g.goal)}</strong>
-              <span>/ {g.goal}</span>
-              {g.goalDone && <Check size={22} />}
-            </div>
-            <div className="quest-track">
-              <i
-                style={{
-                  width: `${Math.min(100, (g.daily.count / g.goal) * 100)}%`,
-                }}
-              />
-            </div>
-            <small>
-              <Zap size={14} />
-              {g.daily.xp} XP <Gem size={14} />
-              {g.daily.coins} 点数 · 今日获得
-            </small>
-            <button className="quiet" onClick={() => navigate('you')}>
-              调整目标与奖励 <ArrowRight size={14} />
-            </button>
-          </section>
           <section className="panel exam-goal-card">
             <div className="section-head">
               <h3>下一场考试</h3>
