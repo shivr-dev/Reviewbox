@@ -8,6 +8,10 @@ import './exam-import.css';
 import './editorial.css';
 import './learning-game.css';
 import './rewards.css';
+import './habitat.css';
+import './home-item-art.css';
+import './home-companion.css';
+import './assistant.css';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',

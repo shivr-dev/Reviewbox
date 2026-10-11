@@ -327,6 +327,14 @@ export type StudyData = {
     gameSound?: boolean;
     gameHearts?: boolean;
     gameSkin?: string;
+    assistant?: {
+      version: 1;
+      onboardedAt?: string;
+      onboardingStep?: number;
+      onboardingVersion?: number;
+      weights: Record<string, number>;
+      dailyMinutes: number;
+    };
   };
 };
 export type QueueItem = {

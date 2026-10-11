@@ -46,6 +46,7 @@ export default function YouView() {
     pending,
     notify,
     aiReady,
+    navigate,
   } = useReview();
   const [examOpen, setExamOpen] = useState(false),
     [visualTheme, setVisualTheme] = useState<
@@ -149,6 +150,7 @@ export default function YouView() {
         title="学习，按自己的节奏。"
         description="管理考试计划、每日学习目标与个人数据。"
       />
+      <section className="panel"><h2>私人学习助理</h2><p>调整学科权重、每日时间与首次能力诊断。每周一的学习 GPA 可在首页查看。</p><button className="secondary" onClick={()=>navigate('onboarding')}>学习重点与新手引导 <ArrowRight size={16}/></button></section>
       {
         <section className="panel private-config-panel">
           <h2>私有学习配置</h2>

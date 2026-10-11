@@ -502,7 +502,9 @@ export function GameProfile({ shopOnly = false }: { shopOnly?: boolean } = {}) {
             有效练习每题获得 3 点数，同一题当天仅奖励一次。无现金购买。
           </p>
           <div className="game-shop">
-            {GAME_SHOP.map((item) => {
+            {GAME_SHOP.filter((item) =>
+              ['skin', 'freeze', 'hearts'].includes(item.type),
+            ).map((item) => {
               const owned = g.owned.has(item.id),
                 full =
                   (item.type === 'freeze' && g.freezes >= 3) ||

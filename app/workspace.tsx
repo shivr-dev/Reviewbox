@@ -12,7 +12,7 @@ import {
   Check,
   RefreshCw,
   ShoppingBag,
-  Gift,
+  Armchair,
 } from 'lucide-react';
 import {
   SidebarProvider,
@@ -34,6 +34,8 @@ import SubjectsView from '@/components/subjects-view';
 import LibraryView from '@/components/library-view';
 import YouView from '@/components/you-view';
 import ShopView from '@/components/shop-view';
+import HabitatView from '@/components/habitat-view';
+import OnboardingView from '@/components/onboarding-view';
 import RewardsView, {
   RewardsBridge,
   SuperPromo,
@@ -75,7 +77,7 @@ const navigation = [
   { id: 'subjects', label: '学科', Icon: Layers3 },
   { id: 'library', label: '资料库', Icon: Library },
   { id: 'shop', label: '商店', Icon: ShoppingBag },
-  { id: 'redeem', label: '兑换码', Icon: Gift },
+  { id: 'habitat', label: '家园', Icon: Armchair },
   { id: 'you', label: '我的', Icon: UserRound },
 ];
 function CloseMobileNavigation({
@@ -115,6 +117,7 @@ export default function Workspace() {
     [syncing, setSyncing] = useState(false),
     [message, setMessage] = useState(''),
     [ready, setReady] = useState(false),
+    [identityReady, setIdentityReady] = useState(false),
     [online, setOnline] = useState(true),
     [session, setSession] = useState<{
       id: string;
@@ -243,6 +246,23 @@ export default function Workspace() {
     history.replaceState(null, '', '#' + p + (s !== 'all' ? '/' + s : ''));
     window.scrollTo({ top: 0, behavior: 'instant' });
   }, []);
+  useEffect(() => {
+    if (
+      ready &&
+      identityReady &&
+      page === 'home' &&
+      !data.settings.assistant?.onboardedAt &&
+      !data.events.length
+    )
+      navigate('onboarding');
+  }, [
+    ready,
+    identityReady,
+    page,
+    data.settings.assistant?.onboardedAt,
+    data.events.length,
+    navigate,
+  ]);
   const start = useCallback(
     (
       items: QueueItem[],
@@ -296,7 +316,10 @@ export default function Workspace() {
               setAiReady(v.aiReady);
             }
           }
-        } catch {}
+        } catch {
+        } finally {
+          if (alive) setIdentityReady(true);
+        }
       } catch {
         notify('无法打开本地数据库，请检查浏览器存储权限');
       }
@@ -315,11 +338,20 @@ export default function Workspace() {
           'assessment',
           'course',
           'remedy',
+          'admin',
+          'super',
+          'chest',
+          'redeem',
+          'onboarding',
         ].includes(p)
       ) {
         setPage(p);
         setSubject(
-          p === 'exam' || p === 'assessment' || p === 'course' || p === 'remedy'
+          p === 'exam' ||
+            p === 'assessment' ||
+            p === 'course' ||
+            p === 'remedy' ||
+            p === 'chest'
             ? s
             : SUBJECTS.some((x) => x.id === s)
               ? s
@@ -447,7 +479,9 @@ export default function Workspace() {
       }}
     >
       {ready && <RewardsBridge />}
-      {page === 'exam' && ready ? (
+      {page === 'onboarding' && ready ? (
+        <OnboardingView key={currentNamespace()} />
+      ) : page === 'exam' && ready ? (
         <ExamRoom key={subject + currentNamespace()} runId={subject} />
       ) : (
         <SidebarProvider
@@ -546,6 +580,7 @@ export default function Workspace() {
                     : ((
                         {
                           admin: '兑换码管理',
+                          redeem: '商店 / 兑换码',
                           super: 'SuperReview',
                           chest: '练习奖励',
                         } as Record<string, string>
@@ -650,6 +685,7 @@ export default function Workspace() {
               {page === 'library' && <LibraryView />}
               {page === 'you' && <YouView />}
               {page === 'shop' && <ShopView />}
+              {page === 'habitat' && <HabitatView key={currentNamespace()} />}
               {['redeem', 'admin', 'super'].includes(page) && (
                 <RewardsView
                   key={page + currentNamespace()}
@@ -665,15 +701,15 @@ export default function Workspace() {
               {page === 'analytics' && <AnalyticsView />}
             </div>
           </main>
-          {message && (
-            <div className="toast" role="status">
-              <span>{message}</span>
-              <button aria-label="关闭通知" onClick={() => setMessage('')}>
-                <X size={16} />
-              </button>
-            </div>
-          )}
         </SidebarProvider>
+      )}
+      {message && (
+        <div className="toast" role="status">
+          <span>{message}</span>
+          <button aria-label="关闭通知" onClick={() => setMessage('')}>
+            <X size={16} />
+          </button>
+        </div>
       )}
     </ReviewContext.Provider>
   );

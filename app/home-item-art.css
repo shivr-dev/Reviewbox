@@ -1,0 +1,41 @@
+.home-item-art {
+  display: inline-block;
+  position: relative;
+  flex-shrink: 0;
+  vertical-align: middle;
+  isolation: isolate;
+}
+.home-item-art > .home-item-illustration {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  filter: drop-shadow(0 4px 3px rgb(124 92 51 / 12%));
+  transition: transform 280ms cubic-bezier(.22, 1, .36, 1);
+}
+.home-product:hover .home-item-art > .home-item-illustration,
+.enchantment-card:hover .home-item-art > .home-item-illustration {
+  transform: translateY(-3px) rotate(-2deg);
+}
+.home-item-spark {
+  position: absolute;
+  pointer-events: none;
+  width: 11px;
+  height: 17px;
+  background: #fff5be;
+  filter: drop-shadow(0 0 5px rgb(240 194 84 / 68%));
+  clip-path: polygon(50% 0, 64% 38%, 100% 50%, 64% 62%, 50% 100%, 36% 62%, 0 50%, 36% 38%);
+  opacity: 0;
+  animation: home-item-twinkle 3.6s ease-in-out infinite;
+}
+.home-item-spark-one { top: 12%; right: 6%; }
+.home-item-spark-two { bottom: 14%; left: 4%; animation-delay: 1.6s; width: 8px; height: 13px; }
+@keyframes home-item-twinkle {
+  0%, 52%, 100% { opacity: 0; transform: scale(.35) rotate(-15deg); }
+  65% { opacity: .95; transform: scale(1) rotate(0); }
+  80% { opacity: 0; transform: scale(.4) rotate(20deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .home-item-art > .home-item-illustration { transition: none; transform: none !important; }
+  .home-item-spark { animation: none; opacity: .7; }
+}

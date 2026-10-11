@@ -7,6 +7,7 @@ const { JSDOM } = createRequire(import.meta.url)('jsdom');
 import { ReviewContext } from '../components/review-context';
 import StudyView from '../components/study-view';
 import ShopView from '../components/shop-view';
+import HabitatView from '../components/habitat-view';
 import YouView from '../components/you-view';
 import ChestView from '../components/chest-view';
 import { ComboCelebration, Penguin } from '../components/learning-game';
@@ -32,6 +33,7 @@ test('manually imported item: reveal, XP persistence, standalone recovery and sh
     'HTMLInputElement',
     'HTMLTextAreaElement',
     'MutationObserver',
+    'Image',
     'getComputedStyle',
     'localStorage',
     'IS_REACT_ACT_ENVIRONMENT',
@@ -138,6 +140,8 @@ test('manually imported item: reveal, XP persistence, standalone recovery and sh
             <Penguin />
           ) : view === 'shop' ? (
             <ShopView />
+          ) : view === 'habitat' ? (
+            <HabitatView />
           ) : view === 'combo' ? (
             <ComboCelebration
               reward={{
@@ -203,9 +207,54 @@ test('manually imported item: reveal, XP persistence, standalone recovery and sh
     );
     view = 'shop';
     await render();
+    assert.ok(document.querySelectorAll('.home-product').length >= 10);
+    await click('使用兑换码');
+    assert.equal(route, 'redeem');
+    await click('伙伴与补给');
     assert.equal(document.querySelectorAll('.game-shop-item').length, 14);
     assert.match(document.body.textContent!, /探险家企鹅/);
     assert.match(document.body.textContent!, /毕业礼企鹅/);
+    view = 'habitat';
+    await render();
+    assert.ok(document.querySelector('.home-scene'));
+    await act(async () => {
+      document
+        .querySelector<SVGElement>('[aria-label="选择橡木阅读桌"]')!
+        .dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
+      await new Promise((r) => setTimeout(r, 2500));
+    });
+    assert.ok(document.querySelector('.pose-read'));
+    await click('附魔工坊');
+    assert.match(document.body.textContent!, /150–200/);
+    assert.match(document.body.textContent!, /保护连续漏学 3 天/);
+    await click('礼物架');
+    assert.ok(document.querySelector('input[type="datetime-local"]'));
+    await click('家具收藏');
+    await click('布置小屋');
+    await act(async () =>
+      document
+        .querySelector('[aria-label="摆放到 4 行 5 列"]')!
+        .dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true })),
+    );
+    await act(async () => {
+      [...document.querySelectorAll('button')]
+        .find((b) => b.textContent?.trim() === '保存布置')!
+        .click();
+      await new Promise((r) => setTimeout(r, 100));
+    });
+    for (let attempt = 0; attempt < 20 && !notice; attempt++) {
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 50));
+      });
+    }
+    assert.match(notice, /已保存/);
+    notice = '';
+    assert.equal(
+      (await loadData()).jobs
+        ?.find((j) => j.kind === 'home-layout')
+        ?.placements.find((p: any) => p.item === 'furniture-desk').x,
+      3,
+    );
     view = 'combo';
     await render();
     assert.ok(document.querySelector('.combo-screen'));

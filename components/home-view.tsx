@@ -18,13 +18,15 @@ import { learningGame } from '@/lib/learning-game';
 import { questionTopicTitle } from '@/lib/pinyin-collections';
 import SubjectIcon from './subject-icon';
 import { Penguin } from './learning-game';
+import DailyAssistant from './daily-assistant';
+import {dailyStudyPlan} from '@/lib/study-assistant';
 export default function HomeView() {
   const { data, states, start, navigate, prepare, preparing, aiReady } =
     useReview();
   const [subject, setSubject] = useState('all'),
     [expanded, setExpanded] = useState(false);
   const g = learningGame(data),
-    queue = buildQueue(data, { subjects: subject === 'all' ? [] : [subject] });
+    queue = subject === 'all' ? dailyStudyPlan(data).queue : buildQueue(data, { subjects: [subject] });
   const active = data.jobs?.find(
     (j) =>
       j.kind === 'session' &&
@@ -173,6 +175,7 @@ export default function HomeView() {
           <span className="companion-ground" />
         </div>
       </section>
+      <DailyAssistant />
       <div className="learning-grid">
         <section className="learning-path-section">
           <div className="section-head">

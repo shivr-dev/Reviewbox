@@ -7,6 +7,8 @@ import { advanceChest } from '@/lib/game-client';
 import { learningGame, type GameChest } from '@/lib/learning-game';
 import ChestIllustration from './chest-illustration';
 import { currentNamespace } from '@/lib/store';
+import { CHEST_TIERS } from '@/lib/home-catalog';
+import { ItemArt } from './home-art';
 export default function ChestView({ sessionId }: { sessionId: string }) {
   const { data, navigate, refresh } = useReview(),
     game = learningGame(data);
@@ -20,6 +22,10 @@ export default function ChestView({ sessionId }: { sessionId: string }) {
     [tap, setTap] = useState(0);
   const lock = useRef(false);
   const stage = chest?.stage ?? 0;
+  const boost = chest
+    ? (chest.boostTier ?? null)
+    : ([2, 1, 0].find((t) => game.adventure.tickets[t] > 0) ?? null);
+  const tier = boost === null ? null : CHEST_TIERS[boost];
   async function open() {
     if (lock.current || stage === 3) return;
     lock.current = true;
@@ -53,6 +59,13 @@ export default function ChestView({ sessionId }: { sessionId: string }) {
             ? '奖励已保存到你的学习空间'
             : '连续点击三次，打开这份冒险奖励。'}
         </p>
+        {tier && (
+          <div className="chest-boost-badge">
+            <ItemArt kind="ticket" tier={boost!} />
+            {tier.name} ·{' '}
+            {stage === 0 ? '首次点击自动使用' : '已使用，奖励已锁定'}
+          </div>
+        )}
       </div>
       <div className="treasure-stage">
         <div className="chest-aura" aria-hidden="true" />
@@ -65,7 +78,7 @@ export default function ChestView({ sessionId }: { sessionId: string }) {
             stage === 3 ? '宝箱已打开' : `开启宝箱，第 ${stage + 1} 次点击`
           }
         >
-          <ChestIllustration stage={stage} />
+          <ChestIllustration stage={stage} boost={boost} />
         </button>
         <Penguin
           skin={game.skin}
@@ -116,7 +129,8 @@ export default function ChestView({ sessionId }: { sessionId: string }) {
         </div>
       )}
       <small>
-        连胜冻结 × 1：10% · 50–100 点数：90%
+        连胜冻结 × 1：10% · {tier ? `${tier.min}–${tier.max}` : '50–100'}{' '}
+        点数：90%
         <br />
         每段完成的练习仅可领取一次，刷新会保留进度。
       </small>

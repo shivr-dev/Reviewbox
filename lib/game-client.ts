@@ -14,15 +14,25 @@ import {
 } from './learning-game';
 import { projectQuality } from './question-quality';
 import type { GameChest } from './learning-game';
+import { CHEST_TIERS } from './home-catalog';
 export function chestPrize(
   random: () => number = () =>
     crypto.getRandomValues(new Uint32Array(1))[0] / 4294967296,
+  tier: number | null = null,
 ) {
+  const range =
+    tier !== null && [0, 1, 2].includes(tier)
+      ? CHEST_TIERS[tier]
+      : { min: 50, max: 100 };
   return random() < 0.1
     ? { coins: 0, freezes: 1 }
     : {
         coins:
-          50 + Math.floor(Math.min(0.999999999, Math.max(0, random())) * 51),
+          range.min +
+          Math.floor(
+            Math.min(0.999999999, Math.max(0, random())) *
+              (range.max - range.min + 1),
+          ),
         freezes: 0,
       };
 }
@@ -32,6 +42,7 @@ export async function advanceChest(
 ): Promise<GameChest> {
   assertWritable(ns);
   if (ns !== currentNamespace()) throw new Error('账户已切换');
+  const base = await loadData(ns);
   const db = await database(),
     tx = db.transaction(['records', 'queue'], 'readwrite'),
     records = tx.objectStore('records'),
@@ -67,6 +78,16 @@ export async function advanceChest(
     throw new Error('完成有效练习后才能开启宝箱');
   }
   const at = new Date().toISOString(),
+    g = learningGame(
+      projectQuality({
+        ...base,
+        events: rows.filter((r) => r.kind === 'event').map((r) => r.payload),
+        jobs: rows.filter((r) => r.kind === 'job').map((r) => r.payload),
+      }),
+    ),
+    selectedTier = previous
+      ? (previous.boostTier ?? null)
+      : ([2, 1, 0].find((t) => g.adventure.tickets[t] > 0) ?? null),
     chest: GameChest =
       previous?.stage === 3
         ? previous
@@ -75,7 +96,9 @@ export async function advanceChest(
             kind: 'game-chest',
             sessionId,
             stage: Math.min(3, (previous?.stage ?? 0) + 1),
-            reward: previous?.reward ?? chestPrize(),
+            reward: previous?.reward ?? chestPrize(undefined, selectedTier),
+            boostTier: selectedTier,
+            openedAt: previous?.openedAt ?? at,
             at,
             day: localDay(),
             version: 1,
@@ -123,6 +146,11 @@ export async function buyGameItem(itemId: GameItem, ns = currentNamespace()) {
     error = '连胜冻结库存已满';
   else if (item.type === 'hearts' && state.hearts === state.maxHearts)
     error = '生命值已经充足';
+  else if (item.type === 'furniture' && state.adventure.levels[item.id])
+    error = '已经拥有这件家具';
+  else if (item.type === 'record' && state.adventure.records.has(item.id))
+    error = '已经拥有这张唱片';
+  else if (item.type === 'souvenir') error = '此纪念品由访客赠送';
   else if (currentNamespace() !== ns) error = '账户已切换';
   if (error) {
     tx.abort();

@@ -1,5 +1,12 @@
 import type { AnswerEvent, StudyData } from './model';
 import { localDay } from './model';
+import { HOME_SHOP, FREEZE_TIERS } from './home-catalog';
+import {
+  newAdventure,
+  adventurePurchase,
+  applyAdventure,
+  type AdventureAction,
+} from './adventure';
 
 export const GAME_SHOP = [
   {
@@ -100,6 +107,7 @@ export const GAME_SHOP = [
     description: '恢复至当前上限：普通 5 颗、SuperReview 10 颗。',
     type: 'hearts',
   },
+  ...HOME_SHOP,
 ] as const;
 export type GameItem = (typeof GAME_SHOP)[number]['id'];
 export type GamePurchase = {
@@ -153,6 +161,8 @@ export type GameChest = {
   day: string;
   version: 1;
   reward: { coins: number; freezes: number };
+  boostTier?: number | null;
+  openedAt?: string;
 };
 export function gameGrants(data: StudyData, now = Date.now()) {
   const seen = new Set<string>();
@@ -238,6 +248,7 @@ export function gameEvents(data: StudyData, now = Date.now()) {
     });
 }
 export function learningGame(data: StudyData, now = Date.now()) {
+  const adventure = newAdventure();
   const grants = gameGrants(data, now),
     superPlan = superMembership(data, now);
   const maxAt = (at: number) =>
@@ -313,12 +324,45 @@ export function learningGame(data: StudyData, now = Date.now()) {
     heartAt = 0,
     recovery = 0,
     heartDay = '';
+  let protectionDays = 0;
+  const adventureActions = (data.jobs ?? []).filter(
+    (j): j is AdventureAction =>
+      j.kind === 'adventure-action' &&
+      j.version === 1 &&
+      validDay(j.day) &&
+      j.day <= today &&
+      Number.isFinite(Date.parse(j.at)) &&
+      Date.parse(j.at) <= now,
+  );
+  const reservationIds = new Set<string>();
+  const chestReservations = (data.jobs ?? [])
+    .filter(
+      (j): j is GameChest =>
+        j.kind === 'game-chest' &&
+        j.version === 1 &&
+        [0, 1, 2].includes(j.boostTier) &&
+        Number.isFinite(Date.parse(j.openedAt)) &&
+        Date.parse(j.openedAt) <= now &&
+        events.some(
+          (e) =>
+            e.sessionId === j.sessionId &&
+            e.source !== 'test' &&
+            !e.learningEvidence?.gameRecovery &&
+            duration(e) >= 1500,
+        ),
+    )
+    .filter((j) => {
+      if (reservationIds.has(j.id)) return false;
+      reservationIds.add(j.id);
+      return true;
+    });
   const start =
     events
       .filter((e) => rewards.get(e.id)?.counted)
       .map((e) => e.localDay)
       .concat(purchases.map((p) => p.day))
       .concat(grants.map((g) => g.day))
+      .concat(adventureActions.map((a) => a.day))
       .sort()[0] ?? today;
   const timeItems = [
     ...events.map((e) => ({
@@ -329,10 +373,35 @@ export function learningGame(data: StudyData, now = Date.now()) {
     })),
     ...purchases.map((p) => ({ at: p.at, id: p.id, day: p.day, purchase: p })),
     ...grants.map((g) => ({ at: g.at, id: g.id, day: g.day, grant: g })),
+    ...adventureActions.map((a) => ({
+      at: a.at,
+      id: a.id,
+      day: a.day,
+      adventureAction: a,
+    })),
+    ...chestReservations.map((c) => ({
+      at: c.openedAt!,
+      id: 'reserve:' + c.id,
+      day: localDay(new Date(c.openedAt!)),
+      reservation: c,
+    })),
   ].sort(
     (a, b) =>
       Date.parse(a.at) - Date.parse(b.at) ||
-      Number('purchase' in a) - Number('purchase' in b) ||
+      ('reservation' in a
+        ? 3
+        : 'adventureAction' in a
+          ? 2
+          : 'purchase' in a
+            ? 1
+            : 0) -
+        ('reservation' in b
+          ? 3
+          : 'adventureAction' in b
+            ? 2
+            : 'purchase' in b
+              ? 1
+              : 0) ||
       a.id.localeCompare(b.id),
   );
   const replenish = (at: number) => {
@@ -386,9 +455,10 @@ export function learningGame(data: StudyData, now = Date.now()) {
         coins += Number.isFinite(r.coins)
           ? Math.max(0, Math.min(100000, Math.floor(r.coins!)))
           : 0;
-        freezes += Number.isFinite(r.freezes)
+        adventure.freezeTiers[0] += Number.isFinite(r.freezes)
           ? Math.max(0, Math.min(1000, Math.floor(r.freezes!)))
           : 0;
+        freezes = adventure.freezeTiers.reduce((a, b) => a + b, 0);
         if (
           r.skin &&
           GAME_SHOP.some((item) => item.type === 'skin' && item.id === r.skin)
@@ -407,25 +477,47 @@ export function learningGame(data: StudyData, now = Date.now()) {
           coins < item.cost ||
           (item.type === 'skin' && owned.has(item.id)) ||
           (item.type === 'freeze' && freezes >= 3) ||
-          (item.type === 'hearts' && hearts === MAX_HEARTS)
+          (item.type === 'hearts' && hearts === MAX_HEARTS) ||
+          (item.type === 'furniture' && !!adventure.levels[item.id]) ||
+          (item.type === 'record' && adventure.records.has(item.id)) ||
+          item.type === 'souvenir'
         )
           continue;
         coins -= item.cost;
         accepted.add(p.id);
         if (item.type === 'skin') owned.add(item.id);
-        if (item.type === 'freeze') freezes++;
+        if (item.type === 'freeze') {
+          adventure.freezeTiers[0]++;
+          freezes++;
+        }
+        if (HOME_SHOP.some((h) => h.id === item.id))
+          adventurePurchase(adventure, item.id);
         if (item.type === 'hearts') {
           hearts = MAX_HEARTS;
           heartAt = at;
         }
+      } else if ('adventureAction' in i && i.adventureAction) {
+        const delta = applyAdventure(adventure, i.adventureAction, coins);
+        if (delta !== null) coins += delta;
+        freezes = adventure.freezeTiers.reduce((a, b) => a + b, 0);
+      } else if ('reservation' in i && i.reservation) {
+        const tier = i.reservation.boostTier!;
+        if (adventure.tickets[tier] > 0) adventure.tickets[tier]--;
       }
     }
     if ((days.get(day)?.count ?? 0) > 0) {
+      protectionDays = 0;
       streak++;
       bestStreak = Math.max(bestStreak, streak);
     } else if (day < today) {
-      if (streak && freezes) {
-        freezes--;
+      if (streak && (freezes || protectionDays)) {
+        if (protectionDays) protectionDays--;
+        else {
+          const tier = adventure.freezeTiers.findIndex((v) => v > 0);
+          adventure.freezeTiers[tier]--;
+          freezes--;
+          protectionDays = FREEZE_TIERS[tier].days - 1;
+        }
         frozenDays.push(day);
         streak++;
         bestStreak = Math.max(bestStreak, streak);
@@ -531,5 +623,7 @@ export function learningGame(data: StudyData, now = Date.now()) {
     week,
     badges,
     bestCombo,
+    adventure,
+    protectionDays,
   };
 }

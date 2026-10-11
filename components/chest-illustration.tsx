@@ -1,7 +1,13 @@
 'use client';
 
 /** Flat, ink-outlined illustration matching the companion's yellow storybook. */
-export default function ChestIllustration({ stage }: { stage: number }) {
+export default function ChestIllustration({
+  stage,
+  boost = null,
+}: {
+  stage: number;
+  boost?: number | null;
+}) {
   return (
     <svg
       data-stage={stage}
@@ -53,7 +59,7 @@ export default function ChestIllustration({ stage }: { stage: number }) {
         </g>
         <path
           d="M55 124 Q140 137 225 124 L219 189 Q217 207 197 208H83Q63 207 61 189Z"
-          fill="#ffcd4b"
+          fill={boost === 2 ? '#b7a0ea' : boost === 1 ? '#82cccf' : '#ffcd4b'}
         />
         <path
           d="M65 156q75 17 150 0M70 183q70 13 140 0"
@@ -65,7 +71,7 @@ export default function ChestIllustration({ stage }: { stage: number }) {
         <g className="chest-drawn-lid">
           <path
             d="M54 127v-21q0-49 43-52h86q43 3 43 52v21q-86 19-172 0Z"
-            fill="#ffdb67"
+            fill={boost === 2 ? '#d5c1f5' : boost === 1 ? '#b2e7de' : '#ffdb67'}
           />
           <path
             d="M55 104q85 15 170 0"

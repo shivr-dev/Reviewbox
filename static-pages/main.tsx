@@ -10,6 +10,10 @@ import '../app/exam-import.css';
 import '../app/editorial.css';
 import '../app/learning-game.css';
 import '../app/rewards.css';
+import '../app/habitat.css';
+import '../app/home-item-art.css';
+import '../app/home-companion.css';
+import '../app/assistant.css';
 (window as any).__REVIEW_STATIC__ = true;
 (window as any).__REVIEW_PAGES_API__ = pagesApi;
 (window as any).__REVIEW_BUILD_SHA__ =
