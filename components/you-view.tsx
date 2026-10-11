@@ -358,10 +358,12 @@ export default function YouView() {
                   notify(e instanceof Error ? e.message : '未能保存时间');
                 }
               }}
-              options={['10', '15', '20', '30', '45', '60'].map((v) => ({
-                value: v,
-                label: v + ' 分钟',
-              }))}
+              options={['10', '15', '20', '30', '45', '60', '90', '120'].map(
+                (v) => ({
+                  value: v,
+                  label: v + ' 分钟',
+                }),
+              )}
             />
           </label>
           <div className="setting-switch">
