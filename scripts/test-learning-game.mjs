@@ -5,7 +5,7 @@ await mkdir('work', { recursive: true });
 await build({
   stdin: {
     contents:
-      "import './tests/learning-game.test.ts'; import './tests/adventure.test.ts'; import './tests/home-companion-motion.test.ts'; import './tests/home-companion-ui.test.tsx'; import './tests/study-assistant.test.ts'; import './tests/exam-outcomes.test.ts'; import './tests/assistant-ui.test.tsx'; import './tests/learning-game-ui.test.tsx'; import './tests/private-cloud.test.ts';",
+      "import './tests/learning-game.test.ts'; import './tests/adventure.test.ts'; import './tests/home-companion-motion.test.ts'; import './tests/home-companion-ui.test.tsx'; import './tests/study-assistant.test.ts'; import './tests/exam-outcomes.test.ts'; import './tests/study-orchestrator.test.ts'; import './tests/study-plan-ui.test.tsx'; import './tests/assistant-ui.test.tsx'; import './tests/learning-game-ui.test.tsx'; import './tests/private-cloud.test.ts';",
     resolveDir: process.cwd(),
     loader: 'tsx',
   },

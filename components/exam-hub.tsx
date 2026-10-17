@@ -15,18 +15,26 @@ import {
 import { put, currentNamespace } from '@/lib/store';
 import ExamImportPanel from './exam-import-panel';
 import { createMapRun } from '@/lib/map-model';
-export function FullExamHub() {
+export function FullExamHub({
+  initialExam = 'SAT',
+  initialMapSection = 'Reading',
+  initialGrade = 8,
+}: {
+  initialExam?: ExamKind;
+  initialMapSection?: 'Reading' | 'Language Usage';
+  initialGrade?: number;
+} = {}) {
   const { data, refresh, navigate, notify, aiReady, sync } = useReview();
-  const [exam, setExam] = useState<ExamKind>('SAT'),
+  const [exam, setExam] = useState<ExamKind>(initialExam),
     [writing, setWriting] = useState(false),
     [busy, setBusy] = useState(false),
     [message, setMessage] = useState(''),
     [allowGeneration, setAllowGeneration] = useState(false),
     [live, setLive] = useState<ExamPaper | null>(null);
   const [mapSection, setMapSection] = useState<'Reading' | 'Language Usage'>(
-      'Reading',
+      initialMapSection,
     ),
-    [grade, setGrade] = useState(8),
+    [grade, setGrade] = useState(initialGrade),
     [mapPractice, setMapPractice] = useState(false);
   const stop = useRef(false),
     lock = useRef(false);
@@ -150,7 +158,7 @@ export function FullExamHub() {
               setLive(null);
             }}
           >
-            <b>{k==='DET'?'Duolingo':k}</b>
+            <b>{k === 'DET' ? 'Duolingo' : k}</b>
             <span>
               {k === 'SAT'
                 ? 'Reading and Writing · 54 questions'
@@ -158,7 +166,9 @@ export function FullExamHub() {
                   ? 'English & Reading · 86 questions'
                   : k === 'TOEFL'
                     ? 'Reading · Listening · Writing · Speaking'
-                    : k==='DET'?'Reading · Listening · Writing · Speaking':'Reading · Language Usage'}
+                    : k === 'DET'
+                      ? 'Reading · Listening · Writing · Speaking'
+                      : 'Reading · Language Usage'}
             </span>
           </button>
         ))}
@@ -233,16 +243,24 @@ export function FullExamHub() {
               {s.count} {s.section === 'Writing' ? '篇' : '题'}
             </b>
             <small>
-              {exam==='DET'?'按任务计时':exam === 'MAP' ? '不设倒计时' : s.seconds / 60 + ' min'}
+              {exam === 'DET'
+                ? '按任务计时'
+                : exam === 'MAP'
+                  ? '不设倒计时'
+                  : s.seconds / 60 + ' min'}
             </small>
           </div>
         ))}
       </div>
       <p className="muted exam-duration">
         <Clock3 size={14} />{' '}
-        {exam==='DET'?'完整题型个人模拟，阅读与听力题组共享时间；不换算官方分数。':exam === 'MAP'
-          ? '按照个人节奏完成；提交后不能返回上一题。'
-          : '作答 ' + stages.reduce((n, s) => n + s.seconds, 0) / 60 + ' 分钟'}
+        {exam === 'DET'
+          ? '完整题型个人模拟，阅读与听力题组共享时间；不换算官方分数。'
+          : exam === 'MAP'
+            ? '按照个人节奏完成；提交后不能返回上一题。'
+            : '作答 ' +
+              stages.reduce((n, s) => n + s.seconds, 0) / 60 +
+              ' 分钟'}
         {exam === 'ACT' && writing ? ' · 写作前休息 5 分钟' : ''}
       </p>
       <div className="button-row">

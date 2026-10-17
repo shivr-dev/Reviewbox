@@ -135,6 +135,18 @@ export default function YouView() {
         scope,
         target: Number(f.get('target')),
         dailyMinutes: Number(f.get('minutes')),
+        simulation:
+          subject === 'ce' && String(f.get('simulation') || 'auto') !== 'auto'
+            ? {
+                exam: String(f.get('simulation')).split(':')[0],
+                mapSection: String(f.get('simulation')).startsWith('MAP:')
+                  ? String(f.get('simulation')).split(':')[1]
+                  : undefined,
+                grade: String(f.get('simulation')).startsWith('MAP:')
+                  ? Number(f.get('mapGrade') || 8)
+                  : undefined,
+              }
+            : undefined,
       });
       await refresh();
       setExamOpen(false);
@@ -155,11 +167,32 @@ export default function YouView() {
       <section className="panel">
         <h2>私人学习助理</h2>
         <p>
-          调整学科权重、每日时间与首次能力诊断。每周一的学习 GPA 可在首页查看。
+          调整学科权重、每日时间与首次能力诊断。成绩回顾与所有学习方式集中在学习计划中。
         </p>
         <button className="secondary" onClick={() => navigate('onboarding')}>
           学习重点与新手引导 <ArrowRight size={16} />
         </button>
+        <label className="setting-row">
+          <span>
+            关键节点 Qwen 计划复核
+            <small>
+              考前、真实成绩更新或有足够记录的周回顾。每天最多 1 次，七天最多 2
+              次。
+            </small>
+          </span>
+          <Switch
+            aria-label="关键节点 Qwen 计划复核"
+            checked={data.settings.assistantAi !== false}
+            onCheckedChange={async (value) => {
+              await put(
+                'setting',
+                { ...data.settings, assistantAi: value },
+                'settings',
+              );
+              await refresh();
+            }}
+          />
+        </label>
       </section>
       {
         <section className="panel private-config-panel">
@@ -606,6 +639,35 @@ export default function YouView() {
             <label>
               考试范围 <span className="muted">不选表示本学科全部</span>
             </label>
+            {subject === 'ce' && (
+              <div className="form-grid">
+                <label>
+                  配套模拟考试
+                  <select name="simulation" defaultValue="auto">
+                    <option value="auto">从考试名称识别</option>
+                    <option value="SAT">SAT</option>
+                    <option value="ACT">ACT</option>
+                    <option value="TOEFL">TOEFL</option>
+                    <option value="MAP:Reading">MAP Reading</option>
+                    <option value="MAP:Language Usage">
+                      MAP Language Usage
+                    </option>
+                    <option value="DET">Duolingo English Test</option>
+                  </select>
+                </label>
+                <label>
+                  MAP 年级
+                  <input
+                    name="mapGrade"
+                    type="number"
+                    min="2"
+                    max="12"
+                    defaultValue="8"
+                  />
+                </label>
+                <small>只安排匹配且完整的已导入试卷；不会自动生成新题。</small>
+              </div>
+            )}
             <div className="scope-list">
               {nodes.map((n) => (
                 <label key={n.id}>

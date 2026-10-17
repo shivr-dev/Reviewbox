@@ -107,8 +107,8 @@ export default function ChestView({ sessionId }: { sessionId: string }) {
               </>
             )}
           </div>
-          <button className="primary" onClick={() => navigate('home')}>
-            继续下一段冒险 <ArrowRight size={18} />
+          <button className="primary" onClick={() => navigate('plan')}>
+            看看下一步 <ArrowRight size={18} />
           </button>
         </>
       ) : (

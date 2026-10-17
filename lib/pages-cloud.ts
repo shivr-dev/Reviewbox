@@ -1,4 +1,5 @@
 import { pagesConfig } from './pages-vault';
+import { z } from 'zod';
 
 const sessionKey = 'review-pages-supabase-session';
 type Session = {
@@ -161,6 +162,37 @@ export async function pagesApi(
         });
       return Response.json({ user: save(result).user });
     }
+    if (path === '/api/reset' && method === 'POST') {
+      if (!config) throw new Error('请先在「我的」解锁站点配置');
+      const current = await session();
+      if (
+        !current ||
+        new Headers(init?.headers).get('X-Review-Account') !== current.user.id
+      )
+        throw new Error('账户已切换，请重新确认清理范围');
+      const b = z
+        .object({
+          confirmation: z.literal('清理所有数据'),
+          requestId: z.string().uuid(),
+          generation: z.string().uuid(),
+        })
+        .parse(body);
+      const result = await sb(
+        '/rest/v1/rpc/review_reset_data',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            confirmation: b.confirmation,
+            request_id: b.requestId,
+            expected_generation: b.generation,
+          }),
+        },
+        current.access_token,
+      );
+      return Response.json(result, {
+        headers: { 'Cache-Control': 'no-store' },
+      });
+    }
     if (path.startsWith('/api/sync')) {
       const current = await session();
       if (
@@ -212,6 +244,12 @@ export async function pagesApi(
     }
     if (method === 'POST' && path === '/api/ai') {
       if (!config) throw new Error('请先解锁站点配置');
+      if (body.action === 'study-advice')
+        return Response.json({
+          advice: await (
+            await import('./study-advice-server')
+          ).analyzeStudyAdvice(body),
+        });
       const { generate, solve, judge, grade } = await import('./ai-server');
       const { questionSchema } = await import('./importer');
       const { seedQuestions } = await import('./seed');

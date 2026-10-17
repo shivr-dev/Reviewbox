@@ -36,6 +36,7 @@ import YouView from '@/components/you-view';
 import ShopView from '@/components/shop-view';
 import HabitatView from '@/components/habitat-view';
 import OnboardingView from '@/components/onboarding-view';
+import StudyPlanView from '@/components/study-plan-view';
 import RewardsView, {
   RewardsBridge,
   SuperPromo,
@@ -73,7 +74,7 @@ const base: StudyData = {
 };
 const navigation = [
   { id: 'home', label: '今天', Icon: Home },
-  { id: 'study', label: '复习', Icon: BookOpen },
+  { id: 'plan', label: '学习计划', Icon: BookOpen },
   { id: 'subjects', label: '学科', Icon: Layers3 },
   { id: 'library', label: '资料库', Icon: Library },
   { id: 'shop', label: '商店', Icon: ShoppingBag },
@@ -343,6 +344,7 @@ export default function Workspace() {
           'chest',
           'redeem',
           'onboarding',
+          'study',
         ].includes(p)
       ) {
         setPage(p);
@@ -481,6 +483,8 @@ export default function Workspace() {
       {ready && <RewardsBridge />}
       {page === 'onboarding' && ready ? (
         <OnboardingView key={currentNamespace()} />
+      ) : page === 'plan' && ready ? (
+        <StudyPlanView key={currentNamespace()} />
       ) : page === 'exam' && ready ? (
         <ExamRoom key={subject + currentNamespace()} runId={subject} />
       ) : (
@@ -512,7 +516,7 @@ export default function Workspace() {
                   >
                     <Icon size={18} />
                     {label}
-                    {id === 'home' && queue.length > 0 && (
+                    {id === 'home' && page !== 'home' && queue.length > 0 && (
                       <span className="nav-count">{queue.length}</span>
                     )}
                   </button>
@@ -593,7 +597,7 @@ export default function Workspace() {
                   </>
                 )}
               </div>
-              <GameStatus />
+              {page !== 'home' && <GameStatus />}
             </header>
             <div
               className={
@@ -603,9 +607,10 @@ export default function Workspace() {
               {!ready && (
                 <div className="storage-loading">正在读取本地学习数据…</div>
               )}
-              {ready && !['study', 'assess', 'chest'].includes(page) && (
-                <SuperPromo />
-              )}
+              {ready &&
+                !['home', 'study', 'assess', 'chest'].includes(page) && (
+                  <SuperPromo />
+                )}
               {page === 'home' && <HomeView />}
               {page === 'remedy' && ready && (
                 <RemediationCourse
@@ -659,7 +664,7 @@ export default function Workspace() {
                       )
                     )
                       setSession(null);
-                    navigate('home');
+                    navigate('plan');
                   }}
                 />
               )}

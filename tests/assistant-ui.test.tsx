@@ -7,6 +7,8 @@ import { ReviewContext } from '../components/review-context';
 import OnboardingView from '../components/onboarding-view';
 import DailyAssistant from '../components/daily-assistant';
 import HomeView from '../components/home-view';
+import StudyPlanView from '../components/study-plan-view';
+import ExamResults from '../components/exam-results';
 import { loadData, put, switchAccount } from '../lib/store';
 import { parseImportText } from '../lib/import-skill';
 import { learningTemplate } from '../lib/import-templates';
@@ -53,6 +55,7 @@ test('onboarding saves weights, imports first diagnostic without generation; wee
     view = 'onboarding',
     data: any,
     started: any,
+    navigated = '',
     notice = '';
   globalThis.fetch = async () => {
     requests++;
@@ -68,7 +71,9 @@ test('onboarding saves weights, imports first diagnostic without generation; wee
             states: {},
             refresh: render,
             notify: (m) => (notice = m),
-            navigate: () => {},
+            navigate: (p) => {
+              navigated = p;
+            },
             start: (items, mode, title) => (started = { items, mode, title }),
             subject: 'all',
             cloudUser: null,
@@ -85,6 +90,10 @@ test('onboarding saves weights, imports first diagnostic without generation; wee
             <OnboardingView />
           ) : view === 'home' ? (
             <HomeView />
+          ) : view === 'plan' ? (
+            <StudyPlanView />
+          ) : view === 'scores' ? (
+            <ExamResults />
           ) : (
             <DailyAssistant />
           )}
@@ -101,6 +110,17 @@ test('onboarding saves weights, imports first diagnostic without generation; wee
       b.click();
       await new Promise((r) => setTimeout(r, 25));
     });
+    for (
+      let i = 0;
+      i < 100 &&
+      document.querySelector(
+        '.onboarding-content footer .primary:disabled,.exam-results-dialog button[type="submit"]:disabled',
+      );
+      i++
+    )
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 10));
+      });
   }
   try {
     await switchAccount('assistant-ui');
@@ -135,6 +155,7 @@ test('onboarding saves weights, imports first diagnostic without generation; wee
     assert.equal((await loadData()).settings.dailyMinutes, 45);
     assert.equal((await loadData()).settings.assistant?.dailyMinutes, 45);
     const select: any = document.querySelector('[aria-label="数学学习权重"]')!;
+    assert.ok(select, '权重步骤在保存完成后显示');
     await act(async () => {
       const setter = Object.getOwnPropertyDescriptor(
         dom.window.HTMLInputElement.prototype,
@@ -187,17 +208,29 @@ test('onboarding saves weights, imports first diagnostic without generation; wee
     await render();
     assert.equal(document.querySelectorAll('.game-main-action').length, 1);
     assert.equal(document.querySelectorAll('.quest-card').length, 0);
-    assert.ok(
-      document.querySelector('.hero-plan-expand .daily-assistant.embedded'),
-    );
-    assert.ok(
-      !document.querySelector('details.hero-plan-expand')!.hasAttribute('open'),
+    assert.equal(document.querySelectorAll('.now-home button').length, 1);
+    assert.equal(
+      document.querySelectorAll(
+        '.daily-assistant,.learning-grid,.exam-result-entry,.hero-plan-meta',
+      ).length,
+      0,
     );
     assert.doesNotMatch(
       document.body.textContent!,
       /PERSONAL STUDY PLAN|DAILY QUEST/,
     );
-    await click('1 场考试待录入成绩');
+    await click('进入学习计划');
+    assert.equal(navigated, 'plan');
+    view = 'plan';
+    await render();
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 500));
+    });
+    assert.match(document.body.textContent!, /考后成绩记录/);
+    assert.ok(
+      document.querySelector('.exam-results-dialog'),
+      '到登记时间后主动打开成绩填写',
+    );
     function fill(label: string, value: string) {
       const el = document.querySelector<HTMLInputElement>(
         '[aria-label="' + label + '"]',

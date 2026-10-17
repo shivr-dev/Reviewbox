@@ -85,6 +85,30 @@ export async function completeActiveSession(sessionId: string, ns = namespace) {
     };
     await tx.objectStore('records').put(next);
     await tx.objectStore('queue').put(next);
+    if (current.payload.mode !== 'test') {
+      const at = next.updated_at,
+        session = current.payload;
+      const marker = {
+        id: 'study-completion:' + sessionId,
+        key: ns + '/study-completion:' + sessionId,
+        namespace: ns,
+        kind: 'job',
+        payload: {
+          id: 'study-completion:' + sessionId,
+          kind: 'study-completion',
+          sessionId,
+          title: session.title ?? '练习',
+          completedAt: at,
+          questionIds: (session.items ?? []).map((i: any) => i.question.id),
+        },
+        updated_at: at,
+        deleted: false,
+      };
+      if (!(await tx.objectStore('records').get(marker.key))) {
+        await tx.objectStore('records').put(marker);
+        await tx.objectStore('queue').put(marker);
+      }
+    }
   }
   await tx.done;
 }

@@ -261,6 +261,12 @@ export type Exam = {
     recordedAt: string;
   };
   scoreReminderAfter?: string;
+  simulation?: {
+    exam: import('./exam-model').ExamKind;
+    mapSection?: 'Reading' | 'Language Usage';
+    grade?: number;
+    paperId?: string;
+  };
 };
 export type Note = { id: string; nodeId: string; body: string };
 export type Material = {
@@ -334,6 +340,7 @@ export type StudyData = {
     gameSound?: boolean;
     gameHearts?: boolean;
     gameSkin?: string;
+    assistantAi?: boolean;
     examGpa?: {
       scale: number;
       formula: string;

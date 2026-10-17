@@ -100,6 +100,20 @@ test('local unlocked config routes login and rewards directly to Supabase; locki
         codes: [],
       });
     }
+    if (url.endsWith('/rest/v1/rpc/review_reset_data')) {
+      assert.equal(
+        new Headers(init?.headers).get('Authorization'),
+        'Bearer test-jwt',
+      );
+      assert.deepEqual(JSON.parse(String(init?.body)), {
+        confirmation: '清理所有数据',
+        request_id: '00000000-0000-4000-8000-000000000001',
+        expected_generation: '00000000-0000-4000-8000-000000000002',
+      });
+      return Response.json({
+        generation: '00000000-0000-4000-8000-000000000003',
+      });
+    }
     throw new Error('Unexpected route ' + url);
   };
   try {
@@ -114,6 +128,37 @@ test('local unlocked config routes login and rewards directly to Supabase; locki
       }),
     });
     assert.equal(((await login.json()) as any).user.id, 'fixture-user');
+    const reset = {
+      confirmation: '清理所有数据',
+      requestId: '00000000-0000-4000-8000-000000000001',
+      generation: '00000000-0000-4000-8000-000000000002',
+    };
+    const beforeReset = calls.length;
+    const wrong = await apiFetch('/api/reset', {
+      method: 'POST',
+      headers: { 'X-Review-Account': 'another-user' },
+      body: JSON.stringify(reset),
+    });
+    assert.ok(!wrong.ok);
+    assert.equal(calls.length, beforeReset);
+    const bad = await apiFetch('/api/reset', {
+      method: 'POST',
+      headers: { 'X-Review-Account': 'fixture-user' },
+      body: JSON.stringify({ ...reset, confirmation: 'wrong' }),
+    });
+    assert.ok(!bad.ok);
+    assert.equal(calls.length, beforeReset);
+    const cleared = await apiFetch('/api/reset', {
+      method: 'POST',
+      headers: { 'X-Review-Account': 'fixture-user' },
+      body: JSON.stringify(reset),
+    });
+    assert.equal(cleared.status, 200);
+    assert.equal(
+      ((await cleared.json()) as any).generation,
+      '00000000-0000-4000-8000-000000000003',
+    );
+    assert.equal(cleared.headers.get('Cache-Control'), 'no-store');
     const rewards = await apiFetch('/api/game', {
       method: 'POST',
       body: JSON.stringify({ action: 'admin-list', payload: {} }),

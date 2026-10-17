@@ -28,8 +28,21 @@ type Run = {
   timings: Record<string, number>;
   index: number;
   eventIds?: string[];
+  completedAt?: string;
 };
-export default function PressureLab({ subject }: { subject?: string }) {
+export default function PressureLab({
+  subject,
+  autoStart = false,
+  plannedScope,
+  plannedQuestions,
+  onExit,
+}: {
+  subject?: string;
+  autoStart?: boolean;
+  plannedScope?: string[];
+  plannedQuestions?: Question[];
+  onExit?: () => void;
+}) {
   const { data, states, refresh, notify } = useReview();
   const [open, setOpen] = useState(false),
     [run, setRun] = useState<Run | null>(null),
@@ -49,12 +62,26 @@ export default function PressureLab({ subject }: { subject?: string }) {
         Date.parse(e.date + 'T23:59:59') >= Date.now(),
     )
     .sort((a, b) => a.date.localeCompare(b.date))[0];
-  const available = pressureQuestions(data, states, subject, exam?.scope ?? []);
+  const available = pressureQuestions(
+    data,
+    states,
+    subject,
+    plannedScope ?? exam?.scope ?? [],
+  ).filter(
+    (q) => !plannedQuestions || plannedQuestions.some((p) => p.id === q.id),
+  );
   const saved = data.jobs?.find(
     (j) =>
       j.kind === 'pressure' && j.status === 'active' && j.subject === subject,
   ) as Run | undefined;
   const q = run?.questions[run.index];
+  const autoLaunched = useRef(false);
+  useEffect(() => {
+    if (autoStart && !autoLaunched.current) {
+      autoLaunched.current = true;
+      void launch();
+    }
+  }, [autoStart]);
   const save = async (next: Run) => {
     if (currentNamespace() !== origin.current)
       throw new Error('账户已切换，请返回当前学习空间');
@@ -174,6 +201,7 @@ export default function PressureLab({ subject }: { subject?: string }) {
       const completed: Run = {
         ...current,
         status: 'complete',
+        completedAt: occurredAt,
         eventIds: events.map((e) => e.id),
       };
       const test = {
@@ -288,6 +316,7 @@ export default function PressureLab({ subject }: { subject?: string }) {
       if (value?.status === 'active') await save(value);
       setOpen(false);
       await refresh();
+      onExit?.();
     } catch (e) {
       notify(e instanceof Error ? e.message : '未能保存');
     }
@@ -309,23 +338,25 @@ export default function PressureLab({ subject }: { subject?: string }) {
   };
   return (
     <>
-      <div className="intelligence-action-row">
-        <div>
-          <h3>考前压力测试</h3>
-          <p className="muted">
-            限时连续作答，交卷后对照同能力、近难度的日常表现。
-            {exam ? `范围：${exam.title}` : '优先选择薄弱能力'}
-            。退出后计时继续。
-          </p>
+      {!autoStart && (
+        <div className="intelligence-action-row">
+          <div>
+            <h3>考前压力测试</h3>
+            <p className="muted">
+              限时连续作答，交卷后对照同能力、近难度的日常表现。
+              {exam ? `范围：${exam.title}` : '优先选择薄弱能力'}
+              。退出后计时继续。
+            </p>
+          </div>
+          <button
+            className="secondary"
+            disabled={busy || (!saved && !available.length)}
+            onClick={launch}
+          >
+            {saved ? '恢复测试' : '开始压力测试'}
+          </button>
         </div>
-        <button
-          className="secondary"
-          disabled={busy || (!saved && !available.length)}
-          onClick={launch}
-        >
-          {saved ? '恢复测试' : '开始压力测试'}
-        </button>
-      </div>
+      )}
       {!available.length && !saved && (
         <p className="muted">
           导入选择、填空或连线题后可开始。拼音题保持手动核对。

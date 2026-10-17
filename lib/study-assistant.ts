@@ -84,7 +84,7 @@ export function assistantSettings(data: StudyData): AssistantSettings {
 }
 
 /** Observations must still correspond to available, uncontested content. Raw records stay immutable. */
-function observations(data: StudyData, now: number) {
+export function assistantObservations(data: StudyData, now: number) {
   const questions = new Map(data.questions.map((q) => [q.id, q]));
   const nodes = new Map(data.nodes.map((n) => [n.id, n]));
   const seen = new Set<string>();
@@ -109,7 +109,7 @@ function observations(data: StudyData, now: number) {
     return true;
   });
 }
-function reliable(e: AnswerEvent) {
+export function reliableAssistantEvent(e: AnswerEvent) {
   return (
     Number.isFinite(e.activeThinkMs) &&
     e.activeThinkMs > 0 &&
@@ -124,6 +124,8 @@ function reliable(e: AnswerEvent) {
     evidenceReliability(e) >= 0.8
   );
 }
+const observations = assistantObservations,
+  reliable = reliableAssistantEvent;
 function dayOf(e: AnswerEvent) {
   return localDay(new Date(e.occurredAt));
 }

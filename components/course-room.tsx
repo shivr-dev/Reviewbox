@@ -340,24 +340,9 @@ export default function CourseRoom({ courseId }: { courseId: string }) {
       if (nextIndex >= 0) {
         select(nextIndex);
       } else {
-        const practice = next.sections.flatMap((s) =>
-          courseQuestions(next, s, 'practice'),
-        );
-        practice.push(
-          ...(await prepareFreeCoursePractice(next, setWorking, ns.current)),
-        );
-        await refresh();
         if (currentNamespace() !== ns.current)
           throw new Error('账户已切换，请重新打开课程');
-        start(
-          practice.map((question) => ({
-            question,
-            reason: '课程巩固与迁移',
-            priority: 1,
-          })),
-          'review',
-          next.title + ' · 巩固练习',
-        );
+        navigate('plan');
       }
     } catch (e) {
       setError(courseErrorMessage(e));

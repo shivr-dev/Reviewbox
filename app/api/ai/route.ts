@@ -4,6 +4,7 @@ import { questionSchema } from '@/lib/importer';
 import { seedQuestions } from '@/lib/seed';
 import { diagnoseProcess } from '@/lib/process-server';
 const limits = new Map<string, { at: number; count: number }>();
+const planLimits = new Map<string, number[]>();
 export async function POST(req: Request) {
   try {
     sameOrigin(req);
@@ -14,6 +15,18 @@ export async function POST(req: Request) {
     if (++rate.count > 40) throw new Error('请求较多，请稍后重试');
     limits.set(u.userId, rate);
     const b = await readBody(req, 100000);
+    if (b.action === 'study-advice') {
+      const calls = (planLimits.get(u.userId) ?? []).filter(
+        (at) => now - at < 7 * 86400000,
+      );
+      if (calls.length >= 2 || calls.some((at) => now - at < 86400000))
+        throw new Error('计划复核已达本周或今日上限，继续使用本地安排');
+      const { analyzeStudyAdvice, adviceRequestSchema } =
+        await import('@/lib/study-advice-server');
+      const parsed = adviceRequestSchema.parse(b);
+      planLimits.set(u.userId, [...calls, now]);
+      return Response.json({ advice: await analyzeStudyAdvice(parsed) });
+    }
     if (b.action === 'diagnose-process')
       return Response.json({ diagnosis: await diagnoseProcess(b) });
     if (b.action === 'generate')

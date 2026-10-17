@@ -105,6 +105,16 @@ test('manually imported item: reveal, XP persistence, standalone recovery and sh
         el.click();
         await new Promise((r) => setTimeout(r, view === 'chest' ? 700 : 160));
       });
+      for (
+        let i = 0;
+        i < 100 &&
+        view === 'chest' &&
+        document.querySelector('.treasure-page .primary:disabled');
+        i++
+      )
+        await act(async () => {
+          await new Promise((r) => setTimeout(r, 25));
+        });
       assert.equal(notice, '');
     };
     function Harness() {

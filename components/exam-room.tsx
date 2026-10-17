@@ -320,7 +320,7 @@ function LegacyExamRoom({ runId }: { runId: string }) {
     try {
       await flush();
       await refresh();
-      navigate('subjects', 'ce');
+      navigate('plan');
     } catch {}
   };
   if (run.status === 'complete') {

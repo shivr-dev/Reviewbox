@@ -1,4 +1,311 @@
 /* Tutorial uses the same playful controls, companion and borders as the workspace. */
+.now-home {
+  min-height: calc(100dvh - 180px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  max-width: 720px;
+  padding: 28px 20px 90px;
+  margin: 0 auto;
+}
+.now-companion {
+  width: 140px;
+  height: 168px;
+}
+.now-companion .learning-penguin {
+  width: 140px;
+  height: 140px;
+  margin-bottom: 28px;
+}
+.now-kicker {
+  font-size: 12px;
+  font-weight: 800;
+  color: #168acb;
+  letter-spacing: 1px;
+}
+.now-home h1 {
+  font-size: clamp(27px, 3vw, 39px);
+  line-height: 1.45;
+  max-width: 640px;
+  margin: 20px 0 16px;
+}
+.now-home p {
+  max-width: 485px;
+  font-size: 16px;
+  color: var(--muted);
+  line-height: 1.9;
+  margin: 0 0 30px;
+}
+.now-home > button {
+  min-width: 240px;
+  min-height: 54px;
+  justify-content: center;
+  gap: 20px;
+}
+.now-home > small {
+  margin-top: 24px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.study-director {
+  min-height: 100dvh;
+  max-width: 1000px;
+  padding: 24px 40px 70px;
+  margin: auto;
+}
+.director-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 10px 0 20px;
+  border-bottom: 2px solid #edf0f2;
+  color: var(--muted);
+  font-size: 14px;
+}
+.director-header > span {
+  font-weight: 750;
+}
+.director-header .quiet {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.director-current,
+.director-loading {
+  padding: 40px 22px 45px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 490px;
+}
+.director-companion .learning-penguin,
+.director-loading .learning-penguin {
+  width: 125px;
+  height: 125px;
+  margin: 0 0 24px;
+}
+.director-current h1,
+.director-loading h1 {
+  font-size: clamp(25px, 3vw, 34px);
+  line-height: 1.5;
+  margin: 17px 0;
+}
+.director-current p,
+.director-loading p {
+  max-width: 550px;
+  line-height: 1.9;
+  color: var(--muted);
+  font-size: 15px;
+  margin: 0 0 20px;
+}
+.director-duration {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.director-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+  margin-top: 30px;
+}
+.director-actions > .primary {
+  min-height: 52px;
+  min-width: 230px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+}
+.director-actions > .quiet {
+  font-size: 13px;
+}
+.director-note {
+  margin: 16px 0;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow-wrap: anywhere;
+}
+.director-note > summary {
+  cursor: pointer;
+  font-weight: 650;
+}
+.director-note .math-text {
+  margin-top: 16px;
+}
+.director-details {
+  border-top: 2px solid #edf0f2;
+  padding: 20px 0;
+  max-width: 700px;
+  margin: auto;
+}
+.director-details > summary {
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+}
+.director-details ol {
+  list-style: none;
+  padding: 8px 0 0;
+  margin: 0;
+}
+.director-details li {
+  display: flex;
+  gap: 18px;
+  justify-content: space-between;
+  padding: 13px 0;
+  font-size: 13px;
+}
+.director-details li small {
+  color: var(--muted);
+  white-space: nowrap;
+}
+.director-details p {
+  font-size: 12px;
+  line-height: 1.8;
+  color: var(--muted);
+}
+.director-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 24px;
+}
+.director-options > button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 58px;
+  font-size: 13px;
+}
+.director-options svg {
+  width: 20px;
+  height: 20px;
+}
+.director-subpage {
+  margin: 35px auto;
+  max-width: 850px;
+}
+.director-subpage > h1 {
+  font-size: 30px;
+  line-height: 1.5;
+  margin: 25px 0 15px;
+}
+.director-subpage > p {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.8;
+}
+.director-subpage > .primary {
+  margin-top: 28px;
+  gap: 15px;
+}
+.director-report-values {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin: 30px 0;
+}
+.director-report-values article {
+  border: 2px solid #e5e8ea;
+  border-radius: 18px;
+  padding: 24px 18px;
+}
+.director-report-values span {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+}
+.director-report-values strong {
+  display: block;
+  font-size: 25px;
+  margin: 15px 0;
+  color: #168acb;
+}
+.director-report-values small {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+.director-report details {
+  font-size: 12px;
+  line-height: 1.9;
+  margin-top: 22px;
+}
+.director-report h2 {
+  font-size: 19px;
+}
+.director-ai-note {
+  max-width: 550px;
+  text-align: left;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.8;
+  margin-top: 25px;
+}
+.director-ai-note > summary {
+  cursor: pointer;
+}
+.setting-row small {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.7;
+  max-width: 550px;
+  margin-top: 6px;
+}
+.director-loading-dots {
+  letter-spacing: 8px;
+  color: #51aff0;
+  animation: director-think 1s ease-in-out infinite;
+}
+@keyframes director-think {
+  50% {
+    opacity: 0.3;
+    transform: translateY(-3px);
+  }
+}
+@media (max-width: 600px) {
+  .now-home {
+    padding: 25px 0 65px;
+    min-height: calc(100dvh - 130px);
+  }
+  .now-companion .learning-penguin {
+    width: 120px;
+    height: 120px;
+  }
+  .study-director {
+    padding: 16px 22px 50px;
+  }
+  .director-current,
+  .director-loading {
+    padding: 30px 0 35px;
+    min-height: 440px;
+  }
+  .director-options {
+    grid-template-columns: 1fr;
+  }
+  .director-report-values {
+    grid-template-columns: 1fr;
+  }
+  .director-current h1 {
+    font-size: 25px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .director-loading-dots {
+    animation: none;
+  }
+}
 .onboarding-page {
   max-width: 800px;
   margin: auto;

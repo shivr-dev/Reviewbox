@@ -1,5 +1,5 @@
 'use client';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ArrowRight, Settings2, GraduationCap } from 'lucide-react';
 import {
   Dialog,
@@ -23,8 +23,14 @@ import {
 } from '@/lib/exam-outcome-client';
 export default function ExamResults({
   compact = false,
+  autoOpen = false,
+  initialExamId,
+  onClosed,
 }: {
   compact?: boolean;
+  autoOpen?: boolean;
+  initialExamId?: string;
+  onClosed?: () => void;
 }) {
   const { data, refresh, notify } = useReview();
   const report = examGpa(data),
@@ -39,10 +45,21 @@ export default function ExamResults({
   const selected = eligible.find((e) => e.id === examId);
   function show() {
     openNamespace.current = currentNamespace();
-    setExamId(pending[0]?.id ?? eligible[0]?.id ?? '');
+    setExamId(
+      eligible.some((e) => e.id === initialExamId)
+        ? initialExamId!
+        : (pending[0]?.id ?? eligible[0]?.id ?? ''),
+    );
     setTab('scores');
     setOpen(true);
   }
+  const opened = useRef(false);
+  useEffect(() => {
+    if (autoOpen && !opened.current) {
+      opened.current = true;
+      show();
+    }
+  }, [autoOpen]);
   async function task(fn: () => Promise<void>, message: string) {
     if (lock.current) return;
     lock.current = true;
@@ -81,7 +98,10 @@ export default function ExamResults({
       <Dialog
         open={open}
         onOpenChange={(v) => {
-          if (!busy) setOpen(v);
+          if (!busy) {
+            setOpen(v);
+            if (!v) onClosed?.();
+          }
         }}
       >
         <DialogContent className="exam-results-dialog">
