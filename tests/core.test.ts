@@ -149,16 +149,17 @@ test('same-day repetition cannot create long-term mastery', () => {
     );
   assert.ok(s.mastery <= 0.430001);
   assert.equal(s.stage, 0);
-  assert.equal(s.stability, 1);
+  assert.ok(s.stability >= 0.5 && s.stability <= 0.7);
 });
-test('instant reveals have low weight; slower recall has shorter interval', () => {
+test('timing is weak evidence and slow recall does not punish mastery', () => {
   const s = initial('n', 's'),
     fast = applyAnswer(s, event({ activeThinkMs: 500 })),
     normal = applyAnswer(s, event()),
     slow = applyAnswer(s, event({ activeThinkMs: 40000 }));
   assert.ok(fast.mastery < normal.mastery);
   assert.equal(fast.checkpoint, null);
-  assert.ok(Date.parse(slow.nextReview!) < Date.parse(normal.nextReview!));
+  assert.equal(slow.mastery, normal.mastery);
+  assert.equal(slow.nextReview, normal.nextReview);
 });
 test('midnight alone does not count as spaced verification', () => {
   const e = event({ occurredAt: '2026-09-05T15:59:00Z' });
@@ -173,7 +174,7 @@ test('midnight alone does not count as spaced verification', () => {
   );
   assert.equal(b.stage, 0);
 });
-test('1, 3, 7 day varied verification grows stability', () => {
+test('cold-start spaced verification grows stability smoothly', () => {
   let s = applyAnswer(initial('n', 's'), event());
   let t = time;
   for (const [i, gap] of [1, 3, 7].entries()) {
@@ -186,15 +187,16 @@ test('1, 3, 7 day varied verification grows stability', () => {
         variant: 'variant-' + i,
       }),
     );
-    assert.equal(s.stage, i + 1);
+    assert.ok(s.stage >= Math.min(i + 1, 2));
   }
-  assert.ok(s.stability >= 20);
+  assert.ok(s.stability > 0.5 && s.stability < 2);
 });
-test('false mastery drops immediately after surprise failure', () => {
+test('a surprise failure schedules verification without erasing cross-day history', () => {
   const s = { ...initial('n', 's'), mastery: 0.95, stage: 3, stability: 30 };
   const result = applyAnswer(s, event({ score: 0, outcome: 'wrong' }));
-  assert.ok(result.mastery < 0.75);
-  assert.equal(result.stage, 0);
+  assert.ok(result.mastery < s.mastery && result.mastery > s.mastery - 0.11);
+  assert.equal(result.stage, s.stage);
+  assert.ok(result.stability >= s.stability * 0.8);
   assert.ok(Date.parse(result.nextReview!) <= time + DAY);
 });
 test('replay is idempotent and order-independent', () => {

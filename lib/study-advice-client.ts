@@ -6,6 +6,7 @@ import {
 import { studyAgenda } from './study-orchestrator';
 import { apiFetch } from './runtime';
 import { uid } from './model';
+import { verifiedHypothesis, type StudyHypothesis } from './learning-signals';
 import {
   assertWritable,
   currentNamespace,
@@ -83,13 +84,22 @@ async function analyze(ns: string) {
       signal: AbortSignal.timeout(60000),
     });
     const r = (await response.json()) as {
-        advice?: { actionId: string; explanation: string; method: string };
+        advice?: {
+          hypothesis: StudyHypothesis;
+          explanation: string;
+          method: string;
+        };
       },
       a = r.advice;
     if (
       !response.ok ||
       !a ||
-      !job.actionIds.includes(a.actionId) ||
+      !a.hypothesis ||
+      !['speed', 'retention', 'concept', 'fatigue'].includes(
+        a.hypothesis.type,
+      ) ||
+      (a.hypothesis.nodeId !== undefined &&
+        !data.nodes.some((n) => n.id === a.hypothesis.nodeId)) ||
       typeof a.explanation !== 'string' ||
       a.explanation.length > 600 ||
       typeof a.method !== 'string' ||
@@ -103,7 +113,8 @@ async function analyze(ns: string) {
       {
         ...job,
         ...{
-          actionId: a.actionId,
+          hypothesis: a.hypothesis,
+          verification: verifiedHypothesis(data, a.hypothesis, now),
           explanation: a.explanation,
           method: a.method,
         },

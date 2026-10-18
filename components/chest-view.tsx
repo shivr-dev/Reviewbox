@@ -110,6 +110,7 @@ export default function ChestView({ sessionId }: { sessionId: string }) {
           <button className="primary" onClick={() => navigate('plan')}>
             看看下一步 <ArrowRight size={18} />
           </button>
+          {data.settings.alphaPreview===true&&<button className="secondary" onClick={()=>navigate('equipment')}>查看装备战利品 <ArrowRight size={16}/></button>}
         </>
       ) : (
         <button className="primary" disabled={busy} onClick={() => void open()}>

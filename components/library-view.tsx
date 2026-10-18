@@ -58,16 +58,23 @@ import {
 } from '@/lib/importer';
 import { corePack } from '@/lib/seed';
 import { Choice, Empty, Heading, SubjectChoice, dateLabel } from './shared';
-export default function LibraryView() {
-  const { data, refresh, start, notify } = useReview();
-  const [tab, setTab] = useState('materials'),
+export default function LibraryView({
+  initialTab = 'materials',
+}: { initialTab?: string } = {}) {
+  const { data, refresh, start, notify, subject: routeSubject } = useReview();
+  const initialSubject = SUBJECTS.some((s) => s.id === routeSubject)
+    ? (routeSubject as Subject)
+    : 'chinese';
+  const [tab, setTab] = useState(initialTab),
     [search, setSearch] = useState(''),
-    [filter, setFilter] = useState('all'),
+    [filter, setFilter] = useState(
+      SUBJECTS.some((s) => s.id === routeSubject) ? routeSubject : 'all',
+    ),
     [importOpen, setImportOpen] = useState(false),
     [editorOpen, setEditorOpen] = useState(false),
     [text, setText] = useState(''),
     [name, setName] = useState('我的学习资料'),
-    [subject, setSubject] = useState<Subject>('chinese'),
+    [subject, setSubject] = useState<Subject>(initialSubject),
     [busy, setBusy] = useState(false),
     [stage, setStage] = useState<{
       nodes: Node[];
@@ -312,7 +319,7 @@ export default function LibraryView() {
         description="个人资料和学习记录只同步到自己的云端账户。"
         action={
           <div className="button-row">
-            <ManualImport />
+            <ManualImport subject={initialSubject} />
             <button
               className="primary"
               onClick={() => {

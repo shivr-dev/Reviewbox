@@ -75,6 +75,11 @@ export type Node = {
   title: string;
   description: string;
   prerequisites: string[];
+  dependencies?: {
+    nodeId: string;
+    kind: 'requires' | 'helpful' | 'parallel';
+    weight?: number;
+  }[];
   relatedNodes: string[];
   importance: number;
   examWeight: number;
@@ -123,6 +128,12 @@ export type RubricItem = {
   skillId: string;
 };
 export type Question = {
+  metadataConfidence?: {
+    difficulty?: number;
+    skill?: number;
+    prerequisite?: number;
+    expectedSeconds?: number;
+  };
   /** Derived from private review records; never imported as content. */
   reviewStatus?: 'active' | 'paused';
   /** Q-matrix attributes describe what the task requires, never the learner's error. */
@@ -179,6 +190,20 @@ export type Grade = {
   model: string;
 };
 export type AnswerEvent = {
+  hintLevel?: 'light' | 'method' | 'step' | 'answer';
+  wallTimeMs?: number;
+  idleMs?: number;
+  attemptNumber?: number;
+  previousAttemptId?: string;
+  errorCause?: {
+    concept: number;
+    calculation: number;
+    reading: number;
+    careless: number;
+    unknown: number;
+    confirmed?: boolean;
+    evidenceIds?: string[];
+  };
   /** Derived exclusion; raw event and its original score remain immutable. */
   voidedBy?: { id: string; reason: string };
   learningEvidence?: {
@@ -229,6 +254,8 @@ export type AnswerEvent = {
   predictedConfidence?: 'sure' | 'unsure' | 'guess';
 };
 export type Mastery = {
+  evidenceDays?: string[];
+  successDays?: string[];
   nodeId: string;
   skillId: string;
   mastery: number;
@@ -340,7 +367,10 @@ export type StudyData = {
     gameSound?: boolean;
     gameHearts?: boolean;
     gameSkin?: string;
+    alphaPreview?: boolean;
     assistantAi?: boolean;
+    studyMode?: 'auto' | 'guided' | 'manual';
+    studyPolicy?: { id: string; previousId?: string; changedAt?: string };
     examGpa?: {
       scale: number;
       formula: string;

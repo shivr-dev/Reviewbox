@@ -56,10 +56,7 @@ test('three completed practice blocks summarize state once and reset after readi
     ),
   );
   d.events = d.events.map((e) => ({ ...e, score: 0.3, outcome: 'wrong' }));
-  assert.ok(
-    !studyAgenda(d, now).actions.some((a) => a.kind === 'test'),
-    '基础失误较多时先巩固',
-  );
+  assert.notEqual(studyAgenda(d,now).primary.kind,'test','基础失误较多时先巩固');
 });
 
 test('practice completion markers remain unique when a completion callback repeats', async () => {
@@ -133,17 +130,18 @@ test('one entry chooses diagnosis first, then bounded practice; does not invent 
   assert.equal(studyAgenda(empty, now).primary.kind, 'import');
 });
 
-test('eight distinct valid exercises across abilities trigger a test, with completed-test cooldown', () => {
+test('assessment candidates use continuous information value and recent tests diminish their value', () => {
   const d = practiced(fixture(), now),
     a = studyAgenda(d, now);
-  assert.equal(a.primary.kind, 'test');
-  assert.ok(a.primary.items!.length >= 3);
+  const candidate=a.actions.find(a=>a.kind==='test')!;
+  assert.ok(candidate);
+  assert.ok(candidate.items!.length>=3);
   assert.ok(
-    a.primary.items!.some(
+    candidate.items!.some(
       (i) => !d.events.some((e) => e.questionId === i.question.id),
     ),
   );
-  const q = a.primary.items![0].question,
+  const q = candidate.items![0].question,
     idx = d.questions.findIndex((x) => x.id === q.id);
   const e = attempt(d, idx, now - 10000, { source: 'test' });
   d.events.push(e);
@@ -156,7 +154,7 @@ test('eight distinct valid exercises across abilities trigger a test, with compl
     scope: [],
     sessionId: e.sessionId,
   });
-  assert.ok(!studyAgenda(d, now).actions.some((a) => a.kind === 'test'));
+  assert.ok((studyAgenda(d,now).actions.find(a=>a.kind==='test')?.informationValue??0)<candidate.informationValue!);
   const b = fixture();
   b.events = [
     ...d.events.slice(0, 7),
@@ -165,7 +163,7 @@ test('eight distinct valid exercises across abilities trigger a test, with compl
   b.events.push({ ...b.events[0], id: 'duplicate' });
   b.events.push(attempt(b, 15, now + DAY));
   b.events.push(attempt(b, 16, now - 1000, { predictedConfidence: 'guess' }));
-  assert.ok(!studyAgenda(b, now).actions.some((a) => a.kind === 'test'));
+  const clean={...b,events:b.events.filter(e=>!e.voidedBy&&Date.parse(e.occurredAt)<=now&&e.predictedConfidence!=='guess').filter((e,i,a)=>a.findIndex(x=>x.questionId===e.questionId&&x.sessionId===e.sessionId&&x.occurredAt===e.occurredAt)===i)};assert.equal(studyAgenda(b,now).actions.find(a=>a.kind==='test')?.informationValue,studyAgenda(clean,now).actions.find(a=>a.kind==='test')?.informationValue);
 });
 
 test('pressure requires cross-day baseline, uses fresh objective items and avoids the final cramming day', () => {
@@ -178,8 +176,7 @@ test('pressure requires cross-day baseline, uses fresh objective items and avoid
     attempt(d, 9, now - 2 * DAY),
   ];
   const a = studyAgenda(d, now);
-  assert.equal(a.primary.kind, 'pressure');
-  assert.ok(a.primary.items!.length >= 3);
+  const pressure=a.actions.find(a=>a.kind==='pressure')!;assert.ok(pressure);assert.ok(pressure.items!.length>=3);
   d.exams[0] = schoolExam(d, now, 1);
   assert.ok(!studyAgenda(d, now).actions.some((a) => a.kind === 'pressure'));
   d.exams[0] = schoolExam(d, now, 4);
@@ -215,11 +212,10 @@ test('pinyin self checks are not repeatedly treated as a first visit or as an ob
 test('CE simulations require a complete imported matching paper, respect time, and cool down after completion', () => {
   const d = fixture('ce');
   d.exams = [schoolExam(d, now, 4)];
-  assert.equal(studyAgenda(d, now).primary.kind, 'import-exam');
+  assert.ok(studyAgenda(d,now).actions.some(a=>a.kind==='import-exam'));
   const p = importedPaper(d, 'SAT', now);
   const a = studyAgenda(d, now);
-  assert.equal(a.primary.kind, 'simulation');
-  assert.equal(a.primary.minutes, 64);
+  const simulation=a.actions.find(a=>a.kind==='simulation')!;assert.ok(simulation);assert.equal(simulation.minutes,64);
   d.settings.dailyMinutes = 20;
   assert.ok(!studyAgenda(d, now).actions.some((a) => a.kind === 'simulation'));
   assert.ok(
@@ -247,7 +243,7 @@ test('CE simulations require a complete imported matching paper, respect time, a
   assert.ok(!studyAgenda(d, now).actions.some((a) => a.kind === 'simulation'));
 });
 
-test('resume outranks score reminders; reminders start the next day and defer until requested', () => {
+test('ordinary resumption may yield to score impact while reminders retain snoozes', () => {
   const d = fixture();
   d.exams = [schoolExam(d, now, -2)];
   assert.equal(studyAgenda(d, now).primary.kind, 'score');
@@ -259,7 +255,7 @@ test('resume outranks score reminders; reminders start the next day and defer un
     createdAt: new Date(now - 10000).toISOString(),
     items: [{ question: d.questions[0], reason: '继续', priority: 1 }],
   });
-  assert.equal(studyAgenda(d, now).primary.kind, 'resume');
+  assert.equal(studyAgenda(d,now).primary.kind,'score');assert.equal(studyAgenda(d,now).decisionTrace.candidates.find(c=>c.kind==='resume')?.constraint,'none');
   d.jobs = [];
   const id = studyAgenda(d, now).primary.id;
   d.jobs.push({
@@ -319,13 +315,14 @@ test('Qwen opportunities only arise at milestones, cache validated actions, and 
     expires: new Date(now + DAY).toISOString(),
     actionIds: [a.id],
     actionId: a.id,
+    hypothesis:{type:'speed' as const},
     explanation: '选择当前已有行动',
     method: '间隔验证',
   };
   d.jobs!.push(job);
   assert.equal(adviceOpportunity(d, actions, now), null);
   assert.ok(cachedStudyAdvice(d, studyAgenda(d, now).actions, now));
-  job.actionId = 'invented';
+  job.hypothesis={type:'speed' as const,nodeId:'invented'} as any;
   assert.equal(cachedStudyAdvice(d, actions, now), undefined);
   d.settings.assistantAi = false;
   d.jobs = [];
@@ -415,7 +412,7 @@ test('planned choices and Qwen reservation are idempotent across concurrent requ
       assert.ok(!('questions' in b));
       return Response.json({
         advice: {
-          actionId: b.summary.actions[0].id,
+          hypothesis:{type:'speed'},
           explanation: '按现有证据先验证',
           method: '独立作答',
         },

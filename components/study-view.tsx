@@ -50,12 +50,15 @@ import ProcessNotebook from './process-notebook';
 import { RemediationLauncher } from './remediation-course';
 import {
   ComboCelebration,
+  ComboIndicator,
   Penguin,
   RewardFlash,
   type RewardFeedback,
 } from './learning-game';
 import { learningGame } from '@/lib/learning-game';
 import { rewardSound } from '@/lib/game-client';
+import { createLearningTimer } from '@/lib/learning-timer';
+import { errorCauseEstimate } from '@/lib/learning-evidence';
 import { Heart, Zap, Volume2, VolumeX } from 'lucide-react';
 export default function StudyView({
   session,
@@ -71,6 +74,8 @@ export default function StudyView({
 }) {
   const { data, start, refresh, notify, aiReady, navigate } = useReview();
   const [processHint, setProcessHint] = useState(false);
+  const [hintLevel, setHintLevel] = useState<AnswerEvent['hintLevel']>();
+  const activeTimer = useRef(createLearningTimer(performance.now()));
   const [reward, setReward] = useState<RewardFeedback | null>(null);
   const [gameNow, setGameNow] = useState(Date.now());
   const game = learningGame(data, gameNow);
@@ -102,6 +107,8 @@ export default function StudyView({
     displayed: '',
     revealed: '',
     active: 0,
+    wall: 0,
+    idle: 0,
     start: 0,
     visible: true,
   });
@@ -122,6 +129,8 @@ export default function StudyView({
   const node = data.nodes.find((n) => n.id === q?.nodeId);
   const reset = () => {
     setProcessHint(false);
+    setHintLevel(undefined);
+    activeTimer.current = createLearningTimer(performance.now());
     setRevealed(false);
     setAnswerPanelOpen(false);
     setSolution(false);
@@ -132,6 +141,8 @@ export default function StudyView({
       displayed: new Date().toISOString(),
       revealed: '',
       active: 0,
+      wall: 0,
+      idle: 0,
       start: performance.now(),
       visible: !document.hidden,
     };
@@ -170,17 +181,32 @@ export default function StudyView({
   useEffect(() => {
     const visibility = () => {
       const t = timing.current;
+      activeTimer.current.visibility(!document.hidden, performance.now());
       if (t.visible && !t.revealed) t.active += performance.now() - t.start;
       t.visible = !document.hidden;
       t.start = performance.now();
     };
+    const activity = () => {
+      if (!timing.current.revealed)
+        activeTimer.current.activity(performance.now());
+    };
     document.addEventListener('visibilitychange', visibility);
-    return () => document.removeEventListener('visibilitychange', visibility);
+    for (const name of ['pointerdown', 'keydown', 'wheel', 'touchstart'])
+      document.addEventListener(name, activity, { passive: true });
+    return () => {
+      document.removeEventListener('visibilitychange', visibility);
+      for (const name of ['pointerdown', 'keydown', 'wheel', 'touchstart'])
+        document.removeEventListener(name, activity);
+    };
   }, []);
   function reveal() {
     const t = timing.current;
     if (!t.revealed) {
       if (t.visible) t.active += performance.now() - t.start;
+      const sample = activeTimer.current.snapshot(performance.now());
+      t.active = sample.activeThinkMs;
+      t.wall = sample.wallTimeMs;
+      t.idle = sample.idleMs;
       t.revealed = new Date().toISOString();
     }
     setRevealed(true);
@@ -204,6 +230,10 @@ export default function StudyView({
       const t = timing.current;
       if (!t.revealed) {
         if (t.visible) t.active += performance.now() - t.start;
+        const sample = activeTimer.current.snapshot(performance.now());
+        t.active = sample.activeThinkMs;
+        t.wall = sample.wallTimeMs;
+        t.idle = sample.idleMs;
         t.revealed = new Date().toISOString();
       }
       if (
@@ -241,10 +271,16 @@ export default function StudyView({
         displayedAt: t.displayed,
         revealedAt: t.revealed,
         activeThinkMs: Math.round(t.active),
+        wallTimeMs: t.wall,
+        idleMs: t.idle,
+        hintLevel:
+          hintLevel ??
+          (item?.scaffold ? 'method' : processHint ? 'step' : undefined),
         expectedSeconds: q.expectedSeconds,
         difficulty: q.difficulty,
         variant: q.variant,
         usedHint:
+          !!hintLevel ||
           !!item?.scaffold ||
           processHint ||
           !!data.jobs?.some(
@@ -281,6 +317,7 @@ export default function StudyView({
           predictedSuccess: item?.predictedSuccess,
         },
       };
+      if (e.score < 0.85) e.errorCause = errorCauseEstimate(e, data.events);
       const signals = guessingSignals(q, e, data.events);
       if (signals.length) {
         e.learningEvidence!.suspect = true;
@@ -959,6 +996,9 @@ export default function StudyView({
               ? `恢复练习 · 已完成 ${game.recovery} / 3`
               : `每日目标 ${game.daily.count} / ${game.goal}`}
           </span>
+          {data.settings.alphaPreview === true && (
+            <ComboIndicator reward={reward} />
+          )}
           {data.settings.gameHearts !== false && (
             <span className="game-heart" aria-label={`${game.hearts} 颗生命值`}>
               {Array.from({ length: game.maxHearts }, (_, i) => (
@@ -1010,6 +1050,45 @@ export default function StudyView({
             <p>{item.scaffold}</p>
           </div>
         </aside>
+      )}
+      {!isTest && !isPinyin(q) && !revealed && (
+        <details className="graded-hints">
+          <summary>需要一点帮助？</summary>
+          <div className="hint-levels">
+            {(['light', 'method', 'step', 'answer'] as const).map(
+              (level, i) => (
+                <button
+                  className="quiet"
+                  key={level}
+                  disabled={level === 'step' && !q.solution?.length}
+                  onClick={() =>
+                    setHintLevel((old) =>
+                      !old ||
+                      ['light', 'method', 'step', 'answer'].indexOf(level) >
+                        ['light', 'method', 'step', 'answer'].indexOf(old)
+                        ? level
+                        : old,
+                    )
+                  }
+                >
+                  {['轻提示', '方法提示', '关键步骤', '接近答案'][i]}
+                </button>
+              ),
+            )}
+          </div>
+          {hintLevel && (
+            <MathText>
+              {hintLevel === 'light'
+                ? '先用自己的话复述题意，确认需要回答的问题。'
+                : hintLevel === 'method'
+                  ? '列出已知与未知，回想相关概念，再独立选择方法。'
+                  : hintLevel === 'step'
+                    ? (q.solution?.[0] ?? '暂无步骤提示')
+                    : q.answer}
+            </MathText>
+          )}
+          <small>提示深度会记录；之后的无提示验证才用于确认独立掌握。</small>
+        </details>
       )}
       <article className="question-card" key={q.id}>
         <p className="question-number">

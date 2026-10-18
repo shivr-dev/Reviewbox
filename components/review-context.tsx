@@ -5,8 +5,17 @@ export type AppContext = {
   data: StudyData;
   states: Record<string, Mastery>;
   refresh: () => Promise<void>;
-  navigate: (page: string, subject?: string) => void;
-  start: (items: QueueItem[], mode?: 'review' | 'test', title?: string) => void;
+  navigate: (page: string, subject?: string, section?: string) => void;
+  section?: string;
+  start: (
+    items: QueueItem[],
+    mode?: 'review' | 'test',
+    title?: string,
+    recommendation?: {
+      trace: import('@/lib/study-utility').DecisionTrace;
+      actionId: string;
+    },
+  ) => void;
   notify: (message: string) => void;
   subject: string;
   cloudUser: { id: string; email: string } | null;

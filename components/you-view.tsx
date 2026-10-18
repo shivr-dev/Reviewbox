@@ -3,6 +3,7 @@ import { isStaticSite } from '@/lib/runtime';
 import { pagesConfig, unlockPages, lockPages } from '@/lib/pages-vault';
 import { checkPagesAI } from '@/lib/pages-ai-check';
 import ClearDataCard from './clear-data-card';
+import AlphaPreviewCard from './alpha-preview-card';
 import ImportSkillCard from './import-skill-card';
 import ExamResults from './exam-results';
 import { saveDailyTime } from '@/lib/exam-outcome-client';
@@ -322,6 +323,7 @@ export default function YouView() {
           </button>
         </div>
       </section>
+      <AlphaPreviewCard />
       <GameProfile />
       <section className="panel account-card">
         <div className="account-avatar">

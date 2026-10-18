@@ -6,7 +6,14 @@ import {
   resumeVerifiedJob,
   type GenerationJob,
 } from './ai-client';
-import { put, loadData, currentNamespace, saveRecords } from './store';
+import {
+  put,
+  loadData,
+  currentNamespace,
+  saveRecords,
+  database,
+  assertWritable,
+} from './store';
 import {
   courseFingerprint,
   splitCourseSource,
@@ -99,6 +106,7 @@ export async function createCourse(
   return { course, reused: false };
 }
 export async function saveCourse(course: Course, ns = currentNamespace()) {
+  if (currentNamespace() !== ns) throw new Error('账户已切换，请重新打开课程');
   const now = new Date().toISOString();
   const records: any[] = [];
   const record = (id: string, payload: any) => {
@@ -348,9 +356,37 @@ export async function recordCourseCheck(
   ns = currentNamespace(),
 ) {
   if (currentNamespace() !== ns) throw new Error('账户已切换，未记录本次作答');
+  if (
+    !course.sections.some((s) =>
+      courseQuestions(course, s, 'checks').some((check) => check.id === q.id),
+    )
+  )
+    throw new Error('课程题目已变化，请重新打开本节');
+  if (!q.options?.includes(answer) || !Number.isFinite(shownAt))
+    throw new Error('作答内容不正确');
   const score = answer === q.answer ? 1 : 0,
     at = new Date().toISOString();
-  const id = 'course-event:' + q.id;
+  assertWritable(ns);
+  const db = await database();
+  if (currentNamespace() !== ns) throw new Error('账户已切换，未记录本次作答');
+  const tx = db.transaction(['records', 'queue'], 'readwrite');
+  const attempts = (await tx.objectStore('records').getAll())
+    .filter(
+      (r) =>
+        r.namespace === ns &&
+        r.kind === 'event' &&
+        r.payload.sessionId === course.id &&
+        r.payload.questionId === q.id,
+    )
+    .map((r) => r.payload as AnswerEvent)
+    .sort(
+      (a, b) =>
+        (a.attemptNumber ?? 1) - (b.attemptNumber ?? 1) ||
+        a.occurredAt.localeCompare(b.occurredAt),
+    );
+  const previous = attempts.at(-1);
+  const id =
+    'course-event:' + course.id + ':' + q.id + ':' + crypto.randomUUID();
   const event: AnswerEvent = {
     id,
     questionId: q.id,
@@ -368,12 +404,29 @@ export async function recordCourseCheck(
     expectedSeconds: q.expectedSeconds,
     difficulty: q.difficulty,
     variant: q.variant,
-    usedHint: false,
+    // A retry follows visible answer feedback. Preserve its success without
+    // pretending it is an independent, unaided retention observation.
+    usedHint: !!previous,
+    hintLevel: previous ? 'answer' : undefined,
     reason: '课程理解检验',
     sessionId: course.id,
     localDay: localDay(new Date(at)),
     version: 1,
+    attemptNumber: (previous?.attemptNumber ?? (previous ? 1 : 0)) + 1,
+    previousAttemptId: previous?.id,
+    learningEvidence: { version: 1, assessment: 'objective' },
   };
-  await put('event', event, id, false, ns);
+  const record = {
+    id,
+    kind: 'event',
+    payload: event,
+    updated_at: at,
+    deleted: false,
+    namespace: ns,
+    key: ns + '/' + id,
+  };
+  await tx.objectStore('records').put(record);
+  await tx.objectStore('queue').put(record);
+  await tx.done;
   return score;
 }

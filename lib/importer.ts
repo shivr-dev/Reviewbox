@@ -35,6 +35,16 @@ export const nodeSchema = z.object({
   title: z.string().min(1).max(300),
   description: safeText,
   prerequisites: z.array(z.string()).max(50).default([]),
+  dependencies: z
+    .array(
+      z.object({
+        nodeId: z.string().min(1).max(160),
+        kind: z.enum(['requires', 'helpful', 'parallel']),
+        weight: z.number().min(0).max(1).optional(),
+      }),
+    )
+    .max(50)
+    .optional(),
   relatedNodes: z.array(z.string()).max(50).default([]),
   importance: z.number().min(0).max(1),
   examWeight: z.number().min(0).max(1),
@@ -44,6 +54,14 @@ export const nodeSchema = z.object({
   tags: z.array(z.string()).optional(),
 });
 export const questionSchema = z.object({
+  metadataConfidence: z
+    .object({
+      difficulty: z.number().min(0).max(1).optional(),
+      skill: z.number().min(0).max(1).optional(),
+      prerequisite: z.number().min(0).max(1).optional(),
+      expectedSeconds: z.number().min(0).max(1).optional(),
+    })
+    .optional(),
   cognitiveAttributes: z
     .array(
       z.enum([

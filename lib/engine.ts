@@ -19,6 +19,18 @@ import {
   cleanEvents,
 } from './learning-intelligence';
 import { dueRemediation } from './remediation';
+import { DEFAULT_POLICY, policyFor, type PolicyConfig } from './policy-config';
+import { metadataQuality,createSignalContext } from './learning-signals';
+import {
+  answerEvidenceWeight,
+  hintEvidenceWeight,
+  effectiveAnswerTime,
+  adaptiveRecallInterval,
+  errorCauseEstimate,
+  acquisitionMode,
+  skillPracticeLimit,
+  dependencyLinks,
+} from './learning-evidence';
 export const DAY = 86400000;
 const clamp = (x: number, a = 0, b = 1) => Math.max(a, Math.min(b, x));
 export function initial(nodeId: string, skillId: string): Mastery {
@@ -41,70 +53,57 @@ export function initial(nodeId: string, skillId: string): Mastery {
     lastFailure: null,
   };
 }
-export function applyAnswer(old: Mastery, e: AnswerEvent): Mastery {
+export function applyAnswer(
+  old: Mastery,
+  e: AnswerEvent,
+  policy: PolicyConfig = DEFAULT_POLICY,
+  history:AnswerEvent[]=[],
+): Mastery {
   const s = { ...old };
-  if (e.voidedBy) return s;
   const now = Date.parse(e.occurredAt);
   if (
+    e.voidedBy ||
     !Number.isFinite(now) ||
     !Number.isFinite(e.score) ||
     e.score < 0 ||
     e.score > 1
   )
     return s;
-  const validTime =
-    Number.isFinite(e.activeThinkMs) &&
-    e.activeThinkMs >= 0 &&
-    e.activeThinkMs <= 86400000;
-  const minMs = Math.max(1500, Math.min(5000, e.expectedSeconds * 200));
-  let quality = e.source === 'rubric' ? 0.95 : 0.85;
-  if (!validTime || e.activeThinkMs < minMs) quality *= 0.2;
-  if (e.usedHint) quality *= 0.65;
-  if (e.learningEvidence?.suspect || e.predictedConfidence === 'guess') {
-    const confidenceWeight =
-      e.learningEvidence?.policy === 'cautious'
-        ? 0.3
-        : e.learningEvidence?.policy === 'expansive'
-          ? 0.5
-          : 0.4;
-    quality *= confidenceWeight;
-  }
-  const fluency = clamp(
-    Math.sqrt(
-      (e.expectedSeconds * 1000) /
-        Math.max(e.expectedSeconds * 1000, e.activeThinkMs),
-    ),
-    0.55,
-    1,
-  );
+  const config = policy.evidence;
+  const quality = answerEvidenceWeight(e, policy);
   const sameDay = s.gainDay === e.localDay;
+  s.evidenceDays = [...new Set([...(s.evidenceDays ?? []), e.localDay])].slice(
+    -180,
+  );
+  s.successDays = [...(s.successDays ?? [])];
   if (!sameDay) {
     s.gainDay = e.localDay;
     s.dailyGain = 0;
   }
+  // Hint-assisted answers still contribute; only independent retrieval advances retention evidence.
   const reliable =
-    e.score >= 0.85 && quality >= 0.65 && !e.usedHint && validTime;
+    e.score >= 0.85 &&
+    hintEvidenceWeight(e, policy) === 1 &&
+    !e.learningEvidence?.suspect &&
+    e.predictedConfidence !== 'guess' &&
+    effectiveAnswerTime(e) >=
+      Math.max(1500, Math.min(5000, e.expectedSeconds * 200));
   let advanced = false;
   if (reliable) {
     s.lastSuccess = e.occurredAt;
+    s.successDays = [...new Set([...s.successDays, e.localDay])].slice(-180);
     if (!s.checkpoint) {
       s.checkpoint = e.occurredAt;
       s.checkpointVariant = e.variant;
-      s.stability = Math.max(1, s.stability);
-    } else {
-      const gap = [1, 3, 7, Math.max(7, s.stability * 0.6)][s.stage];
-      const level = s.mastery < 0.45 ? 1 : s.mastery < 0.7 ? 2 : 3;
-      if (
-        now - Date.parse(s.checkpoint) >= gap * DAY &&
-        s.checkpointVariant !== e.variant &&
-        e.difficulty >= level
-      ) {
-        s.stage = Math.min(3, s.stage + 1);
-        s.stability = Math.min(180, s.stability * 3 * fluency);
-        s.checkpoint = e.occurredAt;
-        s.checkpointVariant = e.variant;
-        advanced = true;
-      }
+    } else if (
+      now - Date.parse(s.checkpoint) >=
+        adaptiveRecallInterval(old, e, policy) * DAY &&
+      s.checkpointVariant !== e.variant
+    ) {
+      s.stage = Math.min(3, s.stage + 1);
+      s.checkpoint = e.occurredAt;
+      s.checkpointVariant = e.variant;
+      advanced = true;
     }
   }
   const weight = clamp(e.evidenceWeight ?? 1);
@@ -113,78 +112,80 @@ export function applyAnswer(old: Mastery, e: AnswerEvent): Mastery {
     const gain = Math.max(
       0,
       Math.min(
-        0.22 *
-          (1 - s.mastery) *
-          evidence *
-          quality *
-          fluency *
-          (0.65 + 0.1 * e.difficulty),
-        0.08 - s.dailyGain,
+        config.positiveRate * (1 - s.mastery) * evidence,
+        config.dailyGainCap - s.dailyGain,
         [0.7, 0.82, 0.91, 0.99][s.stage] - s.mastery,
-      ),
+      ) * quality,
     );
     s.mastery += gain;
     s.dailyGain += gain;
-  } else
-    s.mastery += (0.12 + 0.2 * s.mastery) * evidence * Math.max(0.6, quality);
+  } else {
+    const cause = errorCauseEstimate(e,history);
+    // A single ambiguous loss has limited effect; corroborated concept evidence can matter more.
+    const attribution = cause.confirmed
+      ? config.failureAttribution.confirmedBase +
+        cause.concept * config.failureAttribution.confirmedConcept
+      : config.failureAttribution.unconfirmedBase +
+        cause.concept * config.failureAttribution.unconfirmedConcept;
+    s.mastery += config.negativeRate * evidence * quality * attribution;
+  }
   s.mastery = clamp(s.mastery, 0, 0.99);
+  // Smooth log-space updates, bounded per observation. Same-day repetition cannot inflate stability.
+  if (e.score < 0.4 || (reliable && (!sameDay || advanced))) {
+    const target =
+      e.score < 0.4
+        ? Math.max(0.25, s.stability * 0.5)
+        : Math.max(s.stability, adaptiveRecallInterval(s, e, policy) * 1.5);
+    const ratio = Math.exp(
+      config.smoothing * Math.log(target / Math.max(0.25, old.stability)),
+    );
+    s.stability = clamp(
+      old.stability *
+        clamp(ratio, config.stabilityDownLimit, config.stabilityUpLimit),
+      0.25,
+      config.maxStability,
+    );
+  }
   if (e.score < 0.4) {
-    s.stability = Math.max(0.25, s.stability * 0.25);
-    s.stage = 0;
-    s.checkpoint = null;
     s.lastFailure = e.occurredAt;
     s.errorCount++;
+    // One failure does not erase several days of successful retention; fresh retrieval is due soon.
+    if (s.errorCount >= 2 && s.mastery < 0.5)
+      s.stage = Math.max(0, s.stage - 1);
   }
-  const cap =
-    s.mastery < 0.45
-      ? 1
-      : s.mastery < 0.65
-        ? 3
-        : s.mastery < 0.8
-          ? 7
-          : s.mastery < 0.9
-            ? 14
-            : 180;
   let interval =
     e.score < 0.4
-      ? 1
-      : e.score < 0.65
-        ? Math.min(1, Math.max(0.25, s.stability * 0.35))
-        : Math.min(
-            cap,
-            s.stability *
-              (0.8 + 0.7 * s.mastery) *
-              fluency *
-              clamp(quality / 0.85, 0.25, 1),
-          );
-  let due = now + interval * DAY;
-  if (
-    e.score >= 0.65 &&
-    e.learningEvidence?.intervalFactor &&
-    !e.learningEvidence.suspect
-  ) {
-    interval = Math.min(
-      cap,
-      interval * clamp(e.learningEvidence.intervalFactor, 0.55, 1.5),
-    );
-    due = now + interval * DAY;
-  }
+      ? Math.min(1, s.stability)
+      : Math.min(
+          adaptiveRecallInterval(s, e, policy),
+          s.stability * (0.8 + 0.7 * s.mastery),
+        );
+  if (hintEvidenceWeight(e, policy) < 1) interval = Math.min(interval, 1);
+  let due = now + Math.max(0.25, interval) * DAY;
   if (s.stage < 3 && s.checkpoint)
-    due = Math.min(due, Date.parse(s.checkpoint) + [1, 3, 7][s.stage] * DAY);
+    due = Math.min(
+      due,
+      Date.parse(s.checkpoint) + adaptiveRecallInterval(s, e, policy) * DAY,
+    );
   if (sameDay && old.nextReview && !advanced)
     due = Math.min(due, Date.parse(old.nextReview));
   s.nextReview = new Date(Math.max(now + 60000, due)).toISOString();
   s.lastReviewed = e.occurredAt;
   s.attemptCount++;
-  s.confidence = 0.9 * s.confidence + 0.1 * quality;
+  s.confidence =
+    (1 - config.smoothing) * s.confidence + config.smoothing * quality;
   return s;
 }
-export function computeMastery(nodes: Node[], events: AnswerEvent[]) {
+export function computeMastery(
+  nodes: Node[],
+  events: AnswerEvent[],
+  policy: PolicyConfig = DEFAULT_POLICY,
+) {
   const map: Record<string, Mastery> = {};
   for (const n of nodes)
     for (const skill of n.skills)
       map[keyOf(n.id, skill.id)] = initial(n.id, skill.id);
-  const seen = new Set<string>();
+  const seen = new Set<string>(),history:AnswerEvent[]=[];
   for (const e of [...events].sort(
     (a, b) =>
       a.occurredAt.localeCompare(b.occurredAt) || a.id.localeCompare(b.id),
@@ -197,13 +198,19 @@ export function computeMastery(nodes: Node[], events: AnswerEvent[]) {
       : [{ skillId: e.skillId, score: e.score, weight: 1 }];
     for (const target of targets) {
       const k = keyOf(e.nodeId, target.skillId);
-      map[k] = applyAnswer(map[k] ?? initial(e.nodeId, target.skillId), {
-        ...e,
-        skillId: target.skillId,
-        score: target.score,
-        evidenceWeight: target.weight * (e.evidenceWeight ?? 1),
-      });
+      map[k] = applyAnswer(
+        map[k] ?? initial(e.nodeId, target.skillId),
+        {
+          ...e,
+          skillId: target.skillId,
+          score: target.score,
+          evidenceWeight: target.weight * (e.evidenceWeight ?? 1),
+        },
+        policy,
+        history,
+      );
     }
+    history.push(e);
   }
   return map;
 }
@@ -233,7 +240,10 @@ export function priority(
   events: AnswerEvent[],
   exams: Exam[],
   now: number,
+  policy: PolicyConfig = DEFAULT_POLICY,
 ) {
+  events = cleanEvents(events, now);
+  const weights = policy.engine.priority;
   events = events.filter((e) => !e.voidedBy);
   const today = localDay(new Date(now));
   const done = events.filter(
@@ -269,14 +279,17 @@ export function priority(
     ? clamp((now - Date.parse(s.nextReview)) / DAY / Math.max(1, s.stability))
     : 1;
   return (
-    (0.28 * (1 - s.mastery) +
-      0.22 * forgettingRisk(s, now) +
-      0.15 * clamp(errors) +
-      0.15 * exam +
-      0.08 * n.importance +
-      0.05 * overdue) /
-    (1 + 0.45 * done.length)
+    (weights.weakness * (1 - s.mastery) +
+      weights.forgetting * forgettingRisk(s, now) +
+      weights.errors * clamp(errors) +
+      weights.exam * exam +
+      weights.importance * n.importance +
+      weights.verification * overdue) /
+    (1 + weights.repetitionPenalty * done.length)
   );
+}
+function boundedExpectedSeconds(seconds: number) {
+  return Number.isFinite(seconds) ? clamp(seconds, 15, 900) : 60;
 }
 function hash(s: string) {
   let n = 2166136261;
@@ -301,7 +314,15 @@ export function buildQueue(
   };
   const now = opts.now ?? Date.now(),
     today = localDay(new Date(now));
-  const states = computeMastery(data.nodes, data.events);
+  const policy = policyFor(data),
+    weights = policy.engine.priority;
+  const signalContext=createSignalContext(data,now,policy),qualities=new Map<string,ReturnType<typeof metadataQuality>>();
+  const contentQualityOf=(q:StudyData['questions'][number])=>{let quality=qualities.get(q.id);if(!quality){quality=metadataQuality(data,q,now,policy,signalContext);qualities.set(q.id,quality);}return quality;};
+  const states = computeMastery(
+    data.nodes,
+    cleanEvents(data.events, now),
+    policy,
+  );
   const events = cleanEvents(data.events, now);
   const fingerprints = memoryFingerprint(data, now);
   const diagnosis = cognitiveDiagnosis(data, opts.subject, now);
@@ -323,7 +344,8 @@ export function buildQueue(
         (e) => e.nodeId === n.id && e.skillId === skill.id,
       );
       const practiced = history.filter((e) => e.localDay === today);
-      if (!opts.test && practiced.length >= 4) continue;
+      const skillLimit = skillPracticeLimit(s, policy);
+      if (!opts.test && practiced.length >= skillLimit) continue;
       const high = s.mastery >= 0.9 && s.stage === 3;
       const due = !s.nextReview || Date.parse(s.nextReview) <= now;
       if (
@@ -374,13 +396,20 @@ export function buildQueue(
             history.filter((e) => e.questionId === id).at(-1)?.occurredAt ??
             '1970';
           const rank = (q: typeof a) =>
-            Math.abs(q.difficulty - desired) * 2 +
+            Math.abs(q.difficulty - desired) *
+              2 *
+              contentQualityOf(q).confidence.difficulty +
             (practiced.some((e) => e.questionId === q.id) ? 20 : 0) +
             (last(q.id) !== '1970' ? 1 : 0) +
             hash(today + q.id);
           return rank(a) - rank(b);
         });
-      for (const q of qs.slice(0, 2)) {
+      for (const q of qs.slice(
+        0,
+        opts.test
+          ? policy.evidence.retentionLimit
+          : Math.max(0, skillLimit - practiced.length),
+      )) {
         let reason = !s.attemptCount
           ? '初次诊断'
           : s.mastery < 0.45
@@ -388,7 +417,9 @@ export function buildQueue(
             : due
               ? '间隔复习'
               : '专项练习';
-        let p = priority(n, s, data.events, data.exams, now);
+        let p = priority(n, s, data.events, data.exams, now, policy);
+        const contentQuality = contentQualityOf(q);
+        p *= contentQuality.confidence.skill;
         const weakness = diagnosis.find(
           (d) =>
             d.subject === n.subject &&
@@ -397,26 +428,28 @@ export function buildQueue(
             attributesFor(q, n).includes(d.attribute),
         );
         if (weakness && !opts.test) {
-          p += 0.12;
+          p += weights.diagnosisBonus;
           reason = '能力诊断 · ' + weakness.title;
         }
         const fingerprint = fingerprints.find(
           (f) => f.family === memoryFamily(q, n),
         );
-        if (fingerprint?.ready && fingerprint.factor < 0.9) p += 0.04;
+        if (fingerprint?.ready && fingerprint.factor < 0.9)
+          p += weights.fingerprintBonus;
         const recent = history
           .slice()
           .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))[0];
         if (recent?.predictedConfidence === 'sure' && recent.score < 0.6) {
-          p += 0.15;
+          p += weights.calibrationBonus;
           reason = '信心校准';
         }
-        const weakPre = n.prerequisites
-          .map((id) => data.nodes.find((x) => x.id === id))
+        const weakPre = dependencyLinks(n)
+          .filter((d) => d.kind === 'requires' && d.weight >= 0.8)
+          .map((d) => data.nodes.find((x) => x.id === d.nodeId))
           .filter(Boolean)
           .find((x) => (nodeMastery(x!, states) ?? 0.35) < 0.45);
         if (weakPre && s.mastery < 0.45) {
-          p *= 0.8;
+          p *= weights.dependencyDiscount;
           reason = '基础诊断';
         }
         if (
@@ -446,8 +479,17 @@ export function buildQueue(
     }
   // Add weak prerequisites before the dependent skill, without forcing repeats.
   for (const c of candidates) {
-    if (active.some((n) => n.prerequisites.includes(c.question.nodeId))) {
-      c.priority += 0.07;
+    if (
+      active.some((n) =>
+        dependencyLinks(n).some(
+          (d) =>
+            d.nodeId === c.question.nodeId &&
+            d.kind === 'requires' &&
+            d.weight >= 0.8,
+        ),
+      )
+    ) {
+      c.priority += weights.prerequisiteBonus;
       if (c.reason === '巩固基础') c.reason = '前置诊断';
     }
   }
@@ -462,12 +504,26 @@ export function buildQueue(
   while (candidates.length && queue.length < target) {
     const idx = candidates.findIndex((c) => {
       const k = keyOf(c.question.nodeId, c.question.skillId);
-      return (
-        (perSkill.get(k) ?? 0) < 2 &&
+      const state = states[k] ?? initial(c.question.nodeId, c.question.skillId);
+      const acquisition = acquisitionMode(state) && !opts.test;
+      const count = perSkill.get(k) ?? 0;
+      const limit = opts.test
+        ? policy.evidence.retentionLimit
+        : skillPracticeLimit(state, policy);
+      const interleaved =
         !queue
           .slice(-3)
           .some((x) => keyOf(x.question.nodeId, x.question.skillId) === k) &&
-        queue.at(-1)?.question.nodeId !== c.question.nodeId &&
+        queue.at(-1)?.question.nodeId !== c.question.nodeId;
+      // Prefer interleaving where alternatives exist; acquisition may use a short consecutive worked block.
+      const alternate = candidates.some(
+        (x) =>
+          keyOf(x.question.nodeId, x.question.skillId) !== k &&
+          !queue.some((q) => q.question.id === x.question.id),
+      );
+      return (
+        count < limit &&
+        (interleaved || (acquisition && !alternate)) &&
         !queue.some((x) => x.question.id === c.question.id)
       );
     });
@@ -475,12 +531,13 @@ export function buildQueue(
     const c = candidates.splice(idx, 1)[0];
     if (
       !opts.test &&
-      seconds + c.question.expectedSeconds > data.settings.dailyMinutes * 60 &&
+      seconds + boundedExpectedSeconds(c.question.expectedSeconds) >
+        data.settings.dailyMinutes * 60 &&
       queue.length
     )
       continue;
     queue.push(c);
-    seconds += c.question.expectedSeconds;
+    seconds += boundedExpectedSeconds(c.question.expectedSeconds);
     const k = keyOf(c.question.nodeId, c.question.skillId);
     perSkill.set(k, (perSkill.get(k) ?? 0) + 1);
   }

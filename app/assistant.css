@@ -1,4 +1,11 @@
 /* Tutorial uses the same playful controls, companion and borders as the workspace. */
+.director-trace { max-height: 480px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; }
+.director-details select { display: block; margin: 10px 0 18px; width: min(100%,380px); padding: 10px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface,white); }
+.director-teaching h2 { margin-top: 26px; font-size: 21px; }
+.director-teaching > .math-text { line-height: 1.8; }
+.graded-hints { margin: 18px 0; padding: 16px 20px; border: 1px solid var(--border); border-radius: 16px; }
+.hint-levels { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+.graded-hints small { display: block; margin-top: 12px; color: var(--muted); }
 .now-home {
   min-height: calc(100dvh - 180px);
   display: flex;

@@ -2,6 +2,7 @@ import { apiFetch } from './runtime';
 import { openDB, type IDBPDatabase } from 'idb';
 import { corePack } from './seed';
 import { projectQuality } from './question-quality';
+import { courseCompletionRecords } from './course-lifecycle';
 import {
   type LocalRecord,
   type StudyData,
@@ -78,6 +79,26 @@ export async function completeActiveSession(sessionId: string, ns = namespace) {
   const key = ns + '/active-session';
   const current = await tx.objectStore('records').get(key);
   if (current?.payload?.id === sessionId) {
+    const records = (await tx.objectStore('records').getAll()).filter(
+      (r) => r.namespace === ns && !r.deleted,
+    );
+    const jobs = records.filter((r) => r.kind === 'job').map((r) => r.payload);
+    for (const r of courseCompletionRecords(
+      jobs,
+      sessionId,
+      new Date().toISOString(),
+      {
+        events: records.filter((r) => r.kind === 'event').map((r) => r.payload),
+        nodes: records.filter((r) => r.kind === 'node').map((r) => r.payload),
+        questions: records
+          .filter((r) => r.kind === 'question')
+          .map((r) => r.payload),
+      },
+    )) {
+      const record = { ...r, key: ns + '/' + r.id, namespace: ns };
+      await tx.objectStore('records').put(record);
+      await tx.objectStore('queue').put(record);
+    }
     const next = {
       ...current,
       payload: { ...current.payload, status: 'complete' },
@@ -85,6 +106,35 @@ export async function completeActiveSession(sessionId: string, ns = namespace) {
     };
     await tx.objectStore('records').put(next);
     await tx.objectStore('queue').put(next);
+    if (current.payload.recommendationId) {
+      const id =
+        'study-outcome:' +
+        current.payload.recommendationId +
+        ':' +
+        current.payload.recommendationActionId +
+        ':completed';
+      const r = {
+        id,
+        key: ns + '/' + id,
+        namespace: ns,
+        kind: 'job',
+        payload: {
+          id,
+          kind: 'study-recommendation-outcome',
+          traceId: current.payload.recommendationId,
+          actionId: current.payload.recommendationActionId,
+          choice: 'completed',
+          sessionId,
+          at: next.updated_at,
+        },
+        updated_at: next.updated_at,
+        deleted: false,
+      };
+      if (!(await tx.objectStore('records').get(r.key))) {
+        await tx.objectStore('records').put(r);
+        await tx.objectStore('queue').put(r);
+      }
+    }
     if (current.payload.mode !== 'test') {
       const at = next.updated_at,
         session = current.payload;

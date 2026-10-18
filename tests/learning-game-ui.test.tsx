@@ -115,6 +115,7 @@ test('manually imported item: reveal, XP persistence, standalone recovery and sh
         await act(async () => {
           await new Promise((r) => setTimeout(r, 25));
         });
+      for(let i=0;i<100&&document.querySelector('.answer-modal button:disabled,.question-card button:disabled');i++) await act(async()=>{await new Promise(r=>setTimeout(r,25));});
       assert.equal(notice, '');
     };
     function Harness() {

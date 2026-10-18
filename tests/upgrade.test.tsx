@@ -874,7 +874,8 @@ test('same material reuses a course; revisions and checks preserve previous immu
   const q = courseQuestions(course, s, 'checks')[0];
   await recordCourseCheck(course, q, '细胞核', now);
   await recordCourseCheck(course, q, q.answer, now);
-  assert.equal((await loadData()).events[0].score, 0);
+  const attempts=(await loadData()).events.filter(e=>e.questionId===q.id).sort((a,b)=>(a.attemptNumber??0)-(b.attemptNumber??0));
+  assert.deepEqual(attempts.map(e=>e.score),[0,1]);
   const updated = replaceCourseSection(course, s.id, {
     ...s.content,
     title: '细胞 · 补充解释',
@@ -885,7 +886,7 @@ test('same material reuses a course; revisions and checks preserve previous immu
     courseQuestions(updated, updated.sections[0], 'checks')[0].id,
     q.id,
   );
-  assert.equal((await loadData()).events[0].questionId, q.id);
+  assert.ok((await loadData()).events.every(e=>e.questionId===q.id));
   assert.equal(updated.sections[0].passed.length, 0);
   assert.ok(
     !buildQueue(await loadData(), { practice: true }).some((i) =>

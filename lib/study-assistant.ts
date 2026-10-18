@@ -20,6 +20,19 @@ import {
 } from './model';
 import { isPinyin } from './question-tools';
 import { examFeedback } from './exam-outcomes';
+import { policyFor } from './policy-config';
+import {
+  assessmentInformation,
+  examImpact,
+  metadataQuality,
+  createSignalContext,
+} from './learning-signals';
+import {
+  effectiveAnswerTime,
+  skillPracticeLimit,
+  dependencyLinks,
+  hintEvidenceWeight,
+} from './learning-evidence';
 
 export type AssistantSettings = {
   version: 1;
@@ -47,6 +60,7 @@ export type AssistantRecommendation = {
   title: string;
   reason: string;
   questions: QueueItem[];
+  informationValue?: number;
 };
 const clamp = (n: number, low = 0, high = 1) =>
   Math.max(low, Math.min(high, n));
@@ -103,7 +117,7 @@ export function assistantObservations(data: StudyData, now: number) {
     )
       return false;
     // Importing the same completed answer with another id must not inflate the evidence.
-    const fingerprint = [e.sessionId, e.questionId, e.occurredAt].join('|');
+    const fingerprint = [e.sessionId, e.questionId, e.occurredAt,e.attemptNumber??''].join('|');
     if (seen.has(fingerprint)) return false;
     seen.add(fingerprint);
     return true;
@@ -117,7 +131,7 @@ export function reliableAssistantEvent(e: AnswerEvent) {
     Number.isFinite(e.expectedSeconds) &&
     e.expectedSeconds > 0 &&
     (e.evidenceWeight === undefined || e.evidenceWeight > 0) &&
-    !e.usedHint &&
+    hintEvidenceWeight(e) >= policyFor().evidence.hintWeights.light &&
     !e.learningEvidence?.suspect &&
     !e.learningEvidence?.timedOut &&
     e.predictedConfidence !== 'guess' &&
@@ -148,6 +162,8 @@ const STAGE_TITLES: Record<AssistantStageKind, string> = {
  */
 export function dailyStudyPlan(data: StudyData, now = Date.now()) {
   now = parsedNow(now);
+  const policy = policyFor(data);
+  const signalContext=createSignalContext(data,now,policy);
   const settings = assistantSettings(data),
     today = localDay(new Date(now));
   const events = observations(data, now),
@@ -214,7 +230,7 @@ export function dailyStudyPlan(data: StudyData, now = Date.now()) {
         (sum, e) =>
           sum +
           (Number.isFinite(e.activeThinkMs) && e.activeThinkMs > 0
-            ? Math.min(e.activeThinkMs / 1000, duration(e.expectedSeconds) * 3)
+            ? effectiveAnswerTime(e) / 1000
             : 0),
         0,
       ),
@@ -232,14 +248,17 @@ export function dailyStudyPlan(data: StudyData, now = Date.now()) {
   const fingerprints = memoryFingerprint(safe, now);
   const blocked = new Map<string, string[]>();
   for (const n of data.nodes) {
-    const prerequisites = n.prerequisites.filter((id) => {
-      const pre = data.nodes.find((p) => p.id === id);
-      if (!pre) return false;
-      return pre.skills.some((s) => {
-        const info = skillMap.get(keyOf(pre.id, s.id));
-        return info && ['unknown', 'fragile'].includes(info.state);
+    const prerequisites = dependencyLinks(n)
+      .filter((d) => d.kind === 'requires' && d.weight >= 0.8)
+      .map((d) => d.nodeId)
+      .filter((id) => {
+        const pre = data.nodes.find((p) => p.id === id);
+        if (!pre) return false;
+        return pre.skills.some((s) => {
+          const info = skillMap.get(keyOf(pre.id, s.id));
+          return info && ['unknown', 'fragile'].includes(info.state);
+        });
       });
-    });
     if (prerequisites.length) blocked.set(n.id, prerequisites);
   }
   const prerequisiteIds = new Set([...blocked.values()].flat());
@@ -252,12 +271,22 @@ export function dailyStudyPlan(data: StudyData, now = Date.now()) {
       rows = history.get(key) ?? [];
     const todayRows = rows.filter((e) => dayOf(e) === today);
     // New-item diagnosis can use another item, but same-day repetition is never called spacing.
-    if (todayRows.some((e) => e.questionId === q.id) || todayRows.length >= 2)
+    if (
+      todayRows.some((e) => e.questionId === q.id) ||
+      todayRows.length >= skillPracticeLimit(state, policy)
+    )
       return [];
     const due = !!state?.nextReview && Date.parse(state.nextReview) <= now;
     const cross = baseMap.get(q.id)?.verificationOf;
     if (info.state === 'retained' && !due && !cross) return [];
-    if (info.state === 'developing' && rows.length && !due && !cross) return [];
+    if (
+      info.state === 'developing' &&
+      rows.length &&
+      !due &&
+      !cross &&
+      todayRows.length >= skillPracticeLimit(state, policy)
+    )
+      return [];
     const previous = rows.at(-1);
     const delayed =
       previous &&
@@ -304,16 +333,19 @@ export function dailyStudyPlan(data: StudyData, now = Date.now()) {
     const fingerprint = fingerprints.find(
       (f) => f.family === memoryFamily(q, n),
     );
+    const quality = metadataQuality(data, q, now,policy,signalContext),
+      impact = examImpact(data, q.subject, n.id, now,policy,signalContext),
+      u = policy.utility;
+    const weakness = state?.attemptCount ? 1 - state.mastery : 1;
     const priority =
-      (baseMap.get(q.id)?.priority ?? 0.25) *
-        (0.4 + settings.weights[q.subject] / 3) +
-      (kind === 'prerequisite' ? 0.35 : due ? 0.3 : 0) +
-      (Number.isFinite(exam)
-        ? 0.35 * clamp(1 - exam / 28) * clamp(n.examWeight)
-        : 0) +
-      (state ? forgettingRisk(state, now) * 0.2 : 0) +
-      (fingerprint?.ready && fingerprint.factor < 1 ? 0.05 : 0) +
-      (feedback?.boost ?? 0);
+      ((u.learning * weakness +
+        u.retention * (state ? forgettingRisk(state, now) : 0) +
+        u.exam * (impact.value + (feedback?.boost ?? 0)) +
+        u.information * (cross ? 1 : info.state === 'unknown' ? 1 : 0) +
+        u.exploration * (kind === 'learn' ? u.explorationShare : 0)) *
+        (settings.weights[q.subject] / 5) *
+        (quality.suspect ? policy.engine.priority.dependencyDiscount : 1)) /
+      Math.max(u.minimumMinutes, duration(q.expectedSeconds) / 60);
     return [
       {
         kind,
@@ -343,7 +375,7 @@ export function dailyStudyPlan(data: StudyData, now = Date.now()) {
         key = keyOf(q.nodeId, q.skillId);
       if (
         seconds + c.seconds > remainingSeconds ||
-        (perSkill.get(key) ?? 0) >= 2
+        (perSkill.get(key) ?? 0) >= skillPracticeLimit(states[key], policy)
       )
         return false;
       // Every prerequisite with available diagnostic material is scheduled before its dependent.
@@ -380,112 +412,94 @@ export function dailyStudyPlan(data: StudyData, now = Date.now()) {
   for (const { id: subject } of SUBJECTS.filter(
     (s) => settings.weights[s.id] > 0,
   )) {
-    const subjectSkills = skills.filter((s) => s.subject === subject),
-      questions = activeQuestions.filter(
-        (q) => q.subject === subject && objective(q),
-      ),
-      initialQuestions = activeQuestions.filter(
-        (q) => q.subject === subject && (objective(q) || isPinyin(q)),
-      );
-    if (!initialQuestions.length) continue;
-    const subjectEvents = events.filter(
-      (e) => e.subject === subject && reliable(e),
-    );
-    const hasCompletedTest = data.tests.some(
-      (t) =>
-        Number.isFinite(Date.parse(t.at)) &&
-        Date.parse(t.at) <= now &&
-        t.eventIds.length > 0 &&
-        t.eventIds.every((id) => events.some((e) => e.id === id)) &&
-        t.eventIds.some((id) =>
-          events.some((e) => e.id === id && e.subject === subject),
+    const subjectEvents = events.filter((e) => e.subject === subject),
+      scope = [
+        ...new Set(
+          activeQuestions
+            .filter((q) => q.subject === subject)
+            .map((q) => q.nodeId),
         ),
-    );
-    const scope = [...new Set(subjectSkills.map((s) => s.nodeId))];
-    const lastTest = Math.max(
-      0,
-      ...subjectEvents
-        .filter((e) => e.source === 'test')
-        .map((e) => Date.parse(e.occurredAt)),
-    );
+      ];
+    const information = assessmentInformation(data, subject, now,policy,signalContext);
     const nearest = Math.min(
       Infinity,
       ...data.exams
         .filter((e) => e.subject === subject)
         .map((e) => examDays(e.date, now)),
     );
-    const coverage = subjectSkills.length
-      ? subjectSkills.filter((s) => s.reliableObservations > 0).length /
-        subjectSkills.length
-      : 0;
-    let mode: AssistantRecommendation['mode'] | undefined,
-      reason = '';
-    if (!subjectEvents.length && !hasCompletedTest) {
-      mode = 'initial';
-      reason =
-        '先用已有题目定位起点；拼音题交卷后逐题自评，自评与客观证据分别保留，未测试能力保持未知。';
-    } else if (
-      now - lastTest >= 7 * DAY &&
-      nearest <= 14 &&
-      coverage >= 0.6 &&
-      new Set(subjectEvents.map(dayOf)).size >= 3 &&
-      subjectSkills.some((s) => s.state === 'retained')
-    ) {
-      mode = 'pressure';
-      reason = '考试临近，且已有跨日普通作答基线，可比较限时表现与平时表现。';
-    } else if (
-      now - lastTest >= 7 * DAY &&
-      (coverage < 0.6 ||
-        nearest <= 28 ||
-        subjectEvents.filter((e) => now - Date.parse(e.occurredAt) <= 14 * DAY)
-          .length >= 12)
-    ) {
-      mode = 'test';
-      reason =
-        coverage < 0.6
-          ? '已学内容仍有未测能力，用短测补足覆盖。'
-          : nearest <= 28
-            ? '考试进入准备窗口，用已有题目检查阶段表现。'
-            : '近期已积累练习证据，使用短测验证是否可以独立完成。';
+    const pendingInitial=data.tests.some(t=>t.subject===subject&&t.eventIds.some(id=>!events.some(e=>e.id===id)));
+    const modes: AssistantRecommendation['mode'][] = (!subjectEvents.length||pendingInitial)
+      ? ['initial']
+      : [
+          'test',
+          ...(nearest >= 2 && Number.isFinite(nearest)
+            ? ['pressure' as const]
+            : []),
+        ];
+    for (const mode of modes) {
+      const value =
+        mode === 'initial'
+          ? 1
+          : mode === 'test'
+            ? information.test
+            : information.pressure;
+      if (value <= 0) continue;
+      const reason =
+        mode === 'initial'
+          ? '先用已有代表题确认起点；未测保持未知，拼音交卷后逐题自评。'
+          : information.explanation;
+      const pool =
+        mode === 'pressure'
+          ? pressureQuestions(safe, states, subject, scope, now).filter(
+              (q) =>
+                !events.some(
+                  (e) =>
+                    e.questionId === q.id &&
+                    now - Date.parse(e.occurredAt) < DAY / 2,
+                ),
+            )
+          : activeQuestions.filter(
+              (q) => q.subject === subject && (objective(q) || isPinyin(q)),
+            );
+      const seenSkills = new Map<string, number>();
+      const ordered = [...pool].sort(
+        (a, b) =>
+          Number(subjectEvents.some((e) => e.questionId === a.id)) -
+            Number(subjectEvents.some((e) => e.questionId === b.id)) ||
+          a.id.localeCompare(b.id),
+      );
+      const questions = ordered
+        .filter((q) => {
+          const k = keyOf(q.nodeId, q.skillId),
+            n = seenSkills.get(k) ?? 0;
+          if (n >= policy.evidence.retentionLimit) return false;
+          seenSkills.set(k, n + 1);
+          return true;
+        })
+        .slice(
+          0,
+          mode === 'initial'
+            ? policy.assistant.initialPerSubject
+            : policy.utility.candidateLimit,
+        )
+        .map((question) => ({ question, reason, priority: value }));
+      if (questions.length)
+        recommendations.push({
+          mode,
+          subject,
+          scope,
+          title:
+            subjectName(subject) +
+            (mode === 'initial'
+              ? '首次能力定位'
+              : mode === 'pressure'
+                ? '考前压力测试'
+                : '阶段短测'),
+          reason,
+          questions,
+          informationValue: value,
+        });
     }
-    if (!mode) continue;
-    const pool =
-      mode === 'pressure'
-        ? pressureQuestions(safe, states, subject, scope, now)
-        : mode === 'initial'
-          ? initialQuestions
-          : questions;
-    const seenSkills = new Set<string>();
-    const ordered = [...pool].sort(
-      (a, b) =>
-        Number(subjectEvents.some((e) => e.questionId === a.id)) -
-          Number(subjectEvents.some((e) => e.questionId === b.id)) ||
-        a.id.localeCompare(b.id),
-    );
-    const testItems = ordered
-      .filter((q) => {
-        const key = keyOf(q.nodeId, q.skillId);
-        if (seenSkills.has(key)) return false;
-        seenSkills.add(key);
-        return true;
-      })
-      .slice(0, mode === 'initial' ? 8 : 10)
-      .map((question) => ({ question, reason, priority: 1 }));
-    if (testItems.length)
-      recommendations.push({
-        mode,
-        subject,
-        scope,
-        title:
-          subjectName(subject) +
-          (mode === 'initial'
-            ? '首次能力定位'
-            : mode === 'pressure'
-              ? '考前压力测试'
-              : '阶段短测'),
-        reason,
-        questions: testItems,
-      });
   }
   recommendations.sort(
     (a, b) =>
@@ -496,18 +510,25 @@ export function dailyStudyPlan(data: StudyData, now = Date.now()) {
   const initialSubjects = recommendations.filter((r) => r.mode === 'initial');
   if (initialSubjects.length > 1) {
     const questions: QueueItem[] = [];
-    for (let index = 0; questions.length < 12; index++) {
+    for (
+      let index = 0;
+      questions.length < policy.assistant.initialCombined;
+      index++
+    ) {
       const round = initialSubjects.flatMap((r) =>
         r.questions[index] ? [r.questions[index]] : [],
       );
       if (!round.length) break;
-      questions.push(...round.slice(0, 12 - questions.length));
+      questions.push(
+        ...round.slice(0, policy.assistant.initialCombined - questions.length),
+      );
     }
     recommendations.unshift({
       mode: 'initial',
       subject: 'all',
       scope: [...new Set(questions.map((q) => q.question.nodeId))],
       title: '首次综合能力定位',
+      informationValue: 1,
       reason:
         '覆盖已导入且重视的学科，以少量代表题确认起点；未测能力保持未知。',
       questions,
@@ -571,6 +592,9 @@ export function weeklyLearningGpa(data: StudyData, now = Date.now()) {
   const eligible = events.filter(
     (e) =>
       reliable(e) &&
+      !e.usedHint &&
+      !e.hintLevel &&
+      effectiveAnswerTime(e) >= 1500 &&
       !e.learningEvidence?.pressure &&
       settings.weights[e.subject] > 0,
   );

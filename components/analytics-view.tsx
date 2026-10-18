@@ -2,6 +2,7 @@
 import { useReview } from './review-context';
 import { SUBJECTS, keyOf } from '@/lib/model';
 import { computeMastery, forgettingRisk, DAY } from '@/lib/engine';
+import { masteryStatus, effectiveAnswerTime } from '@/lib/learning-evidence';
 import { Heading, Empty, Meter, dateLabel } from './shared';
 import LearningInsights from './learning-insights';
 import { RemediationLauncher } from './remediation-course';
@@ -29,7 +30,9 @@ export default function AnalyticsView({
       .filter((s) => forgettingRisk(s) > 0.4)
       .sort((a, b) => forgettingRisk(b) - forgettingRisk(a))
       .slice(0, 5),
-    stable = skills.filter((s) => s.mastery >= 0.9 && s.stage === 3);
+    stable = skills.filter((s) =>
+      ['已保持', '已验证'].includes(masteryStatus(s)),
+    );
   const improving = [...skills]
     .map((s) => ({
       ...s,
@@ -46,7 +49,12 @@ export default function AnalyticsView({
       ),
     };
   });
-  const row = (s: (typeof skills)[number], metric: number, detail: string) => {
+  const row = (
+    s: (typeof skills)[number],
+    metric: number,
+    detail: string,
+    label = masteryStatus(s),
+  ) => {
     const n = nodes.find((n) => n.id === s.nodeId);
     return (
       <button
@@ -60,7 +68,7 @@ export default function AnalyticsView({
             {n?.skills.find((x) => x.id === s.skillId)?.title} · {detail}
           </p>
         </div>
-        <Meter value={metric} />
+        <Meter value={metric} label={label} />
       </button>
     );
   };
@@ -144,6 +152,7 @@ export default function AnalyticsView({
                     s,
                     forgettingRisk(s),
                     '上次 ' + dateLabel(s.lastReviewed),
+                    '不稳定',
                   ),
                 )
               ) : (
@@ -157,7 +166,14 @@ export default function AnalyticsView({
               {improving
                 .filter((s) => s.gain > 0)
                 .map((s) =>
-                  row(s, s.mastery, `近7天 +${Math.round(s.gain * 100)}%`),
+                  row(
+                    s,
+                    s.mastery,
+                    masteryStatus(before[keyOf(s.nodeId, s.skillId)]) ===
+                      masteryStatus(s)
+                      ? '近期学习证据有所改善'
+                      : `${masteryStatus(before[keyOf(s.nodeId, s.skillId)])} → ${masteryStatus(s)}`,
+                  ),
                 )}
               {!improving.some((s) => s.gain > 0) && (
                 <Empty title="让进步经过时间验证">
@@ -169,7 +185,11 @@ export default function AnalyticsView({
               <h2>稳定掌握</h2>
               {stable.length ? (
                 stable.map((s) =>
-                  row(s, s.mastery, `稳定度 ${s.stability.toFixed(0)} 天`),
+                  row(
+                    s,
+                    s.mastery,
+                    `保持间隔参考 ${s.stability.toFixed(0)} 天`,
+                  ),
                 )
               ) : (
                 <Empty title="真正的掌握，需要几次重逢">
@@ -201,7 +221,8 @@ export default function AnalyticsView({
                       <p className="muted">
                         {dateLabel(t.at)} · {es.length} 题 · 思考{' '}
                         {Math.round(
-                          es.reduce((a, e) => a + e.activeThinkMs, 0) / 1000,
+                          es.reduce((a, e) => a + effectiveAnswerTime(e), 0) /
+                            1000,
                         )}{' '}
                         秒
                       </p>

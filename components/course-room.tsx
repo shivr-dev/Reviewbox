@@ -21,11 +21,11 @@ import {
 } from 'lucide-react';
 import { useReview } from './review-context';
 import { currentNamespace, put } from '@/lib/store';
+import { prepareCourseLearningSession } from '@/lib/course-lifecycle';
 import {
   courseCall,
   saveCourse,
   prepareCourse,
-  prepareFreeCoursePractice,
   recordCourseCheck,
 } from '@/lib/course-client';
 import {
@@ -216,16 +216,20 @@ export default function CourseRoom({ courseId }: { courseId: string }) {
       revision: number;
       verification?: Question['verification'];
     } | null>(null),
-    [error, setError] = useState('');
+    [error, setError] = useState(''),
+    [practiceRequested, setPracticeRequested] = useState(false),
+    [needsPracticeImport, setNeedsPracticeImport] = useState(false);
   const ref = useRef(course),
     ns = useRef(currentNamespace()),
     queue = useRef(Promise.resolve()),
     stop = useRef(false),
     lock = useRef(false);
   useEffect(() => {
-    if (!ref.current && initial) {
+    if (initial && ref.current?.id !== initial.id) {
       ref.current = initial;
       setCourse(initial);
+      setPracticeRequested(false);
+      setNeedsPracticeImport(false);
     }
   }, [initial]);
   useEffect(
@@ -237,6 +241,8 @@ export default function CourseRoom({ courseId }: { courseId: string }) {
   const section = course?.sections[course.current],
     content = section?.content;
   function update(next: Course) {
+    if (currentNamespace() !== ns.current)
+      return Promise.reject(new Error('账户已切换，请重新打开课程'));
     ref.current = next;
     setCourse(next);
     const nextValue = structuredClone(next);
@@ -257,7 +263,7 @@ export default function CourseRoom({ courseId }: { courseId: string }) {
     try {
       await flush();
       await refresh();
-      navigate('subjects', course?.subject);
+      navigate('subjects', course?.subject, 'courses');
     } catch {
       setError('请先完成本地保存后再退出。');
     }
@@ -318,7 +324,11 @@ export default function CourseRoom({ courseId }: { courseId: string }) {
   async function complete() {
     const c = ref.current;
     const currentSection = c?.sections[c.current];
-    if (!c || !currentSection || working || lock.current) return;
+    if (!c || !currentSection?.content || working || lock.current) return;
+    if (currentNamespace() !== ns.current) {
+      setError('账户已切换，请重新打开课程');
+      return;
+    }
     const checks = courseQuestions(c, currentSection, 'checks');
     if (checks.some((q) => !currentSection.passed.includes(q.id))) {
       notify('请先完成本节的全部理解检验');
@@ -342,7 +352,21 @@ export default function CourseRoom({ courseId }: { courseId: string }) {
       } else {
         if (currentNamespace() !== ns.current)
           throw new Error('账户已切换，请重新打开课程');
-        navigate('plan');
+        const result = await prepareCourseLearningSession(
+          c.id,
+          'practice',
+          ns.current,
+        );
+        await refresh();
+        if (currentNamespace() !== ns.current) return;
+        if (result.session) navigate('study');
+        else if (result.alreadyComplete) navigate('plan');
+        else {
+          setNeedsPracticeImport(true);
+          notify(
+            '教学进度已保存。请导入本课程的巩固题，系统不会自动消耗 AI 额度。',
+          );
+        }
       }
     } catch (e) {
       setError(courseErrorMessage(e));
@@ -666,7 +690,14 @@ export default function CourseRoom({ courseId }: { courseId: string }) {
                         ),
                       });
                   }}
-                  onPractice={complete}
+                  onPractice={async () => {
+                    // Generated HTML may call its bridge while initializing. Only a
+                    // click in the host footer can advance persistent course state.
+                    setPracticeRequested(true);
+                    document
+                      .querySelector('.lesson-footer')
+                      ?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+                  }}
                   onAsk={(text) => {
                     setSelection(text);
                     setChatOpen(true);
@@ -863,7 +894,23 @@ export default function CourseRoom({ courseId }: { courseId: string }) {
                     </b>
                   )}
                   <p>完成本节后继续下一节；课程结束后进入巩固练习。</p>
+                  {practiceRequested && (
+                    <p role="status">课件已就绪，请点击右侧按钮确认完成。</p>
+                  )}
+                  {needsPracticeImport && (
+                    <p role="status">
+                      该课程暂无已核验巩固题。可先导入课程题目，稍后从学习计划继续。
+                    </p>
+                  )}
                 </div>
+                {needsPracticeImport && (
+                  <button
+                    className="secondary"
+                    onClick={() => navigate('library')}
+                  >
+                    导入课程巩固题
+                  </button>
+                )}
                 <button
                   className="primary"
                   disabled={

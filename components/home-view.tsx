@@ -4,7 +4,9 @@ import { useEffect, useState } from 'react';
 import { useReview } from './review-context';
 import { studyAgenda } from '@/lib/study-orchestrator';
 import { Penguin } from './learning-game';
-export default function HomeView() {
+export default function HomeView({
+  direct = false,
+}: { direct?: boolean } = {}) {
   const [showCompanion, setShowCompanion] = useState(false);
   useEffect(() => setShowCompanion(true), []);
   const { data, navigate } = useReview(),
@@ -21,9 +23,13 @@ export default function HomeView() {
       <p>{next.reason}</p>
       <button
         className="primary game-main-action"
-        onClick={() => navigate('plan')}
+        onClick={() =>
+          direct
+            ? navigate('plan', 'all', 'launch:' + next.id)
+            : navigate('plan')
+        }
       >
-        进入学习计划
+        {direct ? next.label : '进入学习计划'}
         <ArrowRight size={20} />
       </button>
       <small>

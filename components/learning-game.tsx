@@ -26,6 +26,11 @@ import { currentNamespace, loadData, put } from '@/lib/store';
 import { Switch } from './ui/switch';
 import { useReview } from './review-context';
 import {
+  comboMilestone,
+  nextComboMilestone,
+  COMBO_MOTION,
+} from '@/lib/combo-feedback';
+import {
   companionFrame,
   companionMotion,
   COMPANION_COSTUMES,
@@ -243,23 +248,30 @@ export function ComboCelebration({
 }: {
   reward: RewardFeedback | null;
 }) {
+  const { data } = useReview();
+  return data.settings.alphaPreview === true ? (
+    <SoftComboCelebration reward={reward} />
+  ) : (
+    <LegacyComboCelebration reward={reward} />
+  );
+}
+function LegacyComboCelebration({ reward }: { reward: RewardFeedback | null }) {
   const { data } = useReview(),
     skin = learningGame(data).skin;
   const [active, setActive] = useState<RewardFeedback | null>(null);
   useEffect(() => {
-    if (
-      !reward?.correct ||
-      !reward.counted ||
-      ![3, 5, 10, 15, 20].includes(reward.combo)
-    )
+    if (!reward?.correct || !reward.counted || !comboMilestone(reward.combo))
       return;
     setActive(reward);
+  }, [reward?.id]);
+  useEffect(() => {
+    if (!active) return;
     const reduced = window.matchMedia?.(
       '(prefers-reduced-motion: reduce)',
     ).matches;
     const t = setTimeout(() => setActive(null), reduced ? 700 : 1700);
     return () => clearTimeout(t);
-  }, [reward?.id]);
+  }, [active?.id]);
   useEffect(() => {
     if (!active) return;
     const esc = (e: KeyboardEvent) => {
@@ -318,6 +330,148 @@ export function ComboCelebration({
         document.body,
       )
     : null;
+}
+function SoftComboCelebration({ reward }: { reward: RewardFeedback | null }) {
+  const { data } = useReview(),
+    skin = learningGame(data).skin;
+  const [active, setActive] = useState<RewardFeedback | null>(null),
+    [phase, setPhase] = useState('enter');
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]),
+    seen = useRef(new Set<string>()),
+    skip = useRef<HTMLButtonElement>(null);
+  const reduced =
+    typeof window !== 'undefined' &&
+    !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  useEffect(() => {
+    if (typeof Image === 'undefined') return;
+    const atlas = new Image();
+    atlas.src = assetPath(companionMotion('combo', skin).file);
+  }, [skin]);
+  useEffect(() => {
+    if (!reward) {
+      setActive(null);
+      return;
+    }
+    if (
+      !reward.correct ||
+      !reward.counted ||
+      !comboMilestone(reward.combo) ||
+      seen.current.has(reward.id)
+    )
+      return;
+    seen.current.add(reward.id);
+    setPhase('enter');
+    setActive(reward);
+  }, [reward?.id]);
+  // Lifetime belongs to the active celebration, not to the next reward object.
+  useEffect(() => {
+    if (!active) return;
+    const previous = document.activeElement as HTMLElement | null;
+    skip.current?.focus({ preventScroll: true });
+    timers.current = [
+      setTimeout(() => setPhase('hold'), reduced ? 0 : COMBO_MOTION.enter),
+      setTimeout(() => setPhase('exit'), COMBO_MOTION.hold),
+      setTimeout(
+        () => setActive(null),
+        COMBO_MOTION.hold + (reduced ? 0 : COMBO_MOTION.exit),
+      ),
+    ];
+    return () => {
+      timers.current.forEach(clearTimeout);
+      if (previous?.isConnected) previous.focus({ preventScroll: true });
+    };
+  }, [active?.id, reduced]);
+  function dismiss() {
+    timers.current.forEach(clearTimeout);
+    setPhase('exit');
+    timers.current = [
+      setTimeout(() => setActive(null), reduced ? 0 : COMBO_MOTION.exit),
+    ];
+  }
+  useEffect(() => {
+    if (!active) return;
+    const keys = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        dismiss();
+      }
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        skip.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', keys);
+    return () => window.removeEventListener('keydown', keys);
+  }, [active?.id, reduced]);
+  return active
+    ? createPortal(
+        <div
+          className={
+            'combo-screen combo-soft phase-' +
+            phase +
+            (reduced ? ' reduced' : '')
+          }
+          role="dialog"
+          aria-modal="true"
+          aria-label={`${active.combo} 连对，学习里程碑`}
+          onClick={dismiss}
+        >
+          <button
+            className="combo-skip"
+            ref={skip}
+            onClick={(e) => {
+              e.stopPropagation();
+              dismiss();
+            }}
+          >
+            <X size={17} /> 继续学习
+          </button>
+          <div className="combo-orbit" aria-hidden="true">
+            {Array.from({ length: 12 }, (_, i) => (
+              <i
+                key={i}
+                style={
+                  {
+                    '--angle': `${i * 30}deg`,
+                    '--delay': `${180 + (i % 3) * 60}ms`,
+                  } as React.CSSProperties
+                }
+              />
+            ))}
+          </div>
+          <div className="combo-stage">
+            <span className="combo-soft-kicker">一步一步，进入状态</span>
+            <div className="combo-numeral">
+              {active.combo}
+              <span>连续答对</span>
+            </div>
+            <Penguin skin={skin} action="combo" actionKey={active.id} />
+            <h2>
+              {active.combo >= 10
+                ? '这份专注，真不错。'
+                : active.combo >= 5
+                  ? '找到自己的节奏了。'
+                  : '漂亮的开始。'}
+            </h2>
+            <p>先收下这份鼓励，再继续下一步。</p>
+          </div>
+        </div>,
+        document.body,
+      )
+    : null;
+}
+export function ComboIndicator({ reward }: { reward: RewardFeedback | null }) {
+  return reward?.counted && reward.correct && reward.combo >= 2 ? (
+    <span
+      className="combo-progress"
+      role="status"
+      title="重复作答、猜测和过快揭晓不累计连对；全屏庆祝在 3、5 及之后每 5 次连对时出现。"
+    >
+      <Flame size={15} />
+      <b>{reward.combo} 连对</b>
+      <small>下个里程碑 {nextComboMilestone(reward.combo)}</small>
+    </span>
+  ) : null;
 }
 export function GameProfile({ shopOnly = false }: { shopOnly?: boolean } = {}) {
   const { data, refresh, notify, navigate } = useReview(),

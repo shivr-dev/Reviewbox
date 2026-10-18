@@ -67,17 +67,32 @@ export function SubjectChoice({
 export function Meter({
   value,
   color,
+  label,
 }: {
   value: number | null;
   color?: string;
+  label?: string;
 }) {
   return (
     <div className="meter">
       <Progress
+        aria-hidden={label ? true : undefined}
         value={value === null ? 0 : Math.round(value * 100)}
-        style={color ? ({ '--meter-color': color } as React.CSSProperties) : undefined}
+        style={
+          color
+            ? ({ '--meter-color': color } as React.CSSProperties)
+            : undefined
+        }
       />
-      <span>{value === null ? '未评估' : Math.round(value * 100) + '%'}</span>
+      <span
+        title={
+          label
+            ? '学习状态依据跨天、不同题目的证据判断。条形仅表示内部估计，不是答对概率。'
+            : undefined
+        }
+      >
+        {label ?? (value === null ? '未评估' : Math.round(value * 100) + '%')}
+      </span>
     </div>
   );
 }

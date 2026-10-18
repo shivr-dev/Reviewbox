@@ -7,6 +7,7 @@ import {
   type Mastery,
 } from './model';
 import { isPinyin } from './question-tools';
+import { answerEvidenceWeight } from './learning-evidence';
 
 const DAY = 86400000;
 const clamp = (v: number, a = 0, b = 1) => Math.max(a, Math.min(b, v));
@@ -113,19 +114,7 @@ export function reusable(q: Question, now = Date.now()) {
   );
 }
 export function evidenceReliability(e: AnswerEvent) {
-  const objective =
-    e.learningEvidence?.assessment === 'objective' ||
-    (e.source === 'test' && !!e.answer);
-  let weight = objective || e.source === 'rubric' ? 1 : 0.45;
-  if (e.usedHint) weight *= 0.4;
-  if (e.learningEvidence?.suspect) weight *= 0.3;
-  if (
-    !Number.isFinite(e.activeThinkMs) ||
-    e.activeThinkMs < Math.max(1500, Math.min(5000, e.expectedSeconds * 200))
-  )
-    weight *= 0.25;
-  if (e.predictedConfidence === 'guess') weight *= 0.5;
-  return weight;
+  return answerEvidenceWeight(e);
 }
 
 export type Diagnosis = {

@@ -1114,6 +1114,131 @@
   animation: combo-screen-in 0.18s ease-out;
   font-family: 'Review Duo', 'Noto Sans SC', sans-serif;
 }
+.combo-screen.combo-soft {
+  color: #314b62;
+  background: radial-gradient(ellipse at 50% 42%, #fffffffa, #edf7fff5 70%);
+  backdrop-filter: blur(5px);
+  animation: combo-soft-enter 420ms ease-out both;
+}
+.combo-soft.phase-exit {
+  animation: combo-soft-exit 320ms ease-in both;
+  pointer-events: none;
+}
+.combo-soft:before {
+  display: none;
+}
+.combo-soft .combo-stage {
+  width: min(90vw, 520px);
+  padding: 40px 16px;
+  animation: combo-soft-stage 600ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.combo-soft .combo-soft-kicker {
+  color: #63819a;
+  font-size: 13px;
+  letter-spacing: 2px;
+}
+.combo-soft .combo-numeral {
+  color: #188ccc;
+  font-size: clamp(64px, 12vh, 100px);
+  text-shadow: 0 4px 0 #ccecff;
+  letter-spacing: -2px;
+  margin-top: 20px;
+}
+.combo-soft .combo-numeral span {
+  color: #52718a;
+  font-size: 15px;
+  letter-spacing: 2px;
+  margin-top: 14px;
+}
+.combo-soft .combo-stage .learning-penguin {
+  width: min(26vh, 210px);
+  height: min(26vh, 210px);
+  margin: 12px auto;
+  animation: none;
+}
+.combo-soft .combo-stage h2 {
+  color: #314b62 !important;
+  font-size: clamp(21px, 4vw, 28px);
+}
+.combo-soft .combo-stage p {
+  color: #658096;
+  line-height: 1.7;
+}
+.combo-soft .combo-skip {
+  color: #426783;
+  background: #ffffffc9;
+  border: 1px solid #d6e6f1;
+  min-height: 44px;
+  box-shadow: none;
+}
+.combo-soft .combo-skip:focus-visible {
+  outline: 3px solid #80caff;
+  outline-offset: 3px;
+}
+.combo-soft .combo-orbit i {
+  width: 7px;
+  height: 7px;
+  box-shadow: none;
+  animation: combo-soft-sparks 1500ms ease-out var(--delay) both;
+}
+.combo-progress {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #b46a13;
+  font-size: 13px;
+  flex-wrap: wrap;
+}
+.combo-progress small {
+  color: #7a8c99;
+  font-size: 11px;
+}
+@keyframes combo-soft-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes combo-soft-exit {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@keyframes combo-soft-stage {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes combo-soft-sparks {
+  0% {
+    opacity: 0;
+    transform: rotate(var(--angle)) translateX(110px) scale(0.5);
+  }
+  25% {
+    opacity: 0.65;
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(var(--angle)) translateX(min(34vw, 300px)) scale(1);
+  }
+}
+.combo-soft.reduced,
+.combo-soft.reduced .combo-stage {
+  animation: none;
+}
+.combo-soft.reduced .combo-orbit {
+  display: none;
+}
 .combo-screen:before {
   content: '';
   position: absolute;

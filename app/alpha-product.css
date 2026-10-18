@@ -1,0 +1,804 @@
+/* Alpha only. The stable workspace keeps its existing layout and theme. */
+.alpha-shop-links {
+  display: flex;
+  gap: 12px;
+  margin: 0 0 24px;
+}
+.alpha-shop-links button {
+  font-size: 13px !important;
+}
+.alpha-supplies {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 22px;
+  align-items: start;
+}
+.alpha-supplies article {
+  min-width: 0;
+  padding: 25px 22px;
+  border: 2px solid #e5edf3;
+  border-radius: 17px;
+  background: #fff;
+}
+.alpha-supplies article > .forge-material-art {
+  display: block;
+  width: 72px;
+  height: 72px;
+  max-width: 100%;
+  margin: 0 0 18px;
+}
+.alpha-supplies article h2 {
+  font-size: 18px;
+  margin: 0 0 10px;
+}
+.alpha-supplies article p {
+  font-size: 13px;
+  line-height: 1.8;
+  color: #8b99a3;
+  min-height: 48px;
+  margin: 0 0 24px;
+}
+.alpha-supplies article button {
+  width: 100%;
+  font-size: 13px !important;
+  padding: 12px 10px !important;
+}
+.alpha-legacy {
+  margin: 30px 0;
+  color: #92a3ae;
+  font-size: 12px;
+}
+.alpha-legacy p {
+  margin: 15px 0;
+}
+.alpha-legacy button {
+  font-size: 12px !important;
+}
+@media (max-width: 760px) {
+  .alpha-supplies {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+  .alpha-supplies article {
+    display: grid;
+    grid-template-columns: 60px 1fr;
+    gap: 3px 15px;
+    padding: 20px;
+  }
+  .alpha-supplies article > .forge-material-art {
+    width: 56px;
+    height: 56px;
+    margin: 0;
+    grid-row: span 2;
+  }
+  .alpha-supplies article h2 {
+    font-size: 16px;
+  }
+  .alpha-supplies article p {
+    font-size: 12px;
+    min-height: 0;
+    margin: 0 0 15px;
+  }
+  .alpha-supplies article button {
+    grid-column: 1/-1;
+    min-height: 44px;
+  }
+  .alpha-shop-links button {
+    font-size: 12px !important;
+  }
+}
+.alpha-rail .alpha-nav-button.game-group::before {
+  content: '';
+  position: absolute;
+  width: 26px;
+  height: 1px;
+  background: #e7edf1;
+  left: 50%;
+  top: -17px;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.alpha-product {
+  display: flex;
+  min-height: 100dvh;
+  padding: 0 !important;
+  background: #fff !important;
+}
+.alpha-rail {
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: 76px;
+  z-index: 40;
+  background: white;
+  border-right: 2px solid #edf1f4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px 0;
+}
+.alpha-rail button {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 13px;
+  background: white;
+  color: #8a969f;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    transform 0.12s;
+}
+.alpha-rail .alpha-logo {
+  background: #51aff0;
+  color: white;
+  box-shadow: 0 3px 0 #4095ca;
+  margin-bottom: 38px;
+}
+.alpha-rail nav {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.alpha-rail .game-group {
+  margin-top: 15px;
+}
+.alpha-rail button:hover {
+  background: #f3faff;
+  color: #168acb;
+}
+.alpha-rail button.selected {
+  background: #e8f6ff;
+  border-color: #b3def9;
+  color: #168acb;
+}
+.alpha-rail button:active {
+  transform: translateY(2px);
+}
+.alpha-rail .alpha-profile {
+  margin-top: auto;
+  width: 48px;
+  height: 54px;
+  border-radius: 15px;
+}
+.alpha-profile .learning-penguin {
+  width: 43px;
+  height: 43px;
+  margin: 0;
+  transform: none !important;
+}
+.alpha-profile .learning-penguin img {
+  width: 43px;
+  height: 43px;
+}
+.alpha-profile:hover .learning-penguin {
+  translate: 0 -2px;
+}
+.alpha-navtip {
+  position: absolute;
+  left: calc(100% + 12px);
+  top: 50%;
+  translate: 0 -50%;
+  padding: 7px 11px;
+  border: 1px solid #dce9f2;
+  border-radius: 9px;
+  background: white;
+  color: #52758b;
+  box-shadow: 0 4px 14px #627a8b16;
+  font-size: 12px;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.12s;
+}
+.alpha-rail button:hover .alpha-navtip,
+.alpha-rail button:focus-visible .alpha-navtip {
+  opacity: 1;
+  visibility: visible;
+}
+.alpha-product-main {
+  min-width: 0;
+  width: calc(100% - 76px);
+  margin-left: 76px;
+}
+.alpha-product-header {
+  height: 68px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border-bottom: 1px solid #edf1f4;
+  padding: 0 36px;
+  background: #fff;
+  position: relative;
+}
+.alpha-desktop-location {
+  font-size: 14px;
+  color: #6e7c86;
+  font-weight: 700;
+}
+.alpha-version {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  background: #f3f9fd;
+  border: 1px solid #dcecf6;
+  border-radius: 7px;
+  padding: 4px 8px;
+  color: #8aacbf;
+}
+.alpha-product-content {
+  min-width: 0;
+}
+.alpha-mobile-menu {
+  display: none;
+}
+.alpha-touch-menu {
+  position: absolute;
+  left: 15px;
+  right: 15px;
+  top: 58px;
+  z-index: 45;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+  padding: 10px;
+  background: white;
+  border: 2px solid #dceaf4;
+  border-radius: 15px;
+  box-shadow: 0 7px 18px #8da8ba20;
+}
+.alpha-touch-menu button {
+  padding: 12px;
+  border: 0;
+  background: #f6fbfe;
+  color: #587b93;
+  border-radius: 8px;
+  font-size: 13px;
+}
+.alpha-home {
+  min-height: calc(100dvh - 68px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 26px 24px 45px;
+}
+.alpha-home .now-home {
+  min-height: 0;
+  padding: 20px 0 28px;
+  max-width: 680px;
+  width: 100%;
+}
+.alpha-home .now-home h1 {
+  font-size: clamp(25px, 2.4vw, 35px);
+}
+.alpha-home .now-home p {
+  font-size: 15px;
+}
+.alpha-home .now-companion {
+  height: 155px;
+}
+.alpha-home .now-home .game-main-action {
+  background: #78c934 !important;
+  box-shadow: 0 4px 0 #5fa720 !important;
+  border-radius: 13px;
+  min-height: 52px;
+  padding: 13px 30px;
+  font-size: 16px;
+}
+.alpha-home .now-home .game-main-action:active {
+  box-shadow: none !important;
+}
+.alpha-home-strip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: 11px;
+  color: #bac3c9;
+}
+.alpha-home-strip button {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  border: 0;
+  background: none;
+  color: #8a9daa;
+  padding: 6px;
+  font-size: 12px;
+}
+.alpha-home-strip b {
+  color: #698ba2;
+  font-weight: 700;
+}
+.alpha-workspace {
+  max-width: 1240px;
+  padding: 30px 38px 60px;
+  margin: auto;
+}
+.alpha-workspace-heading {
+  margin: 0 0 22px;
+}
+.alpha-workspace-heading h1 {
+  font-size: 28px !important;
+  margin-bottom: 7px;
+}
+.alpha-workspace-heading p {
+  font-size: 13px;
+  color: #8b99a3;
+}
+.alpha-secondary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 2px solid #edf2f5;
+  padding-bottom: 13px;
+  margin-bottom: 26px;
+  flex-wrap: wrap;
+}
+.alpha-secondary > button {
+  border: 2px solid transparent;
+  background: white;
+  color: #8998a3;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 8px 13px;
+  border-radius: 10px;
+  min-height: 40px;
+  white-space: nowrap;
+}
+.alpha-secondary > button[aria-current='page'] {
+  color: #168acb;
+  background: #eaf7ff;
+  border-color: #b9e0f8;
+}
+.alpha-page-plan .study-director {
+  padding-top: 25px;
+  max-width: 1100px;
+}
+.alpha-page-plan .director-header {
+  border-bottom: 0;
+  padding-bottom: 10px;
+}
+.alpha-page-plan .director-header > span {
+  display: none;
+}
+.alpha-page-plan .director-header > button:first-child {
+  visibility: hidden;
+}
+.alpha-subject-select {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  font-size: 13px;
+  color: #7d909d;
+  margin: 20px 0;
+}
+.alpha-subject-select select {
+  border: 2px solid #dce9f3;
+  border-radius: 10px;
+  padding: 8px 12px;
+  background: white;
+  color: #52758b;
+  font-size: 13px;
+  min-width: 200px;
+}
+.alpha-subject-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  padding: 24px 0;
+}
+.alpha-gpa-summary {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 50px;
+  padding: 20px 0 34px;
+}
+.alpha-gpa-summary > div:first-child {
+  border-right: 2px solid #edf2f5;
+  padding-right: 30px;
+}
+.alpha-gpa-summary span {
+  font-size: 13px;
+  color: #6b8799;
+}
+.alpha-gpa-summary strong {
+  display: block;
+  font-size: 43px;
+  color: #168acb;
+  margin: 8px 0;
+  line-height: 1.4;
+}
+.alpha-gpa-summary strong small {
+  font-size: 18px;
+  color: #a7bccb;
+  font-weight: 600;
+}
+.alpha-gpa-summary p {
+  font-size: 13px;
+  color: #8b99a3;
+  margin: 10px 0 22px;
+}
+.alpha-gpa-summary > div > small {
+  font-size: 11px;
+  color: #94a4ae;
+}
+.alpha-gpa-summary > div:last-child strong {
+  color: #97acb9;
+}
+.alpha-results-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  text-align: left;
+}
+.alpha-results-table caption {
+  text-align: left;
+  font-size: 15px;
+  font-weight: 800;
+  margin-bottom: 20px;
+}
+.alpha-results-table th {
+  padding: 12px 15px;
+  border-bottom: 2px solid #e7eef3;
+  color: #7e95a4;
+  font-weight: 600;
+}
+.alpha-results-table td {
+  padding: 18px 15px;
+  border-bottom: 1px solid #edf2f5;
+  color: #627d8e;
+}
+.alpha-results-table td small {
+  display: block;
+  font-size: 11px;
+  color: #98a9b4;
+  margin-top: 3px;
+}
+.alpha-table-scroll {
+  overflow: auto;
+}
+.alpha-exam-schedule > div:first-child {
+  margin-bottom: 20px;
+}
+.alpha-exam-schedule h2 {
+  font-size: 20px;
+}
+.alpha-exam-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 22px 0;
+  border-bottom: 1px solid #e9f0f4;
+}
+.alpha-exam-row > div {
+  flex: 1;
+}
+.alpha-exam-row h3 {
+  font-size: 16px;
+}
+.alpha-exam-row p {
+  font-size: 13px;
+  color: #7d94a3;
+  margin: 5px 0;
+}
+.alpha-exam-row small {
+  font-size: 11px;
+  color: #94a7b3;
+}
+.alpha-exam-row > span {
+  font-size: 13px;
+  color: #7796a9;
+}
+.alpha-exam-row > button {
+  font-size: 12px;
+}
+.alpha-empty {
+  padding: 60px 20px;
+  color: #8b9daa;
+  font-size: 14px;
+  text-align: center;
+}
+.rb-alpha-workshop {
+  max-width: 1240px;
+  margin: auto;
+  padding: 22px 20px 50px;
+}
+.alpha-workshop-tabs {
+  padding: 0 10px 15px;
+  gap: 4px;
+}
+.alpha-workshop-tabs .rb-material-wallet {
+  padding: 8px 10px;
+}
+.rb-alpha-workshop .rb-workshop-heading {
+  padding-top: 14px;
+}
+.rb-alpha-workshop .rb-workshop-heading h1 {
+  font-size: 26px !important;
+  line-height: 1.5;
+  margin: 8px 0;
+}
+.rb-alpha-workshop .rb-item-heading h2 {
+  font-size: 20px;
+  margin: 4px 0;
+}
+.rb-alpha-workshop .rb-select-label {
+  display: block;
+  font-size: 11px;
+  color: #8b959d;
+  margin-bottom: 16px;
+}
+.rb-alpha-workshop .rb-select-label select {
+  display: block;
+  width: 100%;
+  font-size: 13px;
+  color: #536a79;
+  border: 2px solid #e4edf3;
+  border-radius: 10px;
+  background: white;
+  padding: 8px 10px;
+  margin-top: 5px;
+}
+.rb-alpha-workshop .rb-forge-tabs {
+  display: flex;
+  gap: 8px;
+  margin: 18px 0;
+}
+.rb-alpha-workshop .rb-workshop-content {
+  padding-top: 8px;
+}
+.rb-alpha-workshop .rb-affixes b {
+  font-size: 14px;
+}
+.rb-alpha-workshop .rb-affixes small {
+  font-size: 11px;
+  line-height: 1.7;
+}
+.rb-alpha-workshop .rb-affixes li {
+  min-height: 74px;
+}
+.rb-alpha-workshop .rb-enchant-effect small {
+  font-size: 11px;
+}
+.rb-alpha-workshop .rb-book-upgrade .rb-cost-parts {
+  font-size: 9px;
+}
+.rb-alpha-workshop .rb-details {
+  padding: 22px;
+}
+.rb-alpha-workshop .rb-owned-item.level-3,
+.rb-alpha-workshop .rb-owned-item.level-4,
+.rb-alpha-workshop .rb-owned-item.level-5 {
+  filter: drop-shadow(0 0 6px #b9e5ff);
+}
+.rb-collectible.rarity-epic {
+  background: #faf7ff;
+  border-color: #e6def2;
+}
+.rb-collectible.rarity-unique {
+  background: #fffcf1;
+  border-color: #eee3bb;
+}
+.rb-collectible.selected {
+  border-color: #51aff0;
+}
+.rb-alpha-workshop .rb-scene-area {
+  aspect-ratio: 1.15;
+}
+.rb-alpha-workshop .rb-scene-caption {
+  bottom: -4px;
+}
+@media (max-width: 1050px) {
+  .alpha-workspace {
+    padding: 25px 24px 50px;
+  }
+  .alpha-product-header {
+    padding: 0 24px;
+  }
+  .rb-alpha-workshop {
+    padding: 18px 8px 45px;
+  }
+  .alpha-gpa-summary {
+    gap: 25px;
+  }
+  .alpha-subject-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 760px) {
+  .alpha-rail {
+    width: 58px;
+    padding: 17px 0;
+  }
+  .alpha-rail button {
+    width: 40px;
+    height: 43px;
+    border-radius: 11px;
+  }
+  .alpha-rail .alpha-logo {
+    margin-bottom: 28px;
+  }
+  .alpha-rail nav {
+    gap: 14px;
+  }
+  .alpha-rail .alpha-profile {
+    width: 43px;
+  }
+  .alpha-product-main {
+    width: calc(100% - 58px);
+    margin-left: 58px;
+  }
+  .alpha-product-header {
+    height: 58px;
+    padding: 0 17px;
+  }
+  .alpha-desktop-location {
+    display: none;
+  }
+  .alpha-mobile-menu {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    border: 0;
+    background: none;
+    color: #6d889b;
+    font-size: 14px;
+    font-weight: 700;
+    padding: 8px 0;
+  }
+  .alpha-home {
+    min-height: calc(100dvh - 58px);
+    padding: 20px 20px 35px;
+  }
+  .alpha-home .now-home h1 {
+    font-size: 24px;
+    line-height: 1.5;
+  }
+  .alpha-home .now-home p {
+    font-size: 13px;
+  }
+  .alpha-home .now-home > button {
+    width: 100%;
+    min-width: 0;
+  }
+  .alpha-home .now-companion {
+    height: 135px;
+  }
+  .alpha-home .now-companion .learning-penguin {
+    width: 115px;
+    height: 115px;
+  }
+  .alpha-home-strip {
+    gap: 6px;
+  }
+  .alpha-home-strip button {
+    font-size: 10px;
+  }
+  .alpha-workspace {
+    padding: 22px 18px 40px;
+  }
+  .alpha-workspace-heading h1 {
+    font-size: 24px !important;
+  }
+  .alpha-secondary {
+    gap: 2px;
+    flex-wrap: nowrap;
+    overflow: auto;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+  }
+  .alpha-secondary > button {
+    font-size: 12px;
+    padding: 7px 10px;
+  }
+  .alpha-workspace .page-heading h1 {
+    font-size: 23px !important;
+  }
+  .alpha-gpa-summary {
+    grid-template-columns: 1fr;
+    gap: 28px;
+    padding-top: 5px;
+  }
+  .alpha-gpa-summary > div:first-child {
+    border-right: 0;
+    border-bottom: 2px solid #edf2f5;
+    padding: 0 0 26px;
+  }
+  .alpha-gpa-summary strong {
+    font-size: 36px;
+  }
+  .alpha-subject-select {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .alpha-subject-select select {
+    min-width: 0;
+    width: 100%;
+  }
+  .alpha-exam-row {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .alpha-exam-row > div {
+    flex-basis: 100%;
+  }
+  .alpha-workshop-tabs {
+    flex-wrap: wrap;
+    overflow: visible;
+  }
+  .alpha-workshop-tabs .rb-material-wallet {
+    width: 100%;
+    margin: 0;
+    justify-content: flex-end;
+    padding-top: 10px;
+  }
+  .rb-alpha-workshop .rb-workshop-content,
+  .rb-alpha-workshop .rb-inventory-layout {
+    grid-template-columns: 1fr;
+    padding: 0 15px 25px;
+  }
+  .rb-alpha-workshop .rb-workshop-heading {
+    padding: 12px 15px;
+  }
+  .rb-alpha-workshop .rb-workshop-heading h1 {
+    font-size: 22px !important;
+  }
+  .rb-alpha-workshop .rb-pill {
+    display: none;
+  }
+  .rb-alpha-workshop .rb-scene-area {
+    max-width: 450px;
+    width: 100%;
+    margin: auto;
+    aspect-ratio: 1.2;
+  }
+  .rb-alpha-workshop .rb-details {
+    padding: 18px;
+  }
+  .rb-alpha-workshop .rb-inventory-detail {
+    border-top: 2px solid #edf2f5;
+    padding-top: 22px;
+  }
+  .rb-alpha-workshop .rb-item-grid {
+    gap: 10px;
+  }
+  .rb-alpha-workshop .rb-collectible {
+    padding: 12px 6px;
+  }
+  .rb-alpha-workshop .rb-collectible b {
+    font-size: 12px;
+  }
+  .alpha-subject-grid .secondary {
+    padding: 12px !important;
+    font-size: 13px !important;
+  }
+  .alpha-page-plan .study-director {
+    padding: 15px 19px 45px;
+  }
+  .alpha-page-plan .director-current h1 {
+    font-size: 24px;
+  }
+}
+@media (max-height: 580px) {
+  .alpha-rail {
+    padding: 10px 0;
+  }
+  .alpha-rail .alpha-logo {
+    margin-bottom: 13px;
+  }
+  .alpha-rail nav {
+    gap: 5px;
+  }
+  .alpha-rail .game-group {
+    margin-top: 5px;
+  }
+}

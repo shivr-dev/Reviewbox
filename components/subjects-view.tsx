@@ -36,6 +36,7 @@ import {
 import { useReview } from './review-context';
 import { SUBJECTS, keyOf, uid, type Node, type Subject } from '@/lib/model';
 import { nodeMastery, buildQueue, forgettingRisk } from '@/lib/engine';
+import { masteryStatus, aggregateMasteryStatus } from '@/lib/learning-evidence';
 import { put } from '@/lib/store';
 import { generateVerified, resumeVerifiedJob } from '@/lib/ai-client';
 import {
@@ -270,6 +271,11 @@ export default function SubjectsView() {
                       : null
                   }
                   color={s.color}
+                  label={aggregateMasteryStatus(
+                    ns.flatMap((n) =>
+                      n.skills.map((sk) => states[keyOf(n.id, sk.id)]),
+                    ),
+                  )}
                 />
                 <div className="subject-large-bottom">
                   <span>{ns.length} 个知识点</span>
@@ -404,7 +410,13 @@ export default function SubjectsView() {
                       {n.prerequisites.length ? ' · 含前置知识' : ''}
                     </p>
                   </div>
-                  <Meter value={nodeMastery(n, states)} color={s.color} />
+                  <Meter
+                    value={nodeMastery(n, states)}
+                    color={s.color}
+                    label={aggregateMasteryStatus(
+                      n.skills.map((sk) => states[keyOf(n.id, sk.id)]),
+                    )}
+                  />
                   <ArrowRight size={15} />
                 </button>
               ))}
@@ -1036,6 +1048,7 @@ export default function SubjectsView() {
                     <Meter
                       value={st?.attemptCount ? st.mastery : null}
                       color={s.color}
+                      label={masteryStatus(st)}
                     />
                     <button
                       className="quiet"

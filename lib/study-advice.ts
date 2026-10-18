@@ -5,6 +5,7 @@ import {
 import { validExamDate, validResult } from './exam-outcomes';
 import { localDay, type StudyData } from './model';
 import type { StudyAction } from './study-orchestrator';
+import { verifiedHypothesis, type StudyHypothesis } from './learning-signals';
 const DAY = 86400000;
 export type StudyAdvice = {
   id: string;
@@ -15,6 +16,7 @@ export type StudyAdvice = {
   expires: string;
   actionIds: string[];
   actionId?: string;
+  hypothesis?: StudyHypothesis;
   explanation?: string;
   method?: string;
   error?: string;
@@ -104,10 +106,10 @@ export function adviceOpportunity(
 }
 export function cachedStudyAdvice(
   data: StudyData,
-  actions: StudyAction[],
+  _actions: StudyAction[],
   now = Date.now(),
 ) {
-  return (data.jobs ?? [])
+  const advice = (data.jobs ?? [])
     .filter(
       (j): j is StudyAdvice =>
         j.kind === 'study-advice' &&
@@ -116,23 +118,20 @@ export function cachedStudyAdvice(
         Date.parse(j.expires) > now &&
         typeof j.explanation === 'string' &&
         j.explanation.length <= 600 &&
-        j.actionIds?.includes(j.actionId) &&
-        actions.some(
-          (a) =>
-            a.id === j.actionId &&
-            [
-              'practice',
-              'initial',
-              'test',
-              'pressure',
-              'simulation',
-              'course',
-              'remedy',
-              'report',
-            ].includes(a.kind),
-        ),
+        j.hypothesis &&
+        ['speed', 'retention', 'concept', 'fatigue'].includes(
+          j.hypothesis.type,
+        ) &&
+        (!j.hypothesis.nodeId ||
+          data.nodes.some((n) => n.id === j.hypothesis.nodeId)),
     )
     .sort((a, b) => b.at.localeCompare(a.at))[0];
+  return advice
+    ? {
+        ...advice,
+        verification: verifiedHypothesis(data, advice.hypothesis!, now),
+      }
+    : undefined;
 }
 export function adviceSummary(
   data: StudyData,

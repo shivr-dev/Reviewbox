@@ -35,9 +35,20 @@ import { assistantObservations } from '@/lib/study-assistant';
 import { reusable } from '@/lib/learning-intelligence';
 import { wrongQuestions } from '@/lib/question-tools';
 import MathText from './math-text';
+import { prepareCourseLearningSession } from '@/lib/course-lifecycle';
+import {
+  persistDecisionTrace,
+  recordRecommendationOutcome,
+  changeStudyPolicy,
+} from '@/lib/study-trace-client';
+import { POLICY_REGISTRY, policyFor } from '@/lib/policy-config';
+import { TeachingReview } from './teaching-review';
 
 export default function StudyPlanView() {
-  const { data, navigate, start, refresh, notify, aiReady } = useReview();
+  const { data, navigate, start, refresh, notify, aiReady, section } =
+    useReview();
+  const launchIntent = section?.startsWith('launch:') ? section.slice(7) : '';
+  const intentStarted = useRef('');
   const [ready, setReady] = useState(false),
     [mode, setMode] = useState('agenda'),
     [selected, setSelected] = useState<StudyAction | null>(null),
@@ -46,15 +57,43 @@ export default function StudyPlanView() {
   const gate = useRef(false),
     origin = useRef(currentNamespace());
   const promptedScores = useRef(new Set<string>());
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  const autoStarted = useRef(new Set<string>());
+  useEffect(() => {
+    if (ready && launchIntent && intentStarted.current !== launchIntent) {
+      intentStarted.current = launchIntent;
+      // Consume the one-shot home intent so browser Back/refresh cannot launch it again.
+      if (window.location.hash.includes('launch'))
+        window.history.replaceState(
+          { ...window.history.state, reviewRoute: '#plan' },
+          '',
+          '#plan',
+        );
+      void launch({ id: launchIntent } as StudyAction);
+    }
+  }, [ready, launchIntent]);
   const now = Math.max(clock, Date.now());
   const agenda = studyAgenda(data, now),
     action = selected ?? agenda.primary,
     info = agenda.insights;
-  const dueScore = agenda.actions.find((a) => a.kind === 'score');
+  const dueScore = agenda.primary.kind === 'score' ? agenda.primary : undefined;
+  useEffect(() => {
+    if (ready)
+      void persistDecisionTrace(agenda.decisionTrace, origin.current).catch(
+        () => {},
+      );
+  }, [ready, agenda.decisionTrace.id]);
   useEffect(() => {
     if (
       ready &&
       mode === 'agenda' &&
+      data.settings.studyMode !== 'manual' &&
       dueScore &&
       !promptedScores.current.has(dueScore.id)
     ) {
@@ -62,8 +101,21 @@ export default function StudyPlanView() {
       setSelected(dueScore);
       setMode('scores');
     }
-  }, [ready, mode, dueScore?.id]);
+  }, [ready, mode, dueScore?.id, data.settings.studyMode]);
   const milestone = adviceOpportunity(data, agenda.actions, now)?.milestone;
+  useEffect(() => {
+    if (
+      ready &&
+      mode === 'agenda' &&
+      data.settings.studyMode === 'auto' &&
+      !launchIntent &&
+      agenda.primary.kind === 'practice' &&
+      !autoStarted.current.has(agenda.primary.id)
+    ) {
+      autoStarted.current.add(agenda.primary.id);
+      void launch(agenda.primary);
+    }
+  }, [ready, mode, data.settings.studyMode, agenda.primary.id]);
   useEffect(() => {
     if (!ready || !aiReady || !milestone) return;
     let alive = true;
@@ -112,20 +164,53 @@ export default function StudyPlanView() {
         throw new Error('账户已切换，请重新进入学习计划');
       await fn();
     } catch (e) {
+      if (!mounted.current) return;
       notify(e instanceof Error ? e.message : '学习安排未能打开');
       await refresh();
       setSelected(null);
       setMode('agenda');
     } finally {
       gate.current = false;
-      setBusy(false);
+      if (mounted.current) setBusy(false);
     }
   }
   async function launch(a: StudyAction) {
     await run(async () => {
       const fresh = await freshStudyAction(a.id, origin.current),
         chosen = fresh.action;
+      await recordRecommendationOutcome(
+        fresh.agenda.decisionTrace,
+        chosen.id,
+        'selected',
+        undefined,
+        origin.current,
+      );
+      if (!mounted.current) return;
       setSelected(chosen);
+      if (chosen.kind === 'teach') {
+        setMode('teach');
+        return;
+      }
+      if (chosen.courseId) {
+        const result = await prepareCourseLearningSession(
+          chosen.courseId,
+          chosen.coursePhase,
+          origin.current,
+        );
+        if (result.missingQuestions)
+          throw new Error('这门课程暂缺可用巩固题，请先导入课程练习');
+        if (result.session)
+          await recordRecommendationOutcome(
+            fresh.agenda.decisionTrace,
+            chosen.id,
+            'started',
+            result.session.id,
+            origin.current,
+          );
+        await refresh();
+        navigate('study');
+        return;
+      }
       if (chosen.kind === 'score') {
         setMode('scores');
         return;
@@ -144,6 +229,13 @@ export default function StudyPlanView() {
       }
       if (chosen.kind === 'simulation') {
         const r = await beginPlannedSimulation(chosen, origin.current);
+        await recordRecommendationOutcome(
+          fresh.agenda.decisionTrace,
+          chosen.id,
+          'started',
+          r.id,
+          origin.current,
+        );
         await refresh();
         navigate('exam', r.id);
         return;
@@ -182,6 +274,7 @@ export default function StudyPlanView() {
             ? 'test'
             : 'review',
           chosen.title,
+          { trace: fresh.agenda.decisionTrace, actionId: chosen.id },
         );
         return;
       }
@@ -192,6 +285,13 @@ export default function StudyPlanView() {
   async function practiceInstead() {
     await run(async () => {
       await postponeStudyAction(action, 'defer', origin.current);
+      await recordRecommendationOutcome(
+        agenda.decisionTrace,
+        action.id,
+        'deferred',
+        undefined,
+        origin.current,
+      );
       await refresh();
       const d = await loadData(origin.current);
       if (currentNamespace() !== origin.current) throw new Error('账户已切换');
@@ -262,6 +362,9 @@ export default function StudyPlanView() {
         </div>
       ) : (
         <>
+          {mode === 'teach' && (
+            <TeachingReview action={action} onClose={() => void back()} />
+          )}
           {mode === 'agenda' && (
             <>
               <section className="director-current" aria-label="当前学习建议">
@@ -326,6 +429,12 @@ export default function StudyPlanView() {
                     <summary>关键节点的计划复核</summary>
                     <p>{agenda.advisor.explanation}</p>
                     <p>{agenda.advisor.method}</p>
+                    <p>
+                      {agenda.advisor.verification.supported
+                        ? '已有独立证据支持这项假设，仅纳入策略参考。'
+                        : '本地证据尚不足，不据此改变安排。'}
+                      {agenda.advisor.verification.explanation}
+                    </p>
                     <small>
                       仅关键节点调用 Qwen，最多每日 1 次、滚动七天 2
                       次；日常安排在本地计算。
@@ -339,6 +448,13 @@ export default function StudyPlanView() {
                   {agenda.actions.slice(1, 5).map((a) => (
                     <li key={a.id}>
                       <span>{a.title}</span>
+                      <button
+                        className="quiet"
+                        disabled={busy}
+                        onClick={() => void launch(a)}
+                      >
+                        {a.label}
+                      </button>
                       <small>
                         {a.minutes > 0
                           ? '约 ' + a.minutes + ' 分钟'
@@ -428,6 +544,82 @@ export default function StudyPlanView() {
                   </button>
                 </div>
               </details>
+              <details className="director-details">
+                <summary>学习方式与策略</summary>
+                <label>
+                  安排方式
+                  <select
+                    aria-label="安排方式"
+                    value={data.settings.studyMode ?? 'guided'}
+                    onChange={(e) =>
+                      void run(async () => {
+                        const d = await loadData(origin.current);
+                        await put(
+                          'setting',
+                          { ...d.settings, studyMode: e.target.value },
+                          'settings',
+                          false,
+                          origin.current,
+                        );
+                        await refresh();
+                      })
+                    }
+                  >
+                    <option value="auto">Auto · 按计划连续学习</option>
+                    <option value="guided">Guided · 每次确认下一步</option>
+                    <option value="manual">Manual · 自主安排</option>
+                  </select>
+                </label>
+                <p>
+                  自主模式不扣除奖励，也不改变掌握记录；所有模式都可暂缓建议。计时考试仍遵守原规则。
+                </p>
+                <label>
+                  策略参数
+                  <select
+                    aria-label="策略参数"
+                    value={policyFor(data).id}
+                    onChange={(e) =>
+                      void run(async () => {
+                        await changeStudyPolicy(e.target.value, origin.current);
+                        await refresh();
+                      })
+                    }
+                  >
+                    {Object.values(POLICY_REGISTRY).map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {data.settings.studyPolicy?.previousId && (
+                  <button
+                    className="quiet"
+                    onClick={() =>
+                      void run(async () => {
+                        await changeStudyPolicy(
+                          data.settings.studyPolicy!.previousId!,
+                          origin.current,
+                        );
+                        await refresh();
+                      })
+                    }
+                  >
+                    回滚到上次参数
+                  </button>
+                )}
+                <p>
+                  参数版本随推荐记录保存。实验结果不足时不会自动宣称某个策略更好。
+                </p>
+              </details>
+              {process.env.NODE_ENV !== 'production' && (
+                <details className="director-details">
+                  <summary>开发：完整决策记录</summary>
+                  <pre className="director-trace">
+                    {JSON.stringify(agenda.decisionTrace, null, 2)}
+                  </pre>
+                </details>
+              )}
             </>
           )}
           {mode === 'pressure' && (

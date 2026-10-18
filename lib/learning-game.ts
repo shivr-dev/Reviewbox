@@ -1,6 +1,7 @@
 import type { AnswerEvent, StudyData } from './model';
 import { localDay } from './model';
 import { HOME_SHOP, FREEZE_TIERS } from './home-catalog';
+import { EQUIPMENT_SUPPLIES } from './equipment-catalog';
 import {
   newAdventure,
   adventurePurchase,
@@ -108,6 +109,7 @@ export const GAME_SHOP = [
     type: 'hearts',
   },
   ...HOME_SHOP,
+  ...EQUIPMENT_SUPPLIES,
 ] as const;
 export type GameItem = (typeof GAME_SHOP)[number]['id'];
 export type GamePurchase = {

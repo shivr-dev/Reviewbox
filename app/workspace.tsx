@@ -35,6 +35,14 @@ import LibraryView from '@/components/library-view';
 import YouView from '@/components/you-view';
 import ShopView from '@/components/shop-view';
 import HabitatView from '@/components/habitat-view';
+import AlphaExperience from '@/components/alpha-experience';
+import AlphaShell, { AlphaHome } from '@/components/alpha-shell';
+import {
+  AlphaSubjects,
+  AlphaResults,
+  AlphaShop,
+} from '@/components/alpha-workspaces';
+import { AlphaPreviewAccess } from '@/components/alpha-preview-card';
 import OnboardingView from '@/components/onboarding-view';
 import StudyPlanView from '@/components/study-plan-view';
 import RewardsView, {
@@ -43,6 +51,8 @@ import RewardsView, {
 } from '@/components/rewards-view';
 import ChestView from '@/components/chest-view';
 import { assetPath } from '@/lib/runtime';
+import { parseWorkspaceRoute, workspaceHash } from '@/lib/workspace-route';
+import { sessionForView } from '@/lib/session-view';
 import AnalyticsView from '@/components/analytics-view';
 import SubjectIcon from '@/components/subject-icon';
 import { GameStatus } from '@/components/learning-game';
@@ -112,6 +122,7 @@ export default function Workspace() {
   const [data, setData] = useState<StudyData>(base),
     [page, setPage] = useState('home'),
     [subject, setSubject] = useState('all'),
+    [section, setSection] = useState(''),
     [cloudUser, setCloudUser] = useState<any>(null),
     [aiReady, setAiReady] = useState(false),
     [pending, setPending] = useState(0),
@@ -127,6 +138,7 @@ export default function Workspace() {
       title: string;
     } | null>(null);
   const [preparing, setPreparing] = useState('');
+  const sessionNamespace = useRef(currentNamespace());
   const prepareLock = useRef(false);
   const prepare = useCallback(async () => {
     if (prepareLock.current) return;
@@ -241,10 +253,13 @@ export default function Workspace() {
       setSyncing(false);
     }
   }, [notify, refresh]);
-  const navigate = useCallback((p: string, s = 'all') => {
+  const navigate = useCallback((p: string, s = 'all', view = '') => {
     setPage(p);
     setSubject(s);
-    history.replaceState(null, '', '#' + p + (s !== 'all' ? '/' + s : ''));
+    setSection(view);
+    const next = workspaceHash({ page: p, subject: s, section: view });
+    if (location.hash !== next)
+      history.pushState({ ...history.state, reviewRoute: next }, '', next);
     window.scrollTo({ top: 0, behavior: 'instant' });
   }, []);
   useEffect(() => {
@@ -269,13 +284,28 @@ export default function Workspace() {
       items: QueueItem[],
       mode: 'review' | 'test' = 'review',
       title = '模拟测试',
+      recommendation?: {
+        trace: import('@/lib/study-utility').DecisionTrace;
+        actionId: string;
+      },
     ) => {
       items = items.filter((x) => x.question.reviewStatus !== 'paused');
       if (!items.length) {
         notify('当前没有可用题目，请选择其他范围或导入内容');
         return;
       }
-      const next = { id: uid(), items, mode, title };
+      const next = {
+        id: uid(),
+        items,
+        mode,
+        title,
+        ...(recommendation
+          ? {
+              recommendationId: recommendation.trace.id,
+              recommendationActionId: recommendation.actionId,
+            }
+          : {}),
+      };
       const sessionNamespace = currentNamespace();
       void put(
         'job',
@@ -291,6 +321,18 @@ export default function Workspace() {
       )
         .then(() => {
           if (sessionNamespace !== currentNamespace()) return;
+          if (recommendation)
+            void import('@/lib/study-trace-client')
+              .then((m) =>
+                m.recordRecommendationOutcome(
+                  recommendation.trace,
+                  recommendation.actionId,
+                  'started',
+                  next.id,
+                  sessionNamespace,
+                ),
+              )
+              .catch(() => {});
           setSession(next);
           navigate('study');
         })
@@ -330,39 +372,14 @@ export default function Workspace() {
     window.addEventListener('online', updateNetwork);
     window.addEventListener('offline', updateNetwork);
     const onHash = () => {
-      const [p, s] = location.hash.slice(1).split('/');
-      if (
-        [
-          ...navigation.map((x) => x.id),
-          'analytics',
-          'exam',
-          'assessment',
-          'course',
-          'remedy',
-          'admin',
-          'super',
-          'chest',
-          'redeem',
-          'onboarding',
-          'study',
-        ].includes(p)
-      ) {
-        setPage(p);
-        setSubject(
-          p === 'exam' ||
-            p === 'assessment' ||
-            p === 'course' ||
-            p === 'remedy' ||
-            p === 'chest'
-            ? s
-            : SUBJECTS.some((x) => x.id === s)
-              ? s
-              : 'all',
-        );
-      }
+      const route = parseWorkspaceRoute(location.hash);
+      setPage(route.page);
+      setSubject(route.subject);
+      setSection(route.section);
     };
     onHash();
     window.addEventListener('hashchange', onHash);
+    window.addEventListener('popstate', onHash);
     if ('serviceWorker' in navigator && location.hostname !== 'localhost')
       navigator.serviceWorker.register(assetPath('sw.js')).catch(() => {});
     return () => {
@@ -370,21 +387,17 @@ export default function Workspace() {
       window.removeEventListener('online', updateNetwork);
       window.removeEventListener('offline', updateNetwork);
       window.removeEventListener('hashchange', onHash);
+      window.removeEventListener('popstate', onHash);
     };
   }, [notify]);
   useEffect(() => {
     if (!ready) return;
-    const active = data.jobs
-      ?.filter(
-        (j) =>
-          j.kind === 'session' &&
-          j.status === 'active' &&
-          Array.isArray(j.items),
-      )
-      .sort((a, b) => (b.createdAt ?? '').localeCompare(a.createdAt ?? ''))[0];
-    if (active) setSession(active);
-    else setSession(null);
-  }, [ready, cloudUser?.id]);
+    const sameAccount = sessionNamespace.current === currentNamespace();
+    sessionNamespace.current = currentNamespace();
+    setSession((current) =>
+      sessionForView(data.jobs, current, sameAccount && page === 'study'),
+    );
+  }, [ready, cloudUser?.id, data.jobs]);
   useEffect(() => {
     if (!ready || !cloudUser || !online) return;
     void sync();
@@ -470,6 +483,7 @@ export default function Workspace() {
         start,
         notify,
         subject,
+        section,
         cloudUser,
         setCloudUser,
         aiReady,
@@ -481,7 +495,137 @@ export default function Workspace() {
       }}
     >
       {ready && <RewardsBridge />}
-      {page === 'onboarding' && ready ? (
+      {ready &&
+      data.settings.alphaPreview === true &&
+      [
+        'home',
+        'plan',
+        'subjects',
+        'library',
+        'results',
+        'analytics',
+        'workshop',
+        'forge',
+        'brand-studio',
+        'enchant',
+        'equipment',
+        'shop',
+        'redeem',
+        'super',
+        'admin',
+        'you',
+        'study',
+        'chest',
+      ].includes(page) ? (
+        <AlphaShell key={currentNamespace()} page={page}>
+          {page === 'home' ? (
+            <AlphaHome />
+          ) : page === 'plan' ? (
+            <StudyPlanView key={currentNamespace()} />
+          ) : page === 'study' ? (
+            session?.mode === 'test' ? (
+              <AssessmentRoom
+                key={session.id + currentNamespace()}
+                session={session}
+                finish={() => {
+                  if (
+                    data.jobs?.some(
+                      (j) =>
+                        j.kind === 'session' &&
+                        j.id === session.id &&
+                        j.status === 'complete',
+                    )
+                  )
+                    setSession(null);
+                  navigate('plan');
+                }}
+              />
+            ) : (
+              <div className="alpha-workspace">
+                <StudyView
+                  session={session}
+                  finish={() => {
+                    if (
+                      session &&
+                      data.jobs?.some(
+                        (j) =>
+                          j.kind === 'session' &&
+                          j.id === session.id &&
+                          j.status === 'complete',
+                      )
+                    )
+                      setSession(null);
+                    navigate('home');
+                  }}
+                />
+              </div>
+            )
+          ) : page === 'chest' ? (
+            <ChestView key={subject + currentNamespace()} sessionId={subject} />
+          ) : page === 'subjects' || page === 'library' ? (
+            <AlphaSubjects
+              key={page + subject}
+              initialView={page === 'library' ? 'materials' : 'subjects'}
+            />
+          ) : page === 'results' || page === 'analytics' ? (
+            <AlphaResults
+              initialView={page === 'analytics' ? 'analysis' : 'scores'}
+            />
+          ) : page === 'you' ? (
+            <div className="alpha-workspace">
+              <YouView />
+            </div>
+          ) : ['shop', 'redeem', 'super', 'admin'].includes(page) ? (
+            <div className="alpha-workspace">
+              <nav className="alpha-secondary" aria-label="工坊功能">
+                {[
+                  ['forge', '铁匠铺'],
+                  ['enchant', '附魔师与图鉴'],
+                  ['equipment', '装备与搭配'],
+                  ['shop', '材料与商店'],
+                ].map(([id, label]) => (
+                  <button
+                    key={id}
+                    aria-current={page === id ? 'page' : undefined}
+                    onClick={() => navigate(id)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </nav>
+              {page === 'shop' ? (
+                <AlphaShop />
+              ) : (
+                <RewardsView
+                  key={page + currentNamespace()}
+                  mode={page as 'redeem' | 'admin' | 'super'}
+                />
+              )}
+            </div>
+          ) : (
+            <AlphaExperience page={page} selection={subject} />
+          )}
+        </AlphaShell>
+      ) : [
+          'forge',
+          'brand-studio',
+          'enchant',
+          'equipment',
+          'results',
+          'workshop',
+        ].includes(page) ? (
+        <AlphaPreviewAccess ready={ready}>
+          <AlphaExperience
+            key={currentNamespace()}
+            page={page}
+            selection={subject}
+          />
+        </AlphaPreviewAccess>
+      ) : data.settings.alphaPreview === true && ready && page === 'course' ? (
+        <CourseRoom key={subject + currentNamespace()} courseId={subject} />
+      ) : data.settings.alphaPreview === true && ready && page === 'remedy' ? (
+        <RemediationCourse key={currentNamespace()} courseId={subject} />
+      ) : page === 'onboarding' && ready ? (
         <OnboardingView key={currentNamespace()} />
       ) : page === 'plan' && ready ? (
         <StudyPlanView key={currentNamespace()} />

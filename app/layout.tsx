@@ -12,6 +12,8 @@ import './habitat.css';
 import './home-item-art.css';
 import './home-companion.css';
 import './assistant.css';
+import './brand-studio.css';
+import './alpha-product.css';
 
 const geistSans = Geist({
   variable: '--font-geist-sans',

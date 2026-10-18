@@ -101,6 +101,7 @@ test('central entry offers a real short test or continued practice, remembers de
       b.click();
       await new Promise((r) => setTimeout(r, 100));
     });
+    for(let i=0;i<100&&document.querySelector('.director-actions button:disabled');i++)await act(async()=>{await new Promise(r=>setTimeout(r,25));});
     assert.equal(notice, '');
   }
   try {
@@ -109,8 +110,8 @@ test('central entry offers a real short test or continued practice, remembers de
     await render();
     await settle();
     assert.match(
-      document.querySelector('.director-current')!.textContent!,
-      /来场短测/,
+      document.body.textContent!,
+      /用一次短测/,
     );
     await click('参加阶段短测');
     assert.equal(started.mode, 'test');
@@ -124,7 +125,7 @@ test('central entry offers a real short test or continued practice, remembers de
     await render();
     assert.doesNotMatch(
       document.querySelector('.director-current')!.textContent!,
-      /来场短测/,
+      /用一次短测/,
     );
     await switchAccount('plan-ui-pressure');
     const now = Date.now(),
@@ -140,7 +141,7 @@ test('central entry offers a real short test or continued practice, remembers de
     await render();
     await settle();
     assert.match(
-      document.querySelector('.director-current')!.textContent!,
+      document.body.textContent!,
       /压力测试/,
     );
     await click('参加压力测试');

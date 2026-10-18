@@ -23,6 +23,10 @@ import {
 } from './learning-intelligence';
 import { isPinyin } from './question-tools';
 import { cachedStudyAdvice } from './study-advice';
+import { scoreStudyActions } from './study-utility';
+import { policyFor } from './policy-config';
+import { courseLearningTasks } from './course-lifecycle';
+import { metadataQuality, fatigueState } from './learning-signals';
 import {
   buildRemediation,
   remedyProgress,
@@ -50,6 +54,8 @@ export type StudyActionKind =
   | 'remedy'
   | 'practice'
   | 'report'
+  | 'teach'
+  | 'verify'
   | 'rest'
   | 'import';
 export type StudyAction = {
@@ -59,7 +65,11 @@ export type StudyAction = {
   reason: string;
   label: string;
   minutes: number;
-  priority: number;
+  utility?: number;
+  informationValue?: number;
+  decisionFactors?: Record<string, number>;
+  coursePhase?: 'practice' | 'verify';
+  courseId?: string;
   subject?: Subject | 'all';
   items?: QueueItem[];
   page?: string;
@@ -209,8 +219,11 @@ export function studyAgenda(data: StudyData, now = Date.now()) {
     today = localDay(new Date(now));
   const jobs = data.jobs ?? [],
     actions: StudyAction[] = [],
+    exclusions: { id: string; reason: string }[] = [],
     add = (a: StudyAction) => {
-      if (!deferred(data, a.id, now)) actions.push(a);
+      if(deferred(data,a.id,now)){exclusions.push({id:a.id,reason:'学习者已暂缓或读过该安排'});return;}
+      if(['practice','initial','test','pressure','simulation','course','teach','remedy','verify'].includes(a.kind)&&!a.id.startsWith('resume:')&&a.minutes*60>plan.remainingSeconds){exclusions.push({id:a.id,reason:'当前剩余时间不足，保留到后续安排'});return;}
+      actions.push(a);
     };
   const active = jobs
     .filter(
@@ -247,8 +260,7 @@ export function studyAgenda(data: StudyData, now = Date.now()) {
         title: j.mode === 'test' ? '继续未完成的测试' : '接着上次的学习',
         reason: '当前作答已保存，先完成这一段。',
         label: '继续学习',
-        minutes: 0,
-        priority: 1100,
+        minutes: qMinutes(j.items.filter((i:QueueItem)=>!events.some(e=>e.sessionId===j.id&&e.questionId===i.question.id))),
         page: 'study',
         target: j.id,
       });
@@ -262,7 +274,6 @@ export function studyAgenda(data: StudyData, now = Date.now()) {
           reason: '计时与已作答内容会按原考试规则恢复。',
           label: '恢复考试',
           minutes: 0,
-          priority: 1120,
           page: 'exam',
           target: j.id,
         });
@@ -280,7 +291,6 @@ export function studyAgenda(data: StudyData, now = Date.now()) {
         reason: '作答已保存，原有计时继续生效。',
         label: '恢复压力测试',
         minutes: Math.max(0, Math.ceil((j.deadline - now) / 60000)),
-        priority: 1110,
         subject: j.subject,
         scope: [],
         items: j.questions.map((question: any) => ({
@@ -302,7 +312,6 @@ export function studyAgenda(data: StudyData, now = Date.now()) {
         ' 天。填入得分后，再安排后续巩固。',
       label: '填写考试成绩',
       minutes: 1,
-      priority: 960,
       examId: e.id,
     });
   const tests = data.tests.filter(
@@ -326,168 +335,145 @@ export function studyAgenda(data: StudyData, now = Date.now()) {
       now,
     );
     const repeated = job.groups.find((g) => g.sources.length >= 2);
-    if (!repeated || (t.subject !== 'all' && !settings.weights[t.subject]))
+    const severe = job.groups.find((g) =>
+      g.sources.some(
+        (s) =>
+          s.score < 0.4 &&
+          events.some(
+            (e) => e.id === s.eventId && e.predictedConfidence === 'sure',
+          ) &&
+          data.nodes.some(
+            (n) =>
+              n.id === g.nodeId &&
+              n.skills.some((sk) => sk.id === g.skillId && sk.difficulty <= 2),
+          ),
+      ),
+    );
+    if (
+      (!repeated && !severe) ||
+      (t.subject !== 'all' && !settings.weights[t.subject])
+    )
       continue;
     add({
       id: 'remedy-create:' + t.sessionId,
       kind: 'remedy',
       title: '把这次测试的共同失分整理清楚',
       reason:
-        repeated.title + '有多道失分题，先对照共同问题，再安排巩固与隔天验证。',
+        (repeated ?? severe)!.title +
+        (repeated
+          ? '有多道失分题，先对照共同问题，再安排巩固与隔天验证。'
+          : '出现有把握却答错的基础题，先做小型补救；尚不据此确认知识缺失。'),
       label: '整理考后补救',
       minutes: 6,
-      priority: 720,
       page: 'remedy',
       target: job.id,
       sourceSessionId: t.sessionId,
     });
   }
   const states = computeMastery(data.nodes, events);
-  for (const subject of Object.keys(settings.weights) as Subject[]) {
-    if (!settings.weights[subject]) continue;
-    const ev = reliable.filter((e) => e.subject === subject),
-      ordinary = ev.filter(
-        (e) => e.source !== 'test' && !e.learningEvidence?.pressure,
-      ),
-      testEvents = ev.filter((e) => e.source === 'test');
+  const policy = policyFor(data);
+  const skillHistories = new Map<string, typeof events>();
+  for (const e of events) {
+    const k = keyOf(e.nodeId, e.skillId),
+      rows = skillHistories.get(k) ?? [];
+    rows.push(e);
+    skillHistories.set(k, rows);
+  }
+  for (const [key, rows] of skillHistories) {
+    const losses = rows.slice(-policy.utility.teachErrorCount);
+    if (
+      losses.length < policy.utility.teachErrorCount ||
+      !losses.every((e) => e.score < 0.4) ||
+      new Set(losses.map((e) => e.questionId)).size < 2
+    )
+      continue;
+    const q = data.questions.find((q) => q.id === losses.at(-1)!.questionId);
+    if (!q || isPinyin(q) || (!q.explanation && !q.solution?.length)) continue;
+    const items = data.questions
+      .filter(
+        (x) =>
+          x.nodeId === q.nodeId &&
+          x.skillId === q.skillId &&
+          reusable(x, now) &&
+          !losses.some((e) => e.questionId === x.id),
+      )
+      .slice(0, 3)
+      .map((question) => ({ question, priority: 1, reason: '对照例题后巩固' }));
+    add({
+      id: 'teach:' + key + ':' + losses.at(-1)!.id,
+      kind: 'teach',
+      title: '先看懂' + data.nodes.find((n) => n.id === q.nodeId)?.title,
+      reason: '同一能力最近连续失分，先回看分步例题，避免继续重复刷题。',
+      label: '回看例题与思路',
+      minutes: 3,
+      target: q.id,
+      subject: q.subject,
+      items,
+    });
+  }
+  const initial = plan.recommendations.find(
+    (r) => r.mode === 'initial' && r.subject === 'all',
+  );
+  for (const r of plan.recommendations) {
+    if (r.mode === 'initial' && initial && r !== initial) continue;
     const lastTest = Math.max(
       0,
-      ...testEvents.map((e) => time(e.occurredAt)),
-      ...tests
-        .filter(
-          (t) =>
-            t.subject === subject ||
-            t.eventIds.some((id) => ev.some((e) => e.id === id)),
-        )
-        .map((t) => time(t.at)),
+      ...tests.filter((t) => t.subject === r.subject).map((t) => time(t.at)),
     );
-    const practiced = events
-      .filter(
-        (e) =>
-          e.subject === subject &&
-          e.source !== 'test' &&
-          (reliableAssistantEvent(e) ||
-            (e.source === 'self' &&
-              data.questions.some(
-                (q) => q.id === e.questionId && isPinyin(q),
-              ) &&
-              !e.usedHint &&
-              !e.learningEvidence?.suspect &&
-              e.activeThinkMs >= 3000)),
-      )
-      .filter(
-        (e) =>
-          time(e.occurredAt) > lastTest && now - time(e.occurredAt) <= 14 * DAY,
-      );
-    const distinct = new Set(practiced.map((e) => e.questionId)).size,
-      skills = new Set(practiced.map((e) => keyOf(e.nodeId, e.skillId))).size;
     const nearest = data.exams
-      .filter((e) => e.subject === subject && dateDays(e.date, now) >= 0)
+      .filter(
+        (e) =>
+          (r.subject === 'all' || e.subject === r.subject) &&
+          dateDays(e.date, now) >= 0,
+      )
       .sort((a, b) => a.date.localeCompare(b.date))[0];
-    const days = nearest ? dateDays(nearest.date, now) : Infinity,
-      scope = nearest?.scope ?? [];
-    const sincePressure = jobs.filter(
-      (j) =>
-        j.kind === 'pressure' &&
-        j.status === 'complete' &&
-        j.subject === subject &&
-        Number.isFinite(time(j.completedAt ?? j.startedAt)) &&
-        time(j.completedAt ?? j.startedAt) <= now,
-    );
-    const lastPressure = Math.max(
-      0,
-      ...sincePressure.map((j) => time(j.completedAt ?? j.startedAt)),
-      ...ev
-        .filter((e) => e.learningEvidence?.pressure)
-        .map((e) => time(e.occurredAt)),
-    );
-    const scoped = ordinary.filter(
-      (e) =>
-        (!scope.length || scope.includes(e.nodeId)) &&
-        now - time(e.occurredAt) <= 30 * DAY,
-    );
-    const pressure = pressureQuestions(
-      safe,
-      states,
-      subject,
-      scope,
-      now,
-    ).filter(
-      (q) =>
-        !events.some(
-          (e) => e.questionId === q.id && now - time(e.occurredAt) < DAY / 2,
-        ),
-    );
-    if (
-      days >= 2 &&
-      days <= 7 &&
-      now - lastPressure >= 4 * DAY &&
-      new Set(scoped.map((e) => localDay(new Date(e.occurredAt)))).size >= 2 &&
-      scoped.length >= 4 &&
-      scoped.reduce((s, e) => s + e.score, 0) / scoped.length >= 0.6 &&
-      pressure.length >= 3
-    ) {
-      const items = pressure.map((question) => ({
-        question,
-        priority: 1,
-        reason: '考前限时验证',
-      }));
-      add({
-        id: 'pressure:' + nearest!.id,
-        kind: 'pressure',
-        title: '来一场考前压力测试？',
-        reason: `距离${nearest!.title}还有 ${days} 天，已有跨日练习记录，适合比较限时与平时表现。`,
-        label: '参加压力测试',
-        minutes: Math.max(2, Math.ceil(qMinutes(items) * 0.8)),
-        priority: 880 + settings.weights[subject],
-        subject,
-        scope,
-        items,
-        examId: nearest!.id,
-      });
-    }
-    if (
-      now - lastTest >= DAY &&
-      distinct >= 8 &&
-      skills >= 2 &&
-      practiced.reduce((s, e) => s + e.score, 0) / practiced.length >= 0.6
-    ) {
-      const testedScope = [...new Set(practiced.map((e) => e.nodeId))],
-        items = representative(data, subject, testedScope, events, now);
-      if (items.length >= 3)
-        add({
-          id: 'test:' + subject + ':' + lastTest,
-          kind: 'test',
-          title: '练习够一段了，来场短测？',
-          reason: `近期已完成 ${distinct} 道有效练习，覆盖 ${skills} 项能力。用独立作答确认哪些已学会。`,
-          label: '参加阶段短测',
-          minutes: qMinutes(items),
-          priority: 800 + settings.weights[subject],
-          subject,
-          scope: testedScope,
-          items,
-        });
-    }
-    if (
-      !events.some((e) => e.subject === subject) &&
-      !tests.some((t) => t.subject === subject)
-    ) {
-      const items = representative(data, subject, [], events, now, 6);
-      if (items.length)
-        add({
-          id: 'initial:' + subject,
-          kind: 'initial',
-          title: '先确认' + subjectName(subject) + '的学习起点',
-          reason:
-            '使用已导入的代表题定位起点，再决定学习顺序。拼音题仍手动核对。',
-          label: '进行起点测试',
-          minutes: qMinutes(items),
-          priority: 620 + settings.weights[subject],
-          subject,
-          items,
-        });
-    }
+    const id =
+      r.mode === 'pressure'
+        ? 'pressure:' + (nearest?.id ?? r.subject)
+        : r.mode === 'initial'
+          ? 'initial:' + r.subject
+          : 'test:' + r.subject + ':' + lastTest;
+    add({
+      id,
+      kind: r.mode,
+      title:
+        r.mode === 'pressure'
+          ? '来一场考前压力测试？'
+          : r.mode === 'test'
+            ? '用一次短测确认当前状态'
+            : r.title,
+      reason: r.reason,
+      label:
+        r.mode === 'initial'
+          ? '进行起点测试'
+          : r.mode === 'pressure'
+            ? '参加压力测试'
+            : '参加阶段短测',
+      minutes: qMinutes(r.questions),
+      subject: r.subject,
+      scope: r.scope,
+      items: r.questions,
+      informationValue: r.informationValue,
+      examId: nearest?.id,
+    });
   }
+  for (const t of courseLearningTasks(data, now))
+    add({
+      id: t.id,
+      kind: t.phase === 'verify' ? 'verify' : 'practice',
+      title:
+        t.course.title + (t.phase === 'verify' ? ' · 隔天验证' : ' · 课后巩固'),
+      reason:
+        t.phase === 'verify'
+          ? '教学与当场巩固已完成，现在用间隔作答检验保留。'
+          : '课程已完成，先完成这门课程自己的巩固练习。',
+      label: t.phase === 'verify' ? '开始课程验证' : '开始课程巩固',
+      minutes: policyFor(data).utility.practiceMinutes,
+      courseId: t.course.id,
+      coursePhase: t.phase,
+      subject: t.course.subject,
+      informationValue: t.phase === 'verify' ? 1 : undefined,
+    });
   const imported = jobs.filter(
     (j): j is ExamPaper =>
       j.kind === 'exam-paper' &&
@@ -534,7 +520,6 @@ export function studyAgenda(data: StudyData, now = Date.now()) {
         reason: `距离${e.title}还有 ${days} 天。使用你已导入的试卷，结束后再回到学习计划。`,
         label: '参加英语专项模拟',
         minutes: mins,
-        priority: days <= 7 ? 890 : 710,
         examId: e.id,
         paperId: p.id,
         examKind: p.exam,
@@ -549,7 +534,6 @@ export function studyAgenda(data: StudyData, now = Date.now()) {
           '完整且匹配的导入试卷尚未就绪。手动导入即可纳入安排，不会自动调用 AI。',
         label: '导入模拟试卷',
         minutes: 0,
-        priority: 650,
         examKind: spec.exam,
         examId: e.id,
         subject: 'ce',
@@ -562,7 +546,6 @@ export function studyAgenda(data: StudyData, now = Date.now()) {
         reason: `已导入试卷约需 ${mins || '不限时'} 分钟，当前剩余时间不足。可以调整时间预算，或先做短练习。`,
         label: '查看模拟安排',
         minutes: mins,
-        priority: 560,
         examKind: p.exam,
         examId: e.id,
         subject: 'ce',
@@ -584,7 +567,6 @@ export function studyAgenda(data: StudyData, now = Date.now()) {
         reason: '已有互动课件尚未完成，先理解，再进入练习。',
         label: '进入互动课程',
         minutes: 8,
-        priority: plan.queue.length ? 400 : 630,
         page: 'course',
         target: c.id,
         subject: c.subject,
@@ -615,7 +597,6 @@ export function studyAgenda(data: StudyData, now = Date.now()) {
         reason: group.title + '已有补救课程，完成后再做变式验证。',
         label: '进入补救课程',
         minutes: 6,
-        priority: 670,
         page: 'remedy',
         target: j.id,
       });
@@ -642,10 +623,20 @@ export function studyAgenda(data: StudyData, now = Date.now()) {
       reason: practice[0].reason,
       label: '开始这段学习',
       minutes: qMinutes(practice),
-      priority: 500,
       items: practice,
     });
   const insights = studyInsights(data, now);
+  // Rest remains a selectable candidate when fatigue evidence is high, never an exam override.
+  const fatigueSignal = fatigueState(data, now);
+  if (fatigueSignal.known && fatigueSignal.value >= policy.signals.fatigueHigh)
+    add({
+      id: 'rest-fatigue:' + today,
+      kind: 'rest',
+      title: '先休息，再继续学习',
+      reason: fatigueSignal.explanation,
+      label: '查看轻量学习方式',
+      minutes: 0,
+    });
   const checkpoint = practiceCheckpoint(data, now);
   if (checkpoint.blocks.length >= 3)
     add({
@@ -655,7 +646,6 @@ export function studyAgenda(data: StudyData, now = Date.now()) {
       reason: `已完成 ${checkpoint.blocks.length} 段练习、${checkpoint.events.length} 次作答。${checkpoint.weak.length ? '先看看反复出错的能力，再调整下一步。' : '看看哪些已经稳定，哪些还需要隔天验证。'}`,
       label: '查看阶段小结',
       minutes: 2,
-      priority: 835,
     });
   const resultStamp = insights.gpa.rows
     .map((r) => r.exam.result!.recordedAt)
@@ -670,7 +660,6 @@ export function studyAgenda(data: StudyData, now = Date.now()) {
         '真实考试 GPA 与复习优先级已更新，看看这次考试给后续学习带来的变化。',
       label: '查看考后回顾',
       minutes: 2,
-      priority: 790,
     });
   if (insights.weekCount >= 4)
     add({
@@ -680,8 +669,6 @@ export function studyAgenda(data: StudyData, now = Date.now()) {
       reason: '这一周的学习记录已整理好，看看保留效果与下一步建议。',
       label: '查看学习回顾',
       minutes: 2,
-      priority:
-        new Date(now).getDay() === 1 ? 780 : plan.queue.length ? 450 : 580,
     });
   if (!actions.length)
     add({
@@ -698,17 +685,15 @@ export function studyAgenda(data: StudyData, now = Date.now()) {
         : '先导入知识、字词、题目或课件，学习计划才有依据安排。',
       label: data.questions.length ? '查看下一步安排' : '导入学习内容',
       minutes: 0,
-      priority: 0,
       page: 'library',
     });
-  actions.sort((a, b) => b.priority - a.priority || a.id.localeCompare(b.id));
+  const ranked = scoreStudyActions(safe, actions, states, now, exclusions);
+  actions.splice(0, actions.length, ...ranked.actions);
   const advisor = cachedStudyAdvice(data, actions, now);
-  if (advisor && actions[0].priority < 830) {
-    const index = actions.findIndex((a) => a.id === advisor.actionId);
-    if (index > 0) actions.unshift(...actions.splice(index, 1));
-  }
   return {
     primary: actions[0],
+    decisionTrace: ranked.trace,
+    fatigue: ranked.fatigue,
     actions,
     practice,
     plan,
