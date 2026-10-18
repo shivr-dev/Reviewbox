@@ -19,6 +19,34 @@ export function applicationAssets(html) {
   return scripts;
 }
 
+export function applicationStyles(html) {
+  const styles = [...html.matchAll(/<link\b[^>]*>/gi)]
+    .filter(([tag]) => /\brel=["']stylesheet["']/i.test(tag))
+    .map(([tag]) => /\bhref=["']([^"']+)["']/i.exec(tag)?.[1])
+    .filter((path) => path && /(?:^|\/)assets\/.+\.css(?:\?|$)/.test(path));
+  assert.ok(
+    styles.length,
+    'Application entry is missing its built stylesheet.',
+  );
+  return styles;
+}
+
+export function verifyStyleContent(css) {
+  for (const selector of [
+    '.alpha-product',
+    '.alpha-rail',
+    '.rb-brand-studio',
+    '.rb-workshop-content',
+    '.combo-soft',
+    '.game-session-hud',
+  ]) {
+    assert.ok(
+      css.includes(selector),
+      `Application stylesheet is missing ${selector}; local and Pages style entries must match.`,
+    );
+  }
+}
+
 export async function verifyLocal(directory) {
   const html = await readFile(resolve(directory, 'index.html'), 'utf8');
   for (const asset of applicationAssets(html)) {
@@ -28,6 +56,15 @@ export async function verifyLocal(directory) {
     );
     await readFile(resolve(directory, asset));
   }
+  const css = [];
+  for (const asset of applicationStyles(html)) {
+    assert.ok(
+      !asset.startsWith('/') && !asset.includes('..'),
+      'Pages styles must work under the repository path.',
+    );
+    css.push(await readFile(resolve(directory, asset), 'utf8'));
+  }
+  verifyStyleContent(css.join('\n'));
   await readFile(resolve(directory, '.nojekyll'));
   JSON.parse(await readFile(resolve(directory, 'version.json'), 'utf8'));
 }
@@ -61,6 +98,17 @@ export async function verifyPublished(baseUrl, commit) {
     );
     await response.body?.cancel();
   }
+  const css = [];
+  for (const asset of applicationStyles(html)) {
+    const response = await request(asset);
+    assert.match(
+      response.headers.get('content-type') || '',
+      /text\/css/i,
+      'An application stylesheet returned a non-CSS response.',
+    );
+    css.push(await response.text());
+  }
+  verifyStyleContent(css.join('\n'));
 }
 
 if (
@@ -73,7 +121,7 @@ if (
       try {
         await verifyPublished(process.argv[3], process.argv[4]);
         console.log(
-          'Published Review entry, version and application assets verified.',
+          'Published Review entry, version, scripts and learning/Alpha styles verified.',
         );
         lastError = null;
         break;
