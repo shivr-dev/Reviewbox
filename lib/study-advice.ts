@@ -1,3 +1,4 @@
+import { isExamScheduled } from './model';
 import {
   assistantObservations,
   reliableAssistantEvent,
@@ -62,6 +63,7 @@ export function adviceOpportunity(
   const exam = data.exams
     .filter(
       (e) =>
+        isExamScheduled(e) &&
         validExamDate(e.date) &&
         Date.parse(e.date + 'T00:00:00') - now >= DAY &&
         Date.parse(e.date + 'T00:00:00') - now <= 7 * DAY,
@@ -150,7 +152,11 @@ export function adviceSummary(
       ? events.reduce((s, e) => s + e.score, 0) / events.length
       : null,
     exams: data.exams
-      .filter((e) => validExamDate(e.date))
+      .filter(
+        (e) =>
+          validExamDate(e.date) &&
+          (isExamScheduled(e) || validResult(e.result)),
+      )
       .slice(-8)
       .map((e) => ({
         title: e.title.slice(0, 100),

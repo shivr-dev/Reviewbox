@@ -1,3 +1,4 @@
+import { isExamScheduled } from './model';
 import { DAY, computeMastery } from './engine';
 import {
   assistantObservations,
@@ -221,8 +222,31 @@ export function studyAgenda(data: StudyData, now = Date.now()) {
     actions: StudyAction[] = [],
     exclusions: { id: string; reason: string }[] = [],
     add = (a: StudyAction) => {
-      if(deferred(data,a.id,now)){exclusions.push({id:a.id,reason:'学习者已暂缓或读过该安排'});return;}
-      if(['practice','initial','test','pressure','simulation','course','teach','remedy','verify'].includes(a.kind)&&!a.id.startsWith('resume:')&&a.minutes*60>plan.remainingSeconds){exclusions.push({id:a.id,reason:'当前剩余时间不足，保留到后续安排'});return;}
+      if (deferred(data, a.id, now)) {
+        exclusions.push({ id: a.id, reason: '学习者已暂缓或读过该安排' });
+        return;
+      }
+      if (
+        [
+          'practice',
+          'initial',
+          'test',
+          'pressure',
+          'simulation',
+          'course',
+          'teach',
+          'remedy',
+          'verify',
+        ].includes(a.kind) &&
+        !a.id.startsWith('resume:') &&
+        a.minutes * 60 > plan.remainingSeconds
+      ) {
+        exclusions.push({
+          id: a.id,
+          reason: '当前剩余时间不足，保留到后续安排',
+        });
+        return;
+      }
       actions.push(a);
     };
   const active = jobs
@@ -260,7 +284,14 @@ export function studyAgenda(data: StudyData, now = Date.now()) {
         title: j.mode === 'test' ? '继续未完成的测试' : '接着上次的学习',
         reason: '当前作答已保存，先完成这一段。',
         label: '继续学习',
-        minutes: qMinutes(j.items.filter((i:QueueItem)=>!events.some(e=>e.sessionId===j.id&&e.questionId===i.question.id))),
+        minutes: qMinutes(
+          j.items.filter(
+            (i: QueueItem) =>
+              !events.some(
+                (e) => e.sessionId === j.id && e.questionId === i.question.id,
+              ),
+          ),
+        ),
         page: 'study',
         target: j.id,
       });
@@ -423,6 +454,7 @@ export function studyAgenda(data: StudyData, now = Date.now()) {
     const nearest = data.exams
       .filter(
         (e) =>
+          isExamScheduled(e) &&
           (r.subject === 'all' || e.subject === r.subject) &&
           dateDays(e.date, now) >= 0,
       )
@@ -480,7 +512,7 @@ export function studyAgenda(data: StudyData, now = Date.now()) {
       j.format === EXAM_FORMAT &&
       j.origin === 'imported',
   );
-  for (const e of data.exams) {
+  for (const e of data.exams.filter(isExamScheduled)) {
     const days = dateDays(e.date, now),
       spec = inferredSimulation(e);
     if (!spec || !settings.weights.ce || days < 2 || days > 21) continue;

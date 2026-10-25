@@ -1,3 +1,4 @@
+import { isExamScheduled } from './model';
 import { localDay, type Exam, type StudyData } from './model';
 export type GpaConfig = {
   scale: number;
@@ -169,6 +170,7 @@ export function pendingExamScores(data: StudyData, now = Date.now()) {
   const today = localDay(new Date(now));
   return completedExams(data, now).filter(
     (e) =>
+      isExamScheduled(e) &&
       e.date < today &&
       !validResult(e.result) &&
       (!e.scoreReminderAfter ||

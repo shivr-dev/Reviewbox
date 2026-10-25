@@ -1,3 +1,4 @@
+import { isExamScheduled } from './model';
 import {
   keyOf,
   localDay,
@@ -20,7 +21,7 @@ import {
 } from './learning-intelligence';
 import { dueRemediation } from './remediation';
 import { DEFAULT_POLICY, policyFor, type PolicyConfig } from './policy-config';
-import { metadataQuality,createSignalContext } from './learning-signals';
+import { metadataQuality, createSignalContext } from './learning-signals';
 import {
   answerEvidenceWeight,
   hintEvidenceWeight,
@@ -57,7 +58,7 @@ export function applyAnswer(
   old: Mastery,
   e: AnswerEvent,
   policy: PolicyConfig = DEFAULT_POLICY,
-  history:AnswerEvent[]=[],
+  history: AnswerEvent[] = [],
 ): Mastery {
   const s = { ...old };
   const now = Date.parse(e.occurredAt);
@@ -120,7 +121,7 @@ export function applyAnswer(
     s.mastery += gain;
     s.dailyGain += gain;
   } else {
-    const cause = errorCauseEstimate(e,history);
+    const cause = errorCauseEstimate(e, history);
     // A single ambiguous loss has limited effect; corroborated concept evidence can matter more.
     const attribution = cause.confirmed
       ? config.failureAttribution.confirmedBase +
@@ -185,7 +186,8 @@ export function computeMastery(
   for (const n of nodes)
     for (const skill of n.skills)
       map[keyOf(n.id, skill.id)] = initial(n.id, skill.id);
-  const seen = new Set<string>(),history:AnswerEvent[]=[];
+  const seen = new Set<string>(),
+    history: AnswerEvent[] = [];
   for (const e of [...events].sort(
     (a, b) =>
       a.occurredAt.localeCompare(b.occurredAt) || a.id.localeCompare(b.id),
@@ -267,6 +269,7 @@ export function priority(
     ...exams
       .filter(
         (e) =>
+          isExamScheduled(e) &&
           e.subject === n.subject &&
           (!e.scope.length || e.scope.includes(n.id)) &&
           Date.parse(e.date + 'T23:59:59') >= now,
@@ -316,8 +319,16 @@ export function buildQueue(
     today = localDay(new Date(now));
   const policy = policyFor(data),
     weights = policy.engine.priority;
-  const signalContext=createSignalContext(data,now,policy),qualities=new Map<string,ReturnType<typeof metadataQuality>>();
-  const contentQualityOf=(q:StudyData['questions'][number])=>{let quality=qualities.get(q.id);if(!quality){quality=metadataQuality(data,q,now,policy,signalContext);qualities.set(q.id,quality);}return quality;};
+  const signalContext = createSignalContext(data, now, policy),
+    qualities = new Map<string, ReturnType<typeof metadataQuality>>();
+  const contentQualityOf = (q: StudyData['questions'][number]) => {
+    let quality = qualities.get(q.id);
+    if (!quality) {
+      quality = metadataQuality(data, q, now, policy, signalContext);
+      qualities.set(q.id, quality);
+    }
+    return quality;
+  };
   const states = computeMastery(
     data.nodes,
     cleanEvents(data.events, now),
@@ -455,6 +466,7 @@ export function buildQueue(
         if (
           data.exams.some(
             (e) =>
+              isExamScheduled(e) &&
               e.subject === n.subject &&
               (!e.scope.length || e.scope.includes(n.id)) &&
               Date.parse(e.date) > now &&

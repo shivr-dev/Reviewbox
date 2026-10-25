@@ -1,0 +1,210 @@
+.exam-schedule .exam-schedule-list {
+  display: grid;
+  gap: 16px;
+  margin-top: 22px;
+}
+.exam-schedule-row {
+  display: flex;
+  gap: 22px;
+  align-items: center;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--border, #e4eaf0);
+}
+.exam-schedule-row > div:first-child {
+  flex: 1;
+  min-width: 0;
+}
+.exam-schedule-row h3 {
+  margin: 0 0 8px;
+  overflow-wrap: anywhere;
+}
+.exam-schedule-row p {
+  margin: 6px 0;
+  font-size: 13px;
+}
+.exam-schedule-row small,
+.exam-schedule-status {
+  color: #6c7f8d;
+  font-size: 12px;
+}
+.exam-row-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.exam-row-actions button {
+  white-space: nowrap;
+  font-size: 12px;
+}
+.exam-record-help {
+  margin-top: 20px;
+  font-size: 12px;
+  line-height: 1.8;
+}
+.exam-action-error {
+  padding: 12px;
+  border: 1px solid #f0b7b1;
+  border-radius: 10px;
+  color: #a53e37;
+  background: #fff7f5;
+  font-size: 13px;
+}
+.exam-undo-list {
+  display: grid;
+  gap: 10px;
+  margin: 16px 0;
+}
+.exam-undo-list > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 14px;
+  background: #eff8ff;
+  border-radius: 12px;
+  font-size: 13px;
+}
+.exam-delete-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 20px;
+}
+.exam-editor-dialog form > fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+.exam-scope-picker {
+  border: 1px solid #dce7ef;
+  border-radius: 12px;
+  padding: 14px;
+  margin: 18px 0;
+  min-width: 0;
+}
+.exam-scope-picker legend {
+  padding: 0 6px;
+  font-weight: 700;
+  font-size: 14px;
+}
+.scope-tools,
+.scope-template-save {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.scope-tools input,
+.scope-template-save input {
+  flex: 1;
+  min-width: 0;
+}
+.exam-scope-picker input[type='search'],
+.scope-template-save input {
+  width: 100%;
+}
+.exam-scope-picker .scope-tools button,
+.scope-template-save button {
+  font-size: 12px;
+  white-space: nowrap;
+}
+.exam-scope-picker p,
+.exam-scope-picker small {
+  font-size: 12px;
+  color: #647e92;
+  line-height: 1.7;
+}
+.scope-chapters {
+  max-height: 280px;
+  overflow: auto;
+  border-block: 1px solid #edf1f5;
+  margin: 12px 0;
+  padding-right: 8px;
+}
+.scope-chapter-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  font-size: 12px;
+}
+.scope-chapter-heading b {
+  flex: 1;
+}
+.scope-chapters section > label {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 8px 0;
+  font-size: 13px;
+}
+.scope-chapters input[type='checkbox'],
+.auto-start-notice input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  margin: 0;
+  accent-color: #4095ca;
+}
+.auto-start-notice {
+  margin: 16px auto;
+  padding: 18px 22px;
+  border: 1px solid #cfe6f5;
+  background: #f5faff;
+  border-radius: 14px;
+  max-width: 900px;
+}
+.auto-start-notice h2 {
+  font-size: 17px;
+  margin: 0 0 10px;
+}
+.auto-start-notice p {
+  font-size: 13px;
+  line-height: 1.8;
+}
+.auto-start-notice > div,
+.auto-start-countdown {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.auto-start-notice > label {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  align-items: center;
+  font-size: 13px;
+  margin: 12px 0 4px;
+}
+.auto-start-notice small {
+  display: block;
+  color: #647c8e;
+  font-size: 12px;
+}
+@media (max-width: 720px) {
+  .exam-schedule-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .exam-row-actions {
+    width: 100%;
+  }
+  .scope-tools,
+  .scope-template-save {
+    flex-wrap: wrap;
+  }
+  .scope-tools input,
+  .scope-template-save input {
+    flex-basis: 100%;
+  }
+  .auto-start-notice {
+    margin: 12px 0;
+    padding: 16px;
+  }
+}

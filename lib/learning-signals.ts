@@ -1,3 +1,4 @@
+import { isExamScheduled } from './model';
 import {
   localDay,
   type AnswerEvent,
@@ -39,7 +40,12 @@ export function signalObservations(
     .filter((e) => {
       const at = Date.parse(e.occurredAt),
         q = questions.get(e.questionId),
-        fingerprint = [e.sessionId, e.questionId, e.occurredAt,e.attemptNumber??''].join('|');
+        fingerprint = [
+          e.sessionId,
+          e.questionId,
+          e.occurredAt,
+          e.attemptNumber ?? '',
+        ].join('|');
       if (
         seen.has(fingerprint) ||
         e.voidedBy ||
@@ -463,6 +469,7 @@ export function examImpact(
   const candidates = data.exams
     .filter(
       (e) =>
+        isExamScheduled(e) &&
         e.subject === subject &&
         validExamDate(e.date) &&
         new Date(e.date + 'T23:59:59').getTime() >= now &&

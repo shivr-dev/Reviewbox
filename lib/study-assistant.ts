@@ -1,3 +1,4 @@
+import { isExamScheduled } from './model';
 import { buildQueue, computeMastery, forgettingRisk, DAY } from './engine';
 import {
   cleanEvents,
@@ -117,7 +118,12 @@ export function assistantObservations(data: StudyData, now: number) {
     )
       return false;
     // Importing the same completed answer with another id must not inflate the evidence.
-    const fingerprint = [e.sessionId, e.questionId, e.occurredAt,e.attemptNumber??''].join('|');
+    const fingerprint = [
+      e.sessionId,
+      e.questionId,
+      e.occurredAt,
+      e.attemptNumber ?? '',
+    ].join('|');
     if (seen.has(fingerprint)) return false;
     seen.add(fingerprint);
     return true;
@@ -163,7 +169,7 @@ const STAGE_TITLES: Record<AssistantStageKind, string> = {
 export function dailyStudyPlan(data: StudyData, now = Date.now()) {
   now = parsedNow(now);
   const policy = policyFor(data);
-  const signalContext=createSignalContext(data,now,policy);
+  const signalContext = createSignalContext(data, now, policy);
   const settings = assistantSettings(data),
     today = localDay(new Date(now));
   const events = observations(data, now),
@@ -324,6 +330,7 @@ export function dailyStudyPlan(data: StudyData, now = Date.now()) {
       ...data.exams
         .filter(
           (e) =>
+            isExamScheduled(e) &&
             e.subject === q.subject &&
             (!e.scope.length || e.scope.includes(n.id)),
         )
@@ -333,8 +340,8 @@ export function dailyStudyPlan(data: StudyData, now = Date.now()) {
     const fingerprint = fingerprints.find(
       (f) => f.family === memoryFamily(q, n),
     );
-    const quality = metadataQuality(data, q, now,policy,signalContext),
-      impact = examImpact(data, q.subject, n.id, now,policy,signalContext),
+    const quality = metadataQuality(data, q, now, policy, signalContext),
+      impact = examImpact(data, q.subject, n.id, now, policy, signalContext),
       u = policy.utility;
     const weakness = state?.attemptCount ? 1 - state.mastery : 1;
     const priority =
@@ -420,22 +427,33 @@ export function dailyStudyPlan(data: StudyData, now = Date.now()) {
             .map((q) => q.nodeId),
         ),
       ];
-    const information = assessmentInformation(data, subject, now,policy,signalContext);
+    const information = assessmentInformation(
+      data,
+      subject,
+      now,
+      policy,
+      signalContext,
+    );
     const nearest = Math.min(
       Infinity,
       ...data.exams
-        .filter((e) => e.subject === subject)
+        .filter((e) => isExamScheduled(e) && e.subject === subject)
         .map((e) => examDays(e.date, now)),
     );
-    const pendingInitial=data.tests.some(t=>t.subject===subject&&t.eventIds.some(id=>!events.some(e=>e.id===id)));
-    const modes: AssistantRecommendation['mode'][] = (!subjectEvents.length||pendingInitial)
-      ? ['initial']
-      : [
-          'test',
-          ...(nearest >= 2 && Number.isFinite(nearest)
-            ? ['pressure' as const]
-            : []),
-        ];
+    const pendingInitial = data.tests.some(
+      (t) =>
+        t.subject === subject &&
+        t.eventIds.some((id) => !events.some((e) => e.id === id)),
+    );
+    const modes: AssistantRecommendation['mode'][] =
+      !subjectEvents.length || pendingInitial
+        ? ['initial']
+        : [
+            'test',
+            ...(nearest >= 2 && Number.isFinite(nearest)
+              ? ['pressure' as const]
+              : []),
+          ];
     for (const mode of modes) {
       const value =
         mode === 'initial'

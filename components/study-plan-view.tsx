@@ -43,6 +43,7 @@ import {
 } from '@/lib/study-trace-client';
 import { POLICY_REGISTRY, policyFor } from '@/lib/policy-config';
 import { TeachingReview } from './teaching-review';
+import AutoPracticeStart from './auto-practice-start';
 
 export default function StudyPlanView() {
   const { data, navigate, start, refresh, notify, aiReady, section } =
@@ -64,7 +65,6 @@ export default function StudyPlanView() {
       mounted.current = false;
     };
   }, []);
-  const autoStarted = useRef(new Set<string>());
   useEffect(() => {
     if (ready && launchIntent && intentStarted.current !== launchIntent) {
       intentStarted.current = launchIntent;
@@ -103,19 +103,6 @@ export default function StudyPlanView() {
     }
   }, [ready, mode, dueScore?.id, data.settings.studyMode]);
   const milestone = adviceOpportunity(data, agenda.actions, now)?.milestone;
-  useEffect(() => {
-    if (
-      ready &&
-      mode === 'agenda' &&
-      data.settings.studyMode === 'auto' &&
-      !launchIntent &&
-      agenda.primary.kind === 'practice' &&
-      !autoStarted.current.has(agenda.primary.id)
-    ) {
-      autoStarted.current.add(agenda.primary.id);
-      void launch(agenda.primary);
-    }
-  }, [ready, mode, data.settings.studyMode, agenda.primary.id]);
   useEffect(() => {
     if (!ready || !aiReady || !milestone) return;
     let alive = true;
@@ -351,6 +338,14 @@ export default function StudyPlanView() {
           <Settings2 size={18} />
         </button>
       </header>
+      <AutoPracticeStart
+        ready={ready}
+        pageMode={mode}
+        action={agenda.primary}
+        launchIntent={launchIntent}
+        blocked={busy}
+        onStart={() => void launch(agenda.primary)}
+      />
       {!ready ? (
         <div className="director-loading" role="status">
           <Penguin action="thinking" />

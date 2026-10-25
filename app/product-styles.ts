@@ -13,3 +13,4 @@ import './home-companion.css';
 import './assistant.css';
 import './brand-studio.css';
 import './alpha-product.css';
+import './exam-schedule.css';

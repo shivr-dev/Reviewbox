@@ -274,6 +274,8 @@ export type Mastery = {
   lastFailure: string | null;
 };
 export type Exam = {
+  scheduleStatus?: 'active' | 'cancelled';
+  scheduleUpdatedAt?: string;
   id: string;
   title: string;
   subject: Subject;
@@ -295,6 +297,8 @@ export type Exam = {
     paperId?: string;
   };
 };
+export const isExamScheduled = (exam: Exam) =>
+  exam.scheduleStatus !== 'cancelled';
 export type Note = { id: string; nodeId: string; body: string };
 export type Material = {
   id: string;
@@ -370,6 +374,7 @@ export type StudyData = {
     alphaPreview?: boolean;
     assistantAi?: boolean;
     studyMode?: 'auto' | 'guided' | 'manual';
+    studyAutoStart?: { enabled: boolean; acknowledgedAt: string };
     studyPolicy?: { id: string; previousId?: string; changedAt?: string };
     examGpa?: {
       scale: number;

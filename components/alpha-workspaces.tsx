@@ -1,6 +1,5 @@
 'use client';
 import { useRef, useState } from 'react';
-import { Plus } from 'lucide-react';
 import { useReview } from './review-context';
 import SubjectsView from './subjects-view';
 import LibraryView from './library-view';
@@ -8,22 +7,18 @@ import CourseHub from './course-hub';
 import AnalyticsView from './analytics-view';
 import ExamResults from './exam-results';
 import { FullExamHub } from './exam-hub';
-import { SUBJECTS, subjectName, uid, type Subject } from '@/lib/model';
+import { SUBJECTS, subjectName, type Subject } from '@/lib/model';
 import { examGpa } from '@/lib/exam-outcomes';
 import { weeklyLearningGpa } from '@/lib/study-assistant';
-import { currentNamespace, put } from '@/lib/store';
+import { currentNamespace } from '@/lib/store';
 import { EQUIPMENT_SUPPLIES } from '@/lib/equipment-catalog';
 import { learningGame } from '@/lib/learning-game';
 import { buyGameItem } from '@/lib/game-client';
 import { GameProfile } from './learning-game';
 import { AdventureShop } from './adventure-panels';
 import { MaterialArt } from './equipment-art';
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogDescription,
-} from './ui/dialog';
+import ExamSchedule from './exam-schedule';
+export { default as ExamSchedule } from './exam-schedule';
 
 export function AlphaSubjects({
   initialView = 'subjects',
@@ -283,232 +278,5 @@ export function AlphaShop() {
         </>
       )}
     </>
-  );
-}
-
-export function ExamSchedule() {
-  const { data, refresh, notify } = useReview();
-  const [open, setOpen] = useState(false),
-    [subject, setSubject] = useState<Subject>('math'),
-    [scope, setScope] = useState<string[]>([]),
-    [busy, setBusy] = useState(false);
-  const gate = useRef(false),
-    origin = useRef(currentNamespace());
-  async function save(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (gate.current) return;
-    gate.current = true;
-    setBusy(true);
-    const f = new FormData(e.currentTarget);
-    try {
-      if (currentNamespace() !== origin.current)
-        throw new Error('账户已切换，请重新打开');
-      const date = String(f.get('date'));
-      if (Date.parse(date + 'T23:59:59') < Date.now())
-        throw new Error('考试日期不能早于今天');
-      const sim = String(f.get('simulation') || 'auto');
-      await put(
-        'exam',
-        {
-          id: uid(),
-          title: String(f.get('title')),
-          subject,
-          date,
-          scope,
-          target: Number(f.get('target')),
-          dailyMinutes: Number(f.get('minutes')),
-          simulation:
-            subject === 'ce' && sim !== 'auto'
-              ? {
-                  exam: sim.split(':')[0],
-                  mapSection: sim.startsWith('MAP:')
-                    ? sim.split(':')[1]
-                    : undefined,
-                  grade: Number(f.get('grade') || 8),
-                }
-              : undefined,
-        },
-        undefined,
-        false,
-        origin.current,
-      );
-      await refresh();
-      setOpen(false);
-      notify('考试已加入学习计划');
-    } catch (e) {
-      notify(e instanceof Error ? e.message : '保存未完成');
-    } finally {
-      gate.current = false;
-      setBusy(false);
-    }
-  }
-  return (
-    <section className="alpha-exam-schedule">
-      <div className="section-head">
-        <h2>真实考试与目标</h2>
-        <button
-          className="primary"
-          onClick={() => {
-            origin.current = currentNamespace();
-            setScope([]);
-            setOpen(true);
-          }}
-        >
-          <Plus size={17} /> 添加考试
-        </button>
-      </div>
-      <ExamResults />
-      {data.exams.length ? (
-        data.exams
-          .slice()
-          .sort((a, b) => a.date.localeCompare(b.date))
-          .map((e) => (
-            <article className="alpha-exam-row" key={e.id}>
-              <div>
-                <h3>{e.title}</h3>
-                <p>
-                  {subjectName(e.subject)} · {e.date} · 目标 {e.target}%
-                </p>
-                <small>
-                  {e.scope.length ? `${e.scope.length} 个知识点` : '全学科范围'}{' '}
-                  · 每日建议 {e.dailyMinutes} 分钟
-                </small>
-              </div>
-              <span>
-                {e.result
-                  ? `${e.result.score} / ${e.result.maxScore}`
-                  : '尚未录入成绩'}
-              </span>
-              <button
-                className="quiet"
-                onClick={() => void put('exam', e, e.id, true).then(refresh)}
-              >
-                移出安排
-              </button>
-            </article>
-          ))
-      ) : (
-        <p className="alpha-empty">
-          添加考试日期、范围与目标，Study Director 会据此安排。
-        </p>
-      )}
-      <Dialog
-        open={open}
-        onOpenChange={(v) => {
-          if (!busy) setOpen(v);
-        }}
-      >
-        <DialogContent className="editor-dialog">
-          <DialogTitle>添加考试</DialogTitle>
-          <DialogDescription>范围和目标会反馈给学习计划。</DialogDescription>
-          <form onSubmit={save}>
-            <label>
-              考试名称
-              <input name="title" required maxLength={100} />
-            </label>
-            <div className="form-grid">
-              <label>
-                学科
-                <select
-                  value={subject}
-                  onChange={(e) => {
-                    setSubject(e.target.value as Subject);
-                    setScope([]);
-                  }}
-                >
-                  {SUBJECTS.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                考试日期
-                <input type="date" name="date" required />
-              </label>
-              <label>
-                目标得分率（%）
-                <input
-                  name="target"
-                  type="number"
-                  min={1}
-                  max={100}
-                  defaultValue={85}
-                  required
-                />
-              </label>
-              <label>
-                每日建议时间
-                <input
-                  name="minutes"
-                  type="number"
-                  min={5}
-                  max={180}
-                  defaultValue={20}
-                  required
-                />
-              </label>
-            </div>
-            {subject === 'ce' && (
-              <div className="form-grid">
-                <label>
-                  配套模拟考试
-                  <select name="simulation">
-                    <option value="auto">根据考试名称识别</option>
-                    {[
-                      'SAT',
-                      'ACT',
-                      'TOEFL',
-                      'MAP:Reading',
-                      'MAP:Language Usage',
-                      'DET',
-                    ].map((k) => (
-                      <option key={k} value={k}>
-                        {k}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  MAP 年级
-                  <input
-                    type="number"
-                    name="grade"
-                    min={2}
-                    max={12}
-                    defaultValue={8}
-                  />
-                </label>
-              </div>
-            )}
-            <fieldset className="scope-list">
-              <legend>考试范围（不选为全学科）</legend>
-              {data.nodes
-                .filter((n) => n.subject === subject)
-                .map((n) => (
-                  <label key={n.id}>
-                    <input
-                      type="checkbox"
-                      checked={scope.includes(n.id)}
-                      onChange={(e) =>
-                        setScope((x) =>
-                          e.target.checked
-                            ? [...x, n.id]
-                            : x.filter((id) => id !== n.id),
-                        )
-                      }
-                    />
-                    {n.title}
-                  </label>
-                ))}
-            </fieldset>
-            <button className="primary" type="submit" disabled={busy}>
-              {busy ? '正在保存…' : '保存考试安排'}
-            </button>
-          </form>
-        </DialogContent>
-      </Dialog>
-    </section>
   );
 }

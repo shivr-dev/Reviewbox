@@ -1,5 +1,6 @@
 import { currentNamespace, loadData, put } from './store';
 import { localDay, type Exam } from './model';
+import { updateExamRecord } from './exam-schedule-client';
 import {
   validateGpaConfig,
   validResult,
@@ -15,33 +16,23 @@ export async function saveExamScore(
     throw new Error('学习账户已切换，请重新打开成绩录入');
   if (!validResult(result) || Date.parse(result.recordedAt) > Date.now() + 1000)
     throw new Error('请填写有效得分、满分和学分；得分不能超过满分');
-  const data = await loadData(ns),
-    exam = data.exams.find((e) => e.id === id);
-  if (!exam) throw new Error('考试已移出计划，请刷新');
-  if (!validExamDate(exam.date) || exam.date > localDay(new Date()))
-    throw new Error('考试日期无效或尚未开始，暂不能录入成绩');
-  if (ns !== currentNamespace()) throw new Error('学习账户已切换');
-  await put(
-    'exam',
-    { ...exam, result, scoreReminderAfter: undefined },
+  await updateExamRecord(
     id,
-    false,
+    (exam) => {
+      if (!validExamDate(exam.date) || exam.date > localDay(new Date()))
+        throw new Error('考试日期无效或尚未开始，暂不能录入成绩');
+      return { ...exam, result, scoreReminderAfter: undefined };
+    },
     ns,
   );
 }
 export async function deferExamScore(id: string, ns = currentNamespace()) {
-  const data = await loadData(ns),
-    exam = data.exams.find((e) => e.id === id);
-  if (ns !== currentNamespace() || !exam)
-    throw new Error('学习账户或考试已变更');
-  await put(
-    'exam',
-    {
+  await updateExamRecord(
+    id,
+    (exam) => ({
       ...exam,
       scoreReminderAfter: new Date(Date.now() + 86400000).toISOString(),
-    },
-    id,
-    false,
+    }),
     ns,
   );
 }

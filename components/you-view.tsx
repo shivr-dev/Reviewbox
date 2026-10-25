@@ -5,12 +5,11 @@ import { checkPagesAI } from '@/lib/pages-ai-check';
 import ClearDataCard from './clear-data-card';
 import AlphaPreviewCard from './alpha-preview-card';
 import ImportSkillCard from './import-skill-card';
-import ExamResults from './exam-results';
+import ExamSchedule from './exam-schedule';
 import { saveDailyTime } from '@/lib/exam-outcome-client';
 import { GameProfile } from './learning-game';
 import { useEffect, useState } from 'react';
 import {
-  Plus,
   Cloud,
   RefreshCw,
   Check,
@@ -27,7 +26,6 @@ import {
 } from '@/components/ui/dialog';
 import { Switch } from '@/components/ui/switch';
 import { useReview } from './review-context';
-import { uid, type Subject, subjectName } from '@/lib/model';
 import {
   put,
   signIn,
@@ -37,7 +35,7 @@ import {
   exportBackup,
 } from '@/lib/store';
 import { download } from '@/lib/importer';
-import { Heading, SubjectChoice, Choice, Empty, dateLabel } from './shared';
+import { Heading, Choice } from './shared';
 export default function YouView() {
   const {
     data,
@@ -51,20 +49,16 @@ export default function YouView() {
     aiReady,
     navigate,
   } = useReview();
-  const [examOpen, setExamOpen] = useState(false),
-    [visualTheme, setVisualTheme] = useState<
+  const [visualTheme, setVisualTheme] = useState<
       'editorial' | 'classic' | 'playful'
     >('playful'),
     [vaultReady, setVaultReady] = useState<boolean | null>(null),
     [checkingAI, setCheckingAI] = useState(false),
     [aiCheck, setAiCheck] = useState(''),
-    [subject, setSubject] = useState<Subject>('math'),
-    [scope, setScope] = useState<string[]>([]),
     [accountOpen, setAccountOpen] = useState(false),
     [register, setRegister] = useState(false),
     [busy, setBusy] = useState(false),
     [minutes, setMinutes] = useState(String(data.settings.dailyMinutes));
-  const nodes = data.nodes.filter((n) => n.subject === subject);
   useEffect(() => {
     void pagesConfig().then((value) => setVaultReady(!!value));
     const saved = localStorage.getItem('review-visual-theme');
@@ -116,44 +110,6 @@ export default function YouView() {
       await sync();
     } catch (e) {
       notify(e instanceof Error ? e.message : '登录未完成');
-    } finally {
-      setBusy(false);
-    }
-  }
-  async function saveExam(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setBusy(true);
-    try {
-      const f = new FormData(e.currentTarget);
-      const date = String(f.get('date'));
-      if (Date.parse(date + 'T23:59:59') < Date.now())
-        throw new Error('考试日期不能早于今天');
-      await put('exam', {
-        id: uid(),
-        title: String(f.get('title')),
-        subject,
-        date,
-        scope,
-        target: Number(f.get('target')),
-        dailyMinutes: Number(f.get('minutes')),
-        simulation:
-          subject === 'ce' && String(f.get('simulation') || 'auto') !== 'auto'
-            ? {
-                exam: String(f.get('simulation')).split(':')[0],
-                mapSection: String(f.get('simulation')).startsWith('MAP:')
-                  ? String(f.get('simulation')).split(':')[1]
-                  : undefined,
-                grade: String(f.get('simulation')).startsWith('MAP:')
-                  ? Number(f.get('mapGrade') || 8)
-                  : undefined,
-              }
-            : undefined,
-      });
-      await refresh();
-      setExamOpen(false);
-      notify('考试已添加，今日复习优先级已调整');
-    } catch (e) {
-      notify(String(e));
     } finally {
       setBusy(false);
     }
@@ -462,60 +418,7 @@ export default function YouView() {
           <p className="inline-hint">断网时继续学习。网络恢复后会自动重试。</p>
         </section>
       </div>
-      <section className="panel">
-        <div className="section-head">
-          <h2>考试与学习计划</h2>
-          <button className="secondary" onClick={() => setExamOpen(true)}>
-            <Plus size={16} />
-            添加考试
-          </button>
-        </div>
-        <ExamResults />
-        {data.exams.length ? (
-          data.exams
-            .slice()
-            .sort((a, b) => a.date.localeCompare(b.date))
-            .map((e) => (
-              <div className="exam-full" key={e.id}>
-                <span className="exam-calendar">
-                  <b>{new Date(e.date).getDate()}</b>
-                  <small>{new Date(e.date).getMonth() + 1}月</small>
-                </span>
-                <div className="grow">
-                  <h3>{e.title}</h3>
-                  <p className="muted">
-                    {subjectName(e.subject)} ·{' '}
-                    {e.scope.length ? `${e.scope.length} 个知识点` : '全部知识'}{' '}
-                    · 目标 {e.target}%
-                  </p>
-                  <p className="muted">
-                    {e.date} · 建议每日 {e.dailyMinutes} 分钟
-                    {e.result && (
-                      <>
-                        {' '}
-                        · 实际得分 {e.result.score} / {e.result.maxScore}
-                      </>
-                    )}
-                  </p>
-                </div>
-                <button
-                  className="quiet"
-                  onClick={async () => {
-                    await put('exam', e, e.id, true);
-                    await refresh();
-                    notify('考试已移出计划');
-                  }}
-                >
-                  移出计划
-                </button>
-              </div>
-            ))
-        ) : (
-          <Empty title="下一场考试，提前从容准备">
-            指定日期、知识范围与目标，复习优先级会随表现变化。
-          </Empty>
-        )}
-      </section>
+      <ExamSchedule />
       <section className="panel">
         <h2>学习服务</h2>
         <div className="service-row">
@@ -577,121 +480,6 @@ export default function YouView() {
           <p className="inline-hint">
             注册可能需要邮件确认。密码与会话通过加密连接发送。
           </p>
-        </DialogContent>
-      </Dialog>
-      <Dialog open={examOpen} onOpenChange={setExamOpen}>
-        <DialogContent className="editor-dialog">
-          <DialogTitle>添加考试</DialogTitle>
-          <DialogDescription>
-            设置具体范围，系统会优先安排其中的薄弱知识。
-          </DialogDescription>
-          <form onSubmit={saveExam}>
-            <label>
-              考试名称
-              <input
-                name="title"
-                required
-                placeholder="例如：数学第一单元测试"
-                maxLength={100}
-              />
-            </label>
-            <div className="form-grid">
-              <label>
-                学科
-                <SubjectChoice
-                  value={subject}
-                  onChange={(v) => {
-                    setSubject(v as Subject);
-                    setScope([]);
-                  }}
-                />
-              </label>
-              <label>
-                日期
-                <input
-                  name="date"
-                  type="date"
-                  min={new Date().toISOString().slice(0, 10)}
-                  required
-                />
-              </label>
-              <label>
-                目标得分率（%）
-                <input
-                  name="target"
-                  type="number"
-                  min={1}
-                  max={100}
-                  defaultValue={85}
-                  required
-                />
-              </label>
-              <label>
-                每日学习时间（分钟）
-                <input
-                  name="minutes"
-                  type="number"
-                  min={5}
-                  max={180}
-                  defaultValue={20}
-                  required
-                />
-              </label>
-            </div>
-            <label>
-              考试范围 <span className="muted">不选表示本学科全部</span>
-            </label>
-            {subject === 'ce' && (
-              <div className="form-grid">
-                <label>
-                  配套模拟考试
-                  <select name="simulation" defaultValue="auto">
-                    <option value="auto">从考试名称识别</option>
-                    <option value="SAT">SAT</option>
-                    <option value="ACT">ACT</option>
-                    <option value="TOEFL">TOEFL</option>
-                    <option value="MAP:Reading">MAP Reading</option>
-                    <option value="MAP:Language Usage">
-                      MAP Language Usage
-                    </option>
-                    <option value="DET">Duolingo English Test</option>
-                  </select>
-                </label>
-                <label>
-                  MAP 年级
-                  <input
-                    name="mapGrade"
-                    type="number"
-                    min="2"
-                    max="12"
-                    defaultValue="8"
-                  />
-                </label>
-                <small>只安排匹配且完整的已导入试卷；不会自动生成新题。</small>
-              </div>
-            )}
-            <div className="scope-list">
-              {nodes.map((n) => (
-                <label key={n.id}>
-                  <input
-                    type="checkbox"
-                    checked={scope.includes(n.id)}
-                    onChange={(e) =>
-                      setScope(
-                        e.target.checked
-                          ? [...scope, n.id]
-                          : scope.filter((id) => id !== n.id),
-                      )
-                    }
-                  />
-                  {n.title}
-                </label>
-              ))}
-            </div>
-            <button className="primary" disabled={busy} type="submit">
-              保存考试计划
-            </button>
-          </form>
         </DialogContent>
       </Dialog>
     </>
