@@ -1,5 +1,7 @@
 'use client';
 import ManualImport from './manual-import';
+import WatchPackageCard from './watch-package-card';
+import PublicPackLibrary from './public-pack-library';
 import QuestionReviewButton from './question-review';
 import { parseImportText } from '@/lib/import-skill';
 import {
@@ -341,6 +343,7 @@ export default function LibraryView({
           <TabsTrigger value="data">数据中心</TabsTrigger>
         </TabsList>
         <TabsContent value="materials">
+          <div className="toolbar"><button className="secondary" onClick={() => setTab('content')}><Upload size={16}/> 上传 / 浏览公共学习包</button><span className="muted">在“我的学习包”中下载到手表；公开发布前需单独确认。</span></div>
           <div
             className="import-callout"
             onDragOver={(e) => e.preventDefault()}
@@ -482,9 +485,11 @@ export default function LibraryView({
           </div>
         </TabsContent>
         <TabsContent value="content">
+          <WatchPackageCard/>
+          <PublicPackLibrary/>
           <div className="content-heading">
             <h2>学习包</h2>
-            <p className="muted">个人学习包与可选示例；不会公开上传或分享。</p>
+            <p className="muted">可选示例包；个人内容仅在你明确确认发布后公开。</p>
           </div>
           <div className="pack-grid">
             {packs.map((p) => {

@@ -283,7 +283,7 @@ export function studyAgenda(data: StudyData, now = Date.now()) {
         kind: 'resume',
         title: j.mode === 'test' ? '继续未完成的测试' : '接着上次的学习',
         reason: '当前作答已保存，先完成这一段。',
-        label: '继续学习',
+        label: j.ownerDeviceId ? '在手表继续' : '继续学习',
         minutes: qMinutes(
           j.items.filter(
             (i: QueueItem) =>
@@ -292,7 +292,7 @@ export function studyAgenda(data: StudyData, now = Date.now()) {
               ),
           ),
         ),
-        page: 'study',
+        page: j.ownerDeviceId ? 'devices' : 'study',
         target: j.id,
       });
     if (j.kind === 'exam-run' && ['active', 'break'].includes(j.status)) {

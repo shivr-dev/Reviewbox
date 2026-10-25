@@ -15,6 +15,7 @@ import {
 import { projectQuality } from './question-quality';
 import type { GameChest } from './learning-game';
 import { CHEST_TIERS } from './home-catalog';
+import {chestEligibility} from './chest-eligibility';
 export function chestPrize(
   random: () => number = () =>
     crypto.getRandomValues(new Uint32Array(1))[0] / 4294967296,
@@ -50,32 +51,14 @@ export async function advanceChest(
   const rows = (await records.getAll()).filter(
     (r) => r.namespace === ns && !r.deleted,
   );
-  const session = rows.find(
-    (r) => r.kind === 'job' && r.payload?.id === sessionId,
-  )?.payload;
   const previous = (await records.get(ns + '/' + id))?.payload as
     | GameChest
     | undefined;
-  const eligible =
-    (previous ||
-      (session?.kind === 'session' &&
-        session.status === 'complete' &&
-        session.mode !== 'test')) &&
-    rows.some(
-      (r) =>
-        r.kind === 'event' &&
-        !r.payload.voidedBy &&
-        r.payload.sessionId === sessionId &&
-        r.payload.source !== 'test' &&
-        !r.payload.learningEvidence?.gameRecovery &&
-        (r.payload.activeThinkMs ??
-          Date.parse(r.payload.revealedAt) -
-            Date.parse(r.payload.displayedAt)) >= 1500,
-    );
-  if (!eligible || ns !== currentNamespace()) {
+  const eligibility=chestEligibility(sessionId,rows.filter(r=>r.kind==='job').map(r=>r.payload),rows.filter(r=>r.kind==='event').map(r=>r.payload));
+  if (!eligibility.eligible || ns !== currentNamespace()) {
     tx.abort();
     await tx.done.catch(() => {});
-    throw new Error('完成有效练习后才能开启宝箱');
+    throw new Error('完成有效练习后才能开启宝箱。'+eligibility.reason);
   }
   const at = new Date().toISOString(),
     g = learningGame(

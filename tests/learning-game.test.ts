@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { learningGame } from '../lib/learning-game';
 import { buyGameItem, advanceChest, chestPrize } from '../lib/game-client';
-import { loadData, put, switchAccount } from '../lib/store';
+import { loadData, put, switchAccount,completeActiveSession } from '../lib/store';
 import { localDay, type AnswerEvent, type StudyData } from '../lib/model';
 import {
   companionFrame,
@@ -156,6 +156,20 @@ test('chests preserve their prize through three taps and only grant it once, iso
     /账户已切换/,
   );
   assert.equal(learningGame(await loadData()).coins, 0);
+});
+
+test('a completed practice chest survives replacement of the active session before its first tap',async()=>{
+  await switchAccount('durable-chest');
+  const id='completed-before-next-task';
+  await put('job',{id,kind:'session',status:'active',mode:'review',items:[]},'active-session');
+  await put('event',event('durable-event',Date.now()-100,{sessionId:id}));
+  await completeActiveSession(id);
+  await put('job',{id:'next-task',kind:'session',status:'active',mode:'review'},'active-session');
+  const first=await advanceChest(id);assert.equal(first.stage,1);
+  await advanceChest(id);const opened=await advanceChest(id);
+  assert.deepEqual(await advanceChest(id),opened);
+  assert.equal((await loadData()).jobs?.find(j=>j.id==='next-task')?.status,'active');
+  await assert.rejects(()=>advanceChest('next-task'),/完成记录/);
 });
 test('rewards deduplicate question/day and immutable event IDs; too fast, voided and malformed records cannot farm XP', () => {
   const a = event('a');

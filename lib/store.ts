@@ -1,7 +1,7 @@
 import { apiFetch } from './runtime';
 import { openDB, type IDBPDatabase } from 'idb';
 import { corePack } from './seed';
-import { projectQuality } from './question-quality';
+import { projectRecords } from './record-projection';
 import { courseCompletionRecords } from './course-lifecycle';
 import {
   type LocalRecord,
@@ -163,57 +163,12 @@ export async function completeActiveSession(sessionId: string, ns = namespace) {
   await tx.done;
 }
 export async function loadData(ns = namespace): Promise<StudyData> {
-  const records = (await allRecords(ns)).filter((r) => !r.deleted);
-  const get = (kind: string) =>
-    records.filter((r) => r.kind === kind).map((r) => r.payload);
-  const jobs = get('job');
-  const jobMap = new Map(jobs.map((j) => [j.id, j]));
-  const hydrated = jobs.map((j) =>
-    j.kind === 'course' && j.storageVersion === 1
-      ? {
-          ...j,
-          sections: j.sections.map((s: any) => {
-            const stored = jobMap.get('course-section:' + s.id);
-            if (!stored || stored.courseId !== j.id)
-              return { ...s, history: [] };
-            const section = stored.section;
-            return {
-              ...section,
-              history: (section.history ?? [])
-                .map((h: any) => ({
-                  ...h,
-                  content: jobMap.get(h.contentId)?.content,
-                }))
-                .filter((h: any) => h.content),
-            };
-          }),
-          chat: (j.chatIds ?? [])
-            .map((id: string) => jobMap.get(id))
-            .filter((x: any) => x?.courseId === j.id)
-            .map((x: any) => x.message),
-        }
-      : j,
-  );
-  return projectQuality({
-    jobs: hydrated,
-    nodes: get('node'),
-    questions: get('question'),
-    events: get('event'),
-    exams: get('exam'),
-    notes: get('note'),
-    materials: get('material'),
-    tests: get('test'),
-    packs: get('pack'),
-    settings: {
-      dailyMinutes: 20,
-      name: '我的学习空间',
-      surprise: true,
-      ...get('setting').reduce((a, b) => ({ ...a, ...b }), {}),
-    },
-  });
+  return projectRecords(await allRecords(ns));
 }
-export async function installPack(pack: Pack) {
-  const existing = await allRecords();
+
+export async function installPack(pack: Pack, ns = currentNamespace()) {
+  const existing = await allRecords(ns);
+  if (currentNamespace() !== ns) throw new Error('账户已切换，请重新安装学习包');
   const old = new Map(existing.map((r) => [r.id, r]));
   const records: LocalRecord[] = [];
   const now = new Date().toISOString();
@@ -236,11 +191,11 @@ export async function installPack(pack: Pack) {
   records.push({
     id: 'pack:' + pack.manifest.id,
     kind: 'pack',
-    payload: pack.manifest,
+    payload: { ...pack.manifest, nodeIds: pack.knowledge.map(n => n.id), questionIds: pack.questions.map(q => q.id) },
     updated_at: now,
     deleted: false,
   });
-  await saveRecords(records);
+  await saveRecords(records, true, ns);
 }
 export async function initialize() {
   if (!(await allRecords()).some((r) => r.kind === 'node'))

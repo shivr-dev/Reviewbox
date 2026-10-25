@@ -15,13 +15,13 @@ const cssFixture =
 test('both application builds consume one shared style entry including Alpha and workshop styles', async () => {
   assert.match(
     await readFile('app/layout.tsx', 'utf8'),
-    /import '\.\/product-styles'/,
+    /import '\.\/product-styles\.css'/,
   );
   assert.match(
     await readFile('static-pages/main.tsx', 'utf8'),
-    /import '\.\.\/app\/product-styles'/,
+    /import '\.\.\/app\/product-styles\.css'/,
   );
-  const entry = await readFile('app/product-styles.ts', 'utf8');
+  const entry = await readFile('app/product-styles.css', 'utf8');
   for (const file of [
     'globals.css',
     'learning-game.css',

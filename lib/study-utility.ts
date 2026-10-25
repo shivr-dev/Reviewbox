@@ -122,7 +122,8 @@ export function scoreStudyActions(
       !!active &&
       ((active.kind === 'exam-run' &&
         ['active', 'break'].includes(active.status)) ||
-        (active.kind === 'pressure' && active.status === 'active'));
+        (active.kind === 'pressure' && active.status === 'active') ||
+        (active.kind === 'session' && active.mode === 'test' && active.status === 'active'));
     const factors = {
       learning: u.learning * model.learn * weakness,
       information: u.information * model.information * information,

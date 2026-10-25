@@ -33,6 +33,7 @@ import StudyView from '@/components/study-view';
 import SubjectsView from '@/components/subjects-view';
 import LibraryView from '@/components/library-view';
 import YouView from '@/components/you-view';
+import WatchDevices from '@/components/watch-devices';
 import ShopView from '@/components/shop-view';
 import HabitatView from '@/components/habitat-view';
 import AlphaExperience from '@/components/alpha-experience';
@@ -499,6 +500,7 @@ export default function Workspace() {
       data.settings.alphaPreview === true &&
       [
         'home',
+        'devices',
         'plan',
         'subjects',
         'library',
@@ -571,6 +573,8 @@ export default function Workspace() {
             <AlphaResults
               initialView={page === 'analytics' ? 'analysis' : 'scores'}
             />
+          ) : page === 'devices' ? (
+            <div className="alpha-workspace"><WatchDevices key={currentNamespace()}/></div>
           ) : page === 'you' ? (
             <div className="alpha-workspace">
               <YouView />
@@ -833,6 +837,7 @@ export default function Workspace() {
               {page === 'subjects' && <SubjectsView key={subject} />}{' '}
               {page === 'library' && <LibraryView />}
               {page === 'you' && <YouView />}
+              {page === 'devices' && <WatchDevices key={currentNamespace()}/>}
               {page === 'shop' && <ShopView />}
               {page === 'habitat' && <HabitatView key={currentNamespace()} />}
               {['redeem', 'admin', 'super'].includes(page) && (

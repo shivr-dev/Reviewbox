@@ -2,6 +2,8 @@ import { sites } from '@openai/sites-vite-plugin';
 import tailwindcss from '@tailwindcss/postcss';
 import vinext from 'vinext';
 import { defineConfig } from 'vite';
+import { normalizePath } from 'vite';
+import { resolve } from 'node:path';
 import hostingConfig from './.openai/hosting.json';
 
 const SITE_CREATOR_PLACEHOLDER_DATABASE_ID =
@@ -11,6 +13,11 @@ const { d1, r2 } = hostingConfig;
 
 // macOS Seatbelt blocks FSEvents, so Codex previews need polling for HMR.
 const isCodexSeatbeltSandbox = process.env.CODEX_SANDBOX === 'seatbelt';
+// Android builds and APK copies are not web sources. Watching their locked binary/report
+// files on Windows caused EBUSY crashes and unrelated full-page reloads during previews.
+const previewIgnored = ['android-watch', 'outputs', 'work'].map(
+  directory => normalizePath(resolve(process.cwd(), directory)) + '/**',
+);
 
 const localBindingConfig = {
   main: 'vinext/server/fetch-handler',
@@ -46,9 +53,12 @@ export default defineConfig(async () => {
 
   return {
     css: { postcss: { plugins: [tailwindcss()] } },
-    server: isCodexSeatbeltSandbox
-      ? { watch: { useFsEvents: false, usePolling: true } }
-      : undefined,
+    server: {
+      watch: {
+        ignored: previewIgnored,
+        ...(isCodexSeatbeltSandbox ? { useFsEvents: false, usePolling: true } : {}),
+      },
+    },
     plugins: [
       vinext(),
       sites(),

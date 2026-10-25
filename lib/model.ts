@@ -328,6 +328,9 @@ export type Pack = {
     description: string;
     changelog: string;
     compatibility: string;
+      /** Exact installed content membership; older manifests may need re-importing. */
+      nodeIds?: string[];
+      questionIds?: string[];
   };
   knowledge: Node[];
   questions: Question[];

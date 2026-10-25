@@ -10,6 +10,7 @@ import { loadData, put, switchAccount } from '../lib/store';
 import { parseImportText } from '../lib/import-skill';
 import { learningTemplate } from '../lib/import-templates';
 import { computeMastery } from '../lib/engine';
+import {advanceChest} from '../lib/game-client';
 const { JSDOM } = createRequire(import.meta.url)('jsdom');
 
 test('saving the final real answer keeps the settlement visible and opens the chest only on request', async () => {
@@ -134,6 +135,7 @@ test('saving the final real answer keeps the settlement visible and opens the ch
         await new Promise((r) => setTimeout(r, 80));
       });
     };
+    await act(async()=>{await new Promise(r=>setTimeout(r,1700))});
     await click(/^显示答案$/);
     await click(/^答对/);
     for (let i = 0; i < 30 && !document.querySelector('.session-summary'); i++)
@@ -154,6 +156,9 @@ test('saving the final real answer keeps the settlement visible and opens the ch
     );
     await click(/^打开练习宝箱/);
     assert.equal(route, 'chest:' + session.id);
+    assert.equal((await advanceChest(session.id)).stage,1);
+    await advanceChest(session.id);
+    assert.equal((await advanceChest(session.id)).stage,3);
   } finally {
     await act(async () => root.unmount());
     globalThis.fetch = oldFetch;

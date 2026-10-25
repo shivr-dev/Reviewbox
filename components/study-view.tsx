@@ -59,6 +59,7 @@ import { learningGame } from '@/lib/learning-game';
 import { rewardSound } from '@/lib/game-client';
 import { createLearningTimer } from '@/lib/learning-timer';
 import { errorCauseEstimate } from '@/lib/learning-evidence';
+import {chestEligibility} from '@/lib/chest-eligibility';
 import { Heart, Zap, Volume2, VolumeX } from 'lucide-react';
 export default function StudyView({
   session,
@@ -735,6 +736,7 @@ export default function StudyView({
     );
   }
   if (done) {
+    const chest=chestEligibility(session.id,data.jobs,results);
     const score = results.length
       ? Math.round(
           (results.reduce((a, e) => a + e.score, 0) / results.length) * 100,
@@ -870,12 +872,13 @@ export default function StudyView({
           className="primary"
           onClick={() => {
             finish();
-            if (session.mode !== 'test') navigate('chest', session.id);
+            if (session.mode !== 'test') navigate(chest.eligible?'chest':'plan',chest.eligible?session.id:undefined);
           }}
         >
-          {session.mode === 'test' ? '回到学习工作台' : '打开练习宝箱'}
+          {session.mode === 'test' ? '回到学习工作台' : chest.eligible?'打开练习宝箱':'返回学习安排'}
           <ArrowRight size={16} />
         </button>
+        {session.mode!=='test'&&!chest.eligible&&<p className="muted" role="status">{chest.reason}</p>}
       </div>
     );
   }

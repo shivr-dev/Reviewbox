@@ -1,0 +1,15 @@
+import { build } from 'esbuild';
+import { mkdir,readFile,writeFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import {pathToFileURL} from 'node:url';
+import {watchDemo} from './watch-demo.mjs';
+const dir='android-watch/app/src/main/assets';
+await mkdir(dir,{recursive:true});
+await build({entryPoints:['lib/watch-core.ts'],bundle:true,format:'iife',globalName:'ReviewWatchCore',platform:'browser',target:['chrome87'],outfile:dir+'/watch-core.js',minify:true});
+const hash=createHash('sha256').update(await readFile(dir+'/watch-core.js')).digest('hex');
+await writeFile(dir+'/core-version.json',JSON.stringify({version:'review-watch-1',sha256:hash}));
+console.log('Shared learning core bundled:',hash);
+await build({stdin:{contents:"import {corePack} from './lib/seed';export default corePack;",resolveDir:process.cwd(),loader:'ts'},bundle:true,format:'esm',platform:'node',outfile:'work/watch-demo-source.mjs'});
+const {default:pack}=await import(pathToFileURL(process.cwd()+'/work/watch-demo-source.mjs').href+'?build='+Date.now());
+const demo=watchDemo(pack);
+await writeFile(dir+'/demo-records.json',JSON.stringify(demo));

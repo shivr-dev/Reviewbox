@@ -280,6 +280,7 @@ export default function YouView() {
         </div>
       </section>
       <AlphaPreviewCard />
+      <section className="panel"><h2>手表与设备</h2><p className="muted">配对手表、管理授权，查看圆屏交互预览。</p><button className="secondary" onClick={()=>navigate('devices')}>管理手表与设备 <ArrowRight/></button></section>
       <GameProfile />
       <section className="panel account-card">
         <div className="account-avatar">

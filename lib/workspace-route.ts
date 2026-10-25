@@ -5,6 +5,7 @@ const pages = new Set([
   'subjects',
   'library',
   'you',
+  'devices',
   'analytics',
   'results',
   'workshop',
@@ -83,5 +84,5 @@ export function alphaSection(page: string) {
     return 'workshop';
   if (['plan', 'study', 'remedy', 'chest', 'onboarding'].includes(page))
     return 'plan';
-  return page === 'you' ? 'you' : 'home';
+  return page === 'you' || page === 'devices' ? 'you' : 'home';
 }

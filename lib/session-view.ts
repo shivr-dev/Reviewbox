@@ -29,6 +29,7 @@ export function sessionForView(
       ?.filter(
         (j) =>
           j.kind === 'session' &&
+          !j.ownerDeviceId &&
           j.status === 'active' &&
           Array.isArray(j.items),
       )
