@@ -10,7 +10,7 @@ import '../app/product-styles.css';
 (window as any).__REVIEW_BUILD_SHA__ =
   (import.meta as any).env.VITE_REVIEW_SHA || 'local';
 const watch=isWatchBrowser({userAgent:navigator.userAgent,screenWidth:window.screen.width,screenHeight:window.screen.height,coarsePointer:window.matchMedia('(pointer:coarse)').matches,search:location.search});
-createRoot(document.getElementById('root')!).render(watch?<WatchDownload/>:
+if(!(window as any).__REVIEW_WATCH_STATIC__)createRoot(document.getElementById('root')!).render(watch?<WatchDownload/>:
   <>
     <DeploymentStatus />
     <Workspace />
