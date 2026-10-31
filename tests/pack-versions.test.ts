@@ -52,7 +52,7 @@ test('pack IDs cannot overwrite immutable answer events or grades',async()=>{
  const p=pack('event-collision');await put('event',{id:p.questions[0].id,questionId:'old',score:1});const before=await allRecords();await assert.rejects(()=>installPack(p),/标识/);assert.deepEqual(await allRecords(),before);
 });
 test('unfinished tasks block changes to the questions they are using',async()=>{
- const p=pack('active-guard');await installPack(p);await put('job',{id:'active-test',kind:'session',status:'active',items:[{question:p.questions[0]}]});const next=copy(p);next.manifest.version='2';next.questions[0].prompt='changed';const before=await allRecords();await assert.rejects(()=>installPack(next),/未完成/);assert.deepEqual(await allRecords(),before);
+ const p=pack('active-guard');await installPack(p);await put('job',{id:'active-test',kind:'session',status:'active',items:[{question:p.questions[0]}]});const next=copy(p);next.manifest.version='2';next.questions[0].prompt='changed';const before=await allRecords();await assert.rejects(()=>installPack(next),/未完成/);await assert.rejects(()=>undoPackUpdate(before.find(r=>r.kind==='pack'&&r.payload.id===p.manifest.id)!.payload.installationId),/未完成/);assert.deepEqual(await allRecords(),before);
 });
 test('reserved manifest IDs are rejected and legacy manifest aliases are normalized safely',async()=>{
  const p=pack('legacy-id');p.questions[0].id='pack:legacy-id';await assert.rejects(()=>installPack(p),/清单冲突/);

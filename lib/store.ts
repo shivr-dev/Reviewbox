@@ -205,6 +205,8 @@ export async function undoPackUpdate(versionId:string,ns=currentNamespace()) {
     const rows=(await tx.objectStore('records').getAll()).filter(r=>r.namespace===ns);
     const version=packVersions(rows).find(r=>r.id===versionId)?.payload;
     if(version?.incomplete)throw new Error('版本历史尚未完整同步，请稍后重试');
+    const affected=new Set((version?.after??[]).filter((r:LocalRecord)=>r.kind==='question').map((r:LocalRecord)=>r.id));
+    if(rows.some(r=>!r.deleted&&r.kind==='job'&&['active','break'].includes(r.payload.status)&&(r.payload.items??[]).some((i:any)=>affected.has(i.question?.id??i.questionId))))throw new Error('题目正在未完成的任务中使用，请先完成任务后再回滚');
     if(!version||rows.find(r=>r.kind==='pack'&&!r.deleted&&r.payload.id===version.packId)?.payload.installationId!==versionId)throw new Error('只可直接撤销当前版本；更早版本请使用版本预览');
     for(const after of version.after){const current=rows.find(r=>r.id===after.id);if(!current||stable(current.payload)!==stable(after.payload)||current.deleted!==after.deleted)throw new Error('更新后内容已被修改，请通过版本预览回滚以保护你的修改');}
     if(ns!==currentNamespace())throw new Error('账户已切换');
