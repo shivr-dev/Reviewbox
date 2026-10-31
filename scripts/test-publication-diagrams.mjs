@@ -1,0 +1,7 @@
+import {build} from 'esbuild';
+import {spawnSync} from 'node:child_process';
+for(const name of ['publication-diagrams.test.tsx','ray-optics-adapter.test.ts']){
+ const out='work/'+name.replace(/\.tsx?$/,'.mjs');
+ await build({entryPoints:['tests/'+name],outfile:out,bundle:true,platform:'node',packages:'external',format:'esm',jsx:'automatic'});
+ const result=spawnSync(process.execPath,['--test',out],{stdio:'inherit'});if(result.status){process.exitCode=result.status;break;}
+}

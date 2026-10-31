@@ -1,4 +1,6 @@
 import {QUALITY_IMPORT_EXAMPLES,PROFESSIONAL_DIAGRAM_EXAMPLES} from './learning-quality-examples';
+import {SHADING_IMPORT_SKILL} from './professional-diagram-examples';
+import {MATH_AUTHORING_SKILL} from './math-authoring-skill';
 import { learningTemplate } from './import-templates';
 import { EXAM_IMPORT_SKILL } from './exam-skill';
 import { validatePack, smartParse } from './importer';
@@ -103,4 +105,4 @@ export const IMPORT_SKILL =
     )
     .join('\n\n') +
   '\n\n## 导入 2.0 完整评分与学科图形示例\n' + QUALITY_IMPORT_EXAMPLES.map(pack=>'### '+pack.manifest.title+'\n```json\n'+JSON.stringify(pack,null,2)+'\n```').join('\n\n') + '\n\n### 函数图像结构示例（填入题目的 diagram）\n```json\n'+JSON.stringify(PROFESSIONAL_DIAGRAM_EXAMPLES.function,null,2)+'\n```\n\n' +
-  EXAM_IMPORT_SKILL;
+  SHADING_IMPORT_SKILL + '\n\n' + MATH_AUTHORING_SKILL + '\n\n' + EXAM_IMPORT_SKILL;

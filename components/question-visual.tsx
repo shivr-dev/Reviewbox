@@ -1,12 +1,15 @@
 'use client';
 import type { Question } from '@/lib/model';
 import Diagram from './diagram';
+import type {DiagramStage} from '@/lib/shaded-regions';
 export default function QuestionVisual({
   question: q,
   solution = false,
+  stage,
 }: {
   question: Question;
   solution?: boolean;
+  stage?:DiagramStage;
 }) {
   const images =
     q.media?.filter(
@@ -22,8 +25,8 @@ export default function QuestionVisual({
             </figure>
           ))
         : null}
-      {!solution && q.diagram && (!original || !images.length) && (
-        <Diagram spec={q.diagram} />
+      {q.diagram && (!original || !images.length) && (
+        <Diagram spec={q.diagram} stage={stage??(solution?'solution':'question')} />
       )}
     </div>
   );

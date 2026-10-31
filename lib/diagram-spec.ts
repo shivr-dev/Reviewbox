@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { evaluateExpression } from './diagram-expression';
+import {shadedRegionSchema,validateShadedRegions} from './shaded-regions';
 const n = z.number().finite().min(-10000).max(10000),
   pos = z.number().positive().max(10000),
   label = z.string().max(60),
@@ -13,6 +14,10 @@ const base = { type: z.literal('semantic'), caption: label.optional() };
 const geometry = z.object({
   ...base,
   kind: z.literal('geometry'),
+  regions:z.array(shadedRegionSchema).max(12).optional(),
+  regionTask:z.enum(['read','construct']).optional(),
+  auxiliary:z.array(z.tuple([id,id])).max(40).optional(),
+  bounds:z.tuple([n,n,n,n]).optional(),
   points: z.array(point).min(2).max(50),
   segments: z.array(z.tuple([id, id])).max(80),
   circles: z
@@ -41,6 +46,8 @@ const geometry = z.object({
 const functions = z.object({
   ...base,
   kind: z.literal('function'),
+  regions:z.array(shadedRegionSchema).max(12).optional(),
+  regionTask:z.enum(['read','construct']).optional(),
   xRange: range,
   yRange: range,
   functions: z
@@ -80,11 +87,19 @@ const forces = z.object({
 const optics = z.object({
   ...base,
   kind: z.literal('optics'),
-  lens: z.enum(['convex', 'concave']),
-  focalLength: pos,
-  objectDistance: pos,
-  objectHeight: pos,
-  showRays: z.boolean(),
+  opticalElement:z.enum(['lens','mirror','interface']).optional(),
+  lens: z.enum(['convex', 'concave']).optional(),
+  focalLength: pos.optional(),
+  objectDistance: pos.optional(),
+  objectHeight: pos.optional(),
+  mirrorAngle:n.optional(),
+  refractiveIndex1:z.number().positive().max(5).optional(),
+  refractiveIndex2:z.number().positive().max(5).optional(),
+  incidenceAngle:z.number().min(-89.9999).max(89.9999).optional(),
+  imagePhase:z.enum(['question','hint','solution']).optional(),
+  raysPhase:z.enum(['question','hint','solution']).optional(),
+  showDistances:z.boolean().optional(),
+  showRays: z.boolean().default(false),
   showImage: z.boolean().default(false),
 });
 const apparatusTypes = [
@@ -210,10 +225,14 @@ export const semanticDiagramSchema = z
   .superRefine((s, ctx) => {
     const problem = (message: string) =>
       ctx.addIssue({ code: 'custom', message });
+    if(s.kind==='geometry'||s.kind==='function')for(const error of validateShadedRegions(s))problem(error);
     if (s.kind === 'geometry') {
       const p = new Map(s.points.map((p) => [p.id, p]));
       if (p.size !== s.points.length) problem('几何点 ID 重复');
       const cs = new Map(s.circles?.map((c) => [c.id, c]) ?? []);
+      if(cs.size!==(s.circles??[]).length)problem('圆 ID 重复');
+      if(s.bounds&&(s.bounds[2]<=s.bounds[0]||s.bounds[3]<=s.bounds[1]))problem('几何显示范围无效');
+      for(const pair of s.auxiliary??[])if(pair.some(id=>!p.has(id)))problem('辅助线引用不存在的点');
       for (const c of cs.values()) if (!p.has(c.center)) problem('圆心不存在');
       for (const [a, b] of s.segments)
         if (
@@ -328,11 +347,16 @@ export const semanticDiagramSchema = z
           problem('摩擦力必须沿接触面');
       }
     if (
-      s.kind === 'optics' &&
+      s.kind === 'optics' && s.objectDistance&&s.objectHeight&&s.focalLength&&
       (s.objectDistance / s.focalLength > 12 ||
         s.objectHeight / s.focalLength > 5)
     )
       problem('物距或物高与焦距比例过大，请分图表示');
+    if(s.kind==='optics'){
+      if((!s.opticalElement||s.opticalElement==='lens')&&(!s.lens||!s.focalLength||!s.objectDistance||!s.objectHeight))problem('透镜题必须提供类型、焦距、物距和物高');
+      if(s.opticalElement==='mirror'&&(!s.objectDistance||!s.objectHeight))problem('平面镜题必须提供物体位置和高度');
+      if(s.opticalElement==='interface'&&(s.refractiveIndex1===undefined||s.refractiveIndex2===undefined||s.incidenceAngle===undefined))problem('折射题必须提供两侧折射率和入射角');
+    }
     if (s.kind === 'experiment') {
       const ids = new Set(s.apparatus.map((a) => a.id));
       if (ids.size !== s.apparatus.length) problem('器材 ID 重复');

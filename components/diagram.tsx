@@ -1,16 +1,39 @@
 'use client';
-import { useId } from 'react';
+import { lazy, Suspense, useId } from 'react';
 import type { Diagram as Spec } from '@/lib/model';
 import SubjectDiagram from './subject-diagram';
 import { evaluateExpression } from '@/lib/diagram-expression';
+import {semanticDiagramSchema} from '@/lib/diagram-spec';
+import type {DiagramStage} from '@/lib/shaded-regions';
+const MathDiagram=lazy(()=>import('./math-diagram'));
+const OpticsDiagram=lazy(()=>import('./optics-diagram'));
+const DiagramLoading=()=> <figure className="diagram publication-diagram diagram-pending" aria-busy="true"><div className="diagram-loading" role="status" aria-live="polite"><span className="diagram-spinner" aria-hidden="true"/><span>题图加载中…</span></div></figure>;
 export { evaluateExpression } from '@/lib/diagram-expression';
 const num = (x: unknown, fallback = 0) =>
   typeof x === 'number' && Number.isFinite(x) && Math.abs(x) <= 10000
     ? x
     : fallback;
-export default function Diagram({ spec }: { spec: Spec }) {
+export default function Diagram({ spec,stage='question' }: { spec: Spec;stage?:DiagramStage }) {
   const id = useId().replace(/:/g, '');
-  if(spec.type==='semantic')return <SubjectDiagram spec={spec}/>;
+  if(spec.type==='semantic'){
+    const parsed=semanticDiagramSchema.safeParse(spec);
+    if(!parsed.success)return <p className="diagram-error" role="alert">图形条件需要确认，未显示不可靠的示意图。</p>;
+    const safe=parsed.data;
+    if(safe.kind==='geometry'||safe.kind==='function')return <Suspense fallback={<DiagramLoading/>}><MathDiagram spec={safe} stage={stage}/></Suspense>;
+    if(safe.kind==='optics')return <Suspense fallback={<DiagramLoading/>}><OpticsDiagram spec={safe} stage={stage}/></Suspense>;
+    return <SubjectDiagram spec={safe}/>;
+  }
+  // Old packs retain their format. Basic mathematical figures use the same new engine.
+  if(spec.type==='function_graph'&&spec.functions?.length){
+    const safe=semanticDiagramSchema.safeParse({type:'semantic',kind:'function',xRange:spec.xRange??[-5,5],yRange:spec.yRange??[-10,10],functions:spec.functions,grid:spec.showGrid===true});
+    if(safe.success&&safe.data.kind==='function')return <Suspense fallback={<DiagramLoading/>}><MathDiagram spec={safe.data} stage={stage}/></Suspense>;
+  }
+  if(spec.type==='geometry'&&spec.points?.length&&!spec.polygons?.length&&!spec.angles?.length&&!spec.arrows?.length&&!spec.labelsText?.length&&!spec.rects?.length){
+    const points=spec.points.map(p=>({...p,label:spec.labels===false?'':p.id}));
+    const circles=(spec.circles??[]).map((c,i)=>{const id='legacy-center-'+i;points.push({id,x:c.x,y:c.y,label:c.label??''});return {id:'legacy-circle-'+i,center:id,r:c.r};});
+    const safe=semanticDiagramSchema.safeParse({type:'semantic',kind:'geometry',points,segments:spec.segments??[],circles});
+    if(safe.success&&safe.data.kind==='geometry')return <Suspense fallback={<DiagramLoading/>}><MathDiagram spec={safe.data} stage={stage}/></Suspense>;
+  }
   try {
     const w = Math.max(200, Math.min(900, num(spec.canvas?.width, 600))),
       h = Math.max(150, Math.min(700, num(spec.canvas?.height, 340)));

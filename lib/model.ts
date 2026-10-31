@@ -135,6 +135,7 @@ export type RubricItem = {
   carryForward?: boolean;
 };
 export type Question = {
+  answerFormat?: 'text'|'latex'|'mixed';
   metadataConfidence?: {
     difficulty?: number;
     skill?: number;
@@ -205,6 +206,7 @@ export type Grade = {
   model: string;
 };
 export type AnswerEvent = {
+  answerFormat?: 'text'|'latex'|'mixed';
   hintLevel?: 'light' | 'method' | 'step' | 'answer';
   wallTimeMs?: number;
   idleMs?: number;

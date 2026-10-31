@@ -1,6 +1,9 @@
 'use client';
 import MathText from './math-text';
 import MatchingInput from './matching-input';
+import MathAnswerComposer from './math-answer-input';
+import {supportsMathInput,type MathAnswerFormat} from '@/lib/math-input-format';
+import {verifyMathAnswer,type MathVerification} from '@/lib/math-verification';
 import { objectiveScore, isPinyin } from '@/lib/question-tools';
 import { questionTopicTitle } from '@/lib/pinyin-collections';
 import { useEffect, useRef, useState } from 'react';
@@ -91,6 +94,7 @@ export default function StudyView({
     [answerPanelOpen, setAnswerPanelOpen] = useState(false),
     [solution, setSolution] = useState(false),
     [answer, setAnswer] = useState(''),
+    [answerFormat,setAnswerFormat]=useState<MathAnswerFormat>('text'),
     [grade, setGrade] = useState<Grade | null>(null),
     [busy, setBusy] = useState(false),
     [done, setDone] = useState(false),
@@ -100,6 +104,8 @@ export default function StudyView({
     'sure' | 'unsure' | 'guess' | undefined
   >();
   const lock = useRef(false);
+  const [mathCheck,setMathCheck]=useState<MathVerification|null>(null),[mathChecking,setMathChecking]=useState(false);
+  const mathToken=useRef(0);
   const answerCloseRef = useRef<HTMLButtonElement>(null);
   const originNamespace = useRef(currentNamespace());
   const [extraItems, setExtraItems] = useState<QueueItem[]>([]);
@@ -129,6 +135,7 @@ export default function StudyView({
       : item?.question;
   const node = data.nodes.find((n) => n.id === q?.nodeId);
   const reset = () => {
+    mathToken.current++;setMathCheck(null);setMathChecking(false);
     setProcessHint(false);
     setHintLevel(undefined);
     activeTimer.current = createLearningTimer(performance.now());
@@ -136,6 +143,7 @@ export default function StudyView({
     setAnswerPanelOpen(false);
     setSolution(false);
     setAnswer('');
+    setAnswerFormat(q&&supportsMathInput(q.subject,q.type)&&q.type==='blank'?'latex':'text');
     setGrade(null);
     setConfidence(undefined);
     timing.current = {
@@ -172,13 +180,38 @@ export default function StudyView({
     );
     if (draft) {
       setAnswer(draft.answer ?? '');
+      setAnswerFormat(draft.answerFormat??'text');
       if (draft.grade) {
         setGrade(draft.grade);
         setRevealed(true);
         setAnswerPanelOpen(true);
       }
     }
-  }, [index]);
+  }, [index,q?.id,session?.id]);
+  const draftWrite=useRef<{timer:ReturnType<typeof setTimeout>;save:()=>void}|null>(null);
+  useEffect(()=>()=>{if(draftWrite.current){clearTimeout(draftWrite.current.timer);draftWrite.current.save();draftWrite.current=null;}},[q?.id]);
+  function changeAnswer(value:string,format:MathAnswerFormat=answerFormat){
+    setAnswer(value);setAnswerFormat(format);
+    if(!q||!session||currentNamespace()!==originNamespace.current)return;
+    if(draftWrite.current)clearTimeout(draftWrite.current.timer);
+    const id='draft:'+session.id+':'+q.id,ns=originNamespace.current;
+    const save=()=>{void put('job',{id,status:'draft',questionId:q.id,answer:value,answerFormat:format},id,false,ns).catch(()=>notify('答案草稿暂未保存，请保留当前页面'));};
+    draftWrite.current={save,timer:setTimeout(()=>{save();draftWrite.current=null;},350)};
+  }
+  const mathematicalBlank=q?.type==='blank'&&['math','physics'].includes(q.subject);
+  async function checkMath(){
+    if(!q||!mathematicalBlank)return null;
+    const token=++mathToken.current;setMathChecking(true);
+    let result:MathVerification;
+    const identical=[q.answer,...(q.acceptedAnswers??[])].some(a=>a.trim()===answer.trim());
+    if(identical)result={status:'equivalent',method:'exact-reference',assumptions:[]};
+    else result=await verifyMathAnswer(answer,q.answer,{studentFormat:answerFormat==='latex'?'latex':'text',referenceFormat:q.answerFormat==='latex'?'latex':'text'});
+    // A different accepted answer may be valid. Failure against only the first
+    // reference never certifies that every accepted alternative is wrong.
+    if(result.status==='not-equivalent'&&q.acceptedAnswers?.length)result={...result,status:'undetermined',reason:'存在多个可接受答案，请对照完整答案核验'};
+    if(token===mathToken.current){setMathCheck(result);setMathChecking(false);}return result;
+  }
+  useEffect(()=>{if(revealed&&mathematicalBlank&&answer.trim())void checkMath();},[revealed,q?.id]);
   useEffect(() => {
     const visibility = () => {
       const t = timing.current;
@@ -243,7 +276,9 @@ export default function StudyView({
         answer.trim() &&
         ['choice', 'blank', 'matching'].includes(q.type)
       ) {
-        const actual = objectiveScore(q, answer);
+        const mathematical=mathematicalBlank?(mathCheck??await checkMath()):null;
+        const actual = mathematical?(mathematical.status==='equivalent'?1:mathematical.status==='not-equivalent'?0:undefined):objectiveScore(q, answer);
+        if(actual!==undefined){
         autoScore =
           outcome === 'wrong'
             ? 0
@@ -252,6 +287,7 @@ export default function StudyView({
               : actual;
         outcome =
           autoScore >= 0.85 ? 'correct' : autoScore >= 0.4 ? 'unsure' : 'wrong';
+        }
       }
       const schedule = learningSchedule(data, q);
       const e: AnswerEvent = {
@@ -268,6 +304,7 @@ export default function StudyView({
         source: g ? 'rubric' : session.mode === 'test' ? 'test' : 'self',
         grade: g,
         answer: answer || undefined,
+        answerFormat,
         occurredAt: new Date().toISOString(),
         displayedAt: t.displayed,
         revealedAt: t.revealed,
@@ -541,6 +578,7 @@ export default function StudyView({
           status: 'grading',
           questionId: q.id,
           answer,
+          answerFormat,
         },
         'draft:' + session!.id + ':' + q.id,
         false,
@@ -566,6 +604,7 @@ export default function StudyView({
           status: 'graded',
           questionId: q.id,
           answer,
+          answerFormat,
           grade: g,
         },
         'draft:' + session!.id + ':' + q.id,
@@ -599,7 +638,7 @@ export default function StudyView({
         return;
       }
       if (
-        ['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName) ||
+          ['INPUT', 'TEXTAREA','MATH-FIELD'].includes((e.target as HTMLElement)?.tagName) ||
         busy
       )
         return;
@@ -1105,7 +1144,7 @@ export default function StudyView({
             <MathText>{q.passage}</MathText>
           </blockquote>
         )}
-        <QuestionVisual question={q}/>
+          <QuestionVisual question={q} stage={!isTest&&revealed?'solution':!isTest&&hintLevel?'hint':'question'}/>
         <div className="question-options">
           {q.options?.map((option) => (
             <button
@@ -1130,12 +1169,12 @@ export default function StudyView({
           q.type === 'blank' ||
           (isTest && !q.options && q.type !== 'matching')) &&
           !grade && (
-            <label className="answer-input-label">
+            <div className="answer-input-label">
               {q.type === 'subjective' ? '写下你的回答' : '输入答案'}
-              <textarea
+              {supportsMathInput(q.subject,q.type)?<MathAnswerComposer key={q.id} value={answer} format={answerFormat} onChange={changeAnswer} onFormatChange={format=>changeAnswer(answer,format)} disabled={revealed||busy} defaultMixed={q.type==='subjective'}/>:<textarea
                 disabled={revealed || busy}
                 value={answer}
-                onChange={(e) => setAnswer(e.target.value)}
+                onChange={(e) => changeAnswer(e.target.value,'text')}
                 maxLength={16000}
                 placeholder={
                   q.type === 'subjective'
@@ -1143,8 +1182,8 @@ export default function StudyView({
                     : '输入你的答案'
                 }
                 rows={q.type === 'subjective' ? 6 : 2}
-              />
-            </label>
+              />}
+            </div>
           )}
         {q.type === 'subjective' && !grade && (
           <div className="rubric-preview">
@@ -1214,8 +1253,10 @@ export default function StudyView({
             <button
               className="primary"
               disabled={!answer.trim() || busy}
-              onClick={() => {
-                const right = objectiveScore(q, answer) >= 0.999;
+              onClick={async () => {
+                const checked=mathematicalBlank?await checkMath():null;
+                if(checked?.status==='undetermined'){notify('暂不能自动核验，答案草稿已保留。请保存退出后人工复核，不会自动判错。');return;}
+                const right = checked?checked.status==='equivalent':objectiveScore(q, answer) >= 0.999;
                 void record(
                   right ? 'correct' : 'wrong',
                   undefined,
@@ -1360,7 +1401,7 @@ export default function StudyView({
                           <MathText>{q.explanation}</MathText>
                         </p>
                       )}
-                      {answer && (
+                      {answer && q.type!=='subjective' && !mathematicalBlank && (
                         <p className="answer-check">
                           本次作答：
                           {objectiveScore(q, answer) === 1
@@ -1374,6 +1415,7 @@ export default function StudyView({
                             : ''}
                         </p>
                       )}
+                      {mathematicalBlank&&answer&&<p className="answer-check" role="status">{mathChecking?'正在核验数学表达式…':mathCheck?.status==='equivalent'?'数学核验：等价':mathCheck?.status==='not-equivalent'?'数学核验：不等价':'数学核验：需要人工复核'}{mathCheck?.status==='undetermined'&&<small> · {mathCheck.reason}。请对照参考答案手动检查。</small>}</p>}
                       {q.transferFrom && (
                         <details>
                           <summary>迁移挑战 · 对照原题</summary>

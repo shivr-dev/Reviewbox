@@ -1,0 +1,16 @@
+.publication-diagram.diagram{position:relative;max-width:640px;width:100%;margin:18px auto;padding:8px 0 0;border:0;background:#fff;color:#161616;border-radius:0;overflow:visible}
+.publication-board{position:relative;width:100%;height:auto;aspect-ratio:600/380;overflow:hidden;background:white;touch-action:pan-y}
+.publication-board>svg,.publication-diagram>svg{display:block;width:100%!important;height:auto!important;max-height:none!important;aspect-ratio:inherit;color:#161616;background:white}
+.publication-diagram>svg{aspect-ratio:600/340}
+.publication-board .JXGtext{color:#161616!important}
+.publication-diagram figcaption{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 6px;font:12px/1.5 var(--font-sans,Arial,sans-serif);color:#5c6267}
+.publication-diagram .diagram-export{color:#50575b;font-size:12px;background:transparent;border:1px solid #d7dbde;border-radius:5px;padding:4px 9px;white-space:nowrap;min-height:28px;box-shadow:none}
+.publication-diagram .diagram-export:focus-visible{outline:2px solid #1676b8;outline-offset:2px}
+.diagram-pending{aspect-ratio:600/380}
+.publication-diagram .diagram-loading{position:absolute;inset:0 0 38px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:10px;background:#fff;color:#50575b;font:14px/1.5 Arial,sans-serif;z-index:2}
+.diagram-loading small{font-size:12px;color:#7b8287}
+.diagram-spinner{width:24px;height:24px;border:2px solid #e3e6e8;border-top-color:#66727a;border-radius:50%;animation:diagram-spin .8s linear infinite}
+@keyframes diagram-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.diagram-spinner{animation:none}}
+@media(max-width:480px){.publication-diagram.diagram{margin:12px 0}.publication-diagram figcaption{padding:6px 0}.publication-diagram svg text{font-size:16px}}
+@media print{.publication-diagram{break-inside:avoid;max-width:150mm!important}.publication-diagram .diagram-export,.publication-diagram .diagram-loading{display:none}.publication-diagram *{print-color-adjust:exact}.publication-diagram figcaption{color:#222}}

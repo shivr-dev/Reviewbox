@@ -1,0 +1,10 @@
+import {build} from 'esbuild';
+import {mkdir,writeFile,readFile} from 'node:fs/promises';
+await build({entryPoints:['lib/professional-diagram-examples.ts'],bundle:true,platform:'node',packages:'external',format:'esm',outfile:'work/publication-cases.mjs'});
+const {PUBLICATION_CASES}=await import('../work/publication-cases.mjs?'+Date.now());
+const prior=JSON.parse(await readFile('outputs/import-quality/preview-pack.json','utf8'));
+const nodes=['math','physics'].map(subject=>({...prior.knowledge.find(n=>n.subject===subject),id:'publication-'+subject,title:subject==='math'?'数学制图验收':'光学制图验收',skills:[{id:'reason',title:'推理与计算',difficulty:2}]}));
+const pack={schemaVersion:1,manifest:{id:'publication-acceptance',title:'专业数学与光学题图',version:'3.0.0',subject:'all',description:'制图验收用原创题目；请勿安装到个人正式题库。',changelog:'JSXGraph、光学计算、阴影与阶段显示。',compatibility:'Review 1.x'},knowledge:nodes,questions:PUBLICATION_CASES.map((c,i)=>{const subject=c.diagram.kind==='optics'?'physics':'math';return {schemaVersion:1,id:'publication-'+c.id,nodeId:'publication-'+subject,skillId:'reason',subject,type:'recall',prompt:c.prompt,answer:c.answer,explanation:c.answer,difficulty:2,expectedSeconds:60,variant:'publication-'+i,source:'Reviewbox 原创制图验收',tags:[c.title],version:'3.0.0',diagram:c.diagram};})};
+await mkdir('outputs/publication-diagrams',{recursive:true});
+await writeFile('outputs/publication-diagrams/acceptance-pack.json',JSON.stringify(pack,null,2));
+console.log('Validated acceptance pack:',pack.questions.length,'diagrams');

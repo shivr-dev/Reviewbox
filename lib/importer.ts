@@ -16,6 +16,7 @@ import {
   scoringPolicySchema,
 } from './grading-rules';
 import { diagramSchema } from './diagram-spec';
+import type {JsonRepairResult} from './import-json-repair';
 const subjects = SUBJECTS.map((x) => x.id);
 const safeText = z.string().max(100000);
 const skillSchema = z.object({
@@ -60,6 +61,7 @@ export const nodeSchema = z.object({
   tags: z.array(z.string()).optional(),
 });
 export const questionSchema = z.object({
+  answerFormat:z.enum(['text','latex','mixed']).optional(),
   metadataConfidence: z
     .object({
       difficulty: z.number().min(0).max(1).optional(),
@@ -415,12 +417,19 @@ export function downloadPack(pack: Pack) {
 }
 export async function extractFile(
   file: File,
-): Promise<{ text?: string; pack?: Pack; backup?: any }> {
+  options:{repairJson?:boolean}={},
+): Promise<{ text?: string; pack?: Pack; backup?: any; repairs?:JsonRepairResult[] }> {
   if (file.size > 15 * 1024 * 1024) throw new Error('请导入 15 MB 以内的文件');
   const ext = file.name.split('.').at(-1)?.toLowerCase();
+  const repairs:JsonRepairResult[]=[];
+  async function parseJSON(text:string){
+    if(!options.repairJson)return JSON.parse(text);
+    const {repairImportJson}=await import('./import-json-repair'),result=await repairImportJson(text);
+    if(result.error)throw new Error(result.error);if(result.repaired)repairs.push(result);return result.value as any;
+  }
   if (ext === 'json') {
-    const v = JSON.parse(await file.text());
-    return v.records ? { backup: v } : { pack: validatePack(v) };
+    const v = await parseJSON(await file.text());
+    return v.records ? { backup: v,repairs } : { pack: validatePack(v),repairs };
   }
   if (['txt', 'csv', 'tsv', 'md'].includes(ext ?? ''))
     return { text: await file.text() };
@@ -435,10 +444,9 @@ export async function extractFile(
       },
     });
     if (ext === 'zip') {
-      const parse = (name: string) =>
-        JSON.parse(strFromU8(zip[name] ?? new Uint8Array()));
-      const manifest = parse('manifest.json');
-      const questions = parse('questions.json');
+      const parse = (name: string) =>parseJSON(strFromU8(zip[name] ?? new Uint8Array()));
+      const manifest = await parse('manifest.json');
+      const questions = await parse('questions.json');
       if (!Array.isArray(questions)) throw new Error('题目文件需要为题目列表');
       let mediaTotal = 0;
       for (const q of questions)
@@ -475,13 +483,14 @@ export async function extractFile(
             m.src = `data:image/${png ? 'png' : jpeg ? 'jpeg' : 'webp'};base64,${btoa(binary)}`;
           }
       return {
+        repairs,
         pack: validatePack({
           schemaVersion: manifest.schemaVersion,
           manifest,
-          knowledge: parse('knowledge.json'),
+          knowledge: await parse('knowledge.json'),
           questions,
-          ...(zip['rubrics.json'] ? { rubrics: parse('rubrics.json') } : {}),
-          ...(zip['keyterms.json'] ? { keyterms: parse('keyterms.json') } : {}),
+          ...(zip['rubrics.json'] ? { rubrics: await parse('rubrics.json') } : {}),
+          ...(zip['keyterms.json'] ? { keyterms: await parse('keyterms.json') } : {}),
         }),
       };
     }

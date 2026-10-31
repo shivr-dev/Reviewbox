@@ -7,7 +7,7 @@
   },
   "scripts": {
     "dev": "vinext dev",
-    "build": "node scripts/prepare-ocr.mjs && vinext build",
+    "build": "node scripts/prepare-ocr.mjs && node scripts/prepare-math-assets.mjs && vinext build",
     "start": "wrangler dev --config dist/server/wrangler.json",
     "lint": "oxlint",
     "format": "oxfmt",
@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@base-ui/react": "1.7.0",
+    "@cortex-js/compute-engine": "0.173.0",
     "@shadcn/react": "0.3.0",
     "@tesseract.js-data/chi_sim": "^1.0.0",
     "@tesseract.js-data/eng": "^1.0.0",
@@ -26,8 +27,11 @@
     "fflate": "0.8.3",
     "idb": "8.0.3",
     "input-otp": "1.4.2",
+    "jsonrepair": "3.15.0",
+    "jsxgraph": "1.14.2",
     "katex": "0.18.5",
     "lucide-react": "1.31.0",
+    "mathlive": "0.111.1",
     "pdfjs-dist": "5.4.149",
     "react": "19.2.8",
     "react-day-picker": "9.8.1",

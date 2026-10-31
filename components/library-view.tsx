@@ -4,6 +4,10 @@ import ManualImport from './manual-import';
 import ImportSkillCard from './import-skill-card';
 import PackWorkspace from './pack-workspace';
 import PackUpdateReview from './pack-update-review';
+import ImportRepairReview from './import-repair-review';
+import MathAnswerComposer from './math-answer-input';
+import {supportsMathInput,type MathAnswerFormat} from '@/lib/math-input-format';
+import {repairImportJson,type JsonRepairResult} from '@/lib/import-json-repair';
 
 import QuestionReviewButton from './question-review';
 import { parseImportText } from '@/lib/import-skill';
@@ -109,22 +113,27 @@ export default function LibraryView({
   const materialPages=Math.max(1,Math.ceil(materials.length/12)),questionPages=Math.max(1,Math.ceil(questions.length/20));
   const mp=Math.min(materialPage,materialPages-1),qp=Math.min(questionPage,questionPages-1);
   const wrongQuestions = getWrongQuestions(data);
+  const [editorAnswer,setEditorAnswer]=useState(''),[editorAnswerFormat,setEditorAnswerFormat]=useState<MathAnswerFormat>('text');
+  const [repairs,setRepairs]=useState<JsonRepairResult[]>([]),[pendingStage,setPendingStage]=useState<typeof stage>(null);
+  function reviewStage(result:NonNullable<typeof stage>,reports:JsonRepairResult[]=[]){
+    if(reports.length){setRepairs(reports);setPendingStage(result);setStage(null);}else{setRepairs([]);setPendingStage(null);setStage(result);}
+  }
 
   async function file(file?: File) {
     if (!file) return;
     setBusy(true);
     setName(file.name);
     try {
-      const v = await extractFile(file);
+      const v = await extractFile(file,{repairJson:true});
       if (v.pack) {
-        setStage({
+        reviewStage({
           nodes: v.pack.knowledge,
           questions: v.pack.questions,
           pack: v.pack,
-        });
+        },v.repairs);
         setText('');
       } else if (v.backup) {
-        setStage({ nodes: [], questions: [], backup: v.backup });
+        reviewStage({ nodes: [], questions: [], backup: v.backup },v.repairs);
       } else {
         setText(v.text ?? '');
         setSubject(guessSubject(v.text ?? ''));
@@ -233,6 +242,7 @@ export default function LibraryView({
         type,
         prompt,
         answer,
+        answerFormat:String(form.get('answerFormat')??'text'),
         explanation,
         difficulty: Number(difficulty),
         expectedSeconds: type === 'subjective' ? 120 : 30,
@@ -594,7 +604,7 @@ export default function LibraryView({
             accept=".pdf,.docx,.pptx,.txt,.md,.json,.csv,.tsv,.xlsx,.xls,.zip,image/*"
             onChange={(e) => void file(e.target.files?.[0])}
           />
-          {stage?.pack ? <PackUpdateReview pack={stage.pack} onCancel={()=>setStage(null)} onDone={()=>{setStage(null);setImportOpen(false);setText('');}}/> : stage ? (
+          {pendingStage&&repairs.length ? <ImportRepairReview reports={repairs} onCancel={()=>{if(repairs.length===1)setText(repairs[0].original);setPendingStage(null);setRepairs([]);}} onConfirm={()=>{setStage(pendingStage);setPendingStage(null);setRepairs([]);}}/> : stage?.pack ? <PackUpdateReview pack={stage.pack} onCancel={()=>setStage(null)} onDone={()=>{setStage(null);setImportOpen(false);setText('');}}/> : stage ? (
             <>
               <div className="import-result">
                 <Check size={21} />
@@ -695,15 +705,20 @@ export default function LibraryView({
               <button
                 className="primary"
                 disabled={!text.trim() || busy}
-                onClick={() => {
+                onClick={async () => {
+                  setBusy(true);
                   try {
-                    const result = parseImportText(text, subject);
+                    let input=text,reports:JsonRepairResult[]=[];
+                    if(/^\s*(?:[\[{]|```|[\w$]+\s*:)/.test(text)){
+                      const r=await repairImportJson(text);if(r.error)throw new Error(r.error);input=r.text;if(r.repaired)reports=[r];
+                    }
+                    const result = parseImportText(input, subject);
                     if (!result.nodes.length)
                       throw new Error('没有识别到有效内容');
-                    setStage(result);
+                    reviewStage(result,reports);
                   } catch (e) {
                     notify(String(e));
-                  }
+                  }finally{setBusy(false);}
                 }}
               >
                 识别并预览
@@ -827,14 +842,14 @@ export default function LibraryView({
             )}
             <label>
               标准答案
-              <textarea
-                name="answer"
+                {supportsMathInput(subject,type)?<MathAnswerComposer name="answer" value={editorAnswer} format={editorAnswerFormat} onChange={setEditorAnswer} onFormatChange={setEditorAnswerFormat}/>:<textarea
+                  name="answer"
                 required={type !== 'matching'}
                 disabled={type === 'matching'}
                 placeholder={type === 'matching' ? '根据配对内容自动生成' : ''}
                 rows={3}
-                maxLength={12000}
-              />
+                  maxLength={12000}
+                />}
             </label>
             <label>
               解释或解题过程

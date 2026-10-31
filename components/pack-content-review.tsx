@@ -357,6 +357,7 @@ function DiagramReview({
   q: Question;
   onChange: (q: Question) => void;
 }) {
+  const [stage,setStage]=useState<'question'|'hint'|'solution'>('question');
   const [draft, setDraft] = useState<SemanticDiagram | undefined>(() =>
       diagramSuggestion(q),
     ),
@@ -370,6 +371,7 @@ function DiagramReview({
     JSON.stringify(q.diagram) === JSON.stringify(draft);
   return (
     <div className="import-diagram-review">
+      <label className="diagram-phase-picker">作者预览阶段 <select value={stage} onChange={e=>setStage(e.target.value as typeof stage)}><option value="question">题目（作答前）</option><option value="hint">提示</option><option value="solution">解析</option></select></label>
       <div className={'pack-compare' + (identical ? ' single-diagram' : '')}>
         {!identical && (
           <div>
@@ -384,7 +386,7 @@ function DiagramReview({
                 />
               ))
             ) : q.diagram ? (
-              <Diagram spec={q.diagram} />
+              <Diagram spec={q.diagram} stage={stage}/>
             ) : (
               <p className="settings-caption">无插图</p>
             )}
@@ -393,7 +395,7 @@ function DiagramReview({
         <div>
           <h4>{identical ? '结构化插图预览' : '专业重绘预览'}</h4>
           {draft ? (
-            <Diagram spec={draft} />
+            <Diagram spec={draft} stage={stage}/>
           ) : (
             <p className="settings-caption">
               没有足够的结构信息。保留原图；普通照片不会自动转换成精确图形。
