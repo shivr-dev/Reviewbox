@@ -88,7 +88,7 @@ export type Node = {
   version: string;
   tags?: string[];
 };
-export type Diagram = {
+export type LegacyDiagram = {
   type: 'geometry' | 'function_graph' | 'physics';
   canvas?: { width: number; height: number };
   points?: { id: string; x: number; y: number }[];
@@ -120,12 +120,19 @@ export type Diagram = {
     liquid?: boolean;
   }[];
 };
+export type Diagram = LegacyDiagram | import('./diagram-spec').SemanticDiagram;
 export type RubricItem = {
   id: string;
   title: string;
   max: number;
   description: string;
   skillId: string;
+  fullCredit?: string;
+  partialCredit?: string;
+  deductions?: string;
+  equivalentAnswers?: string[];
+  independentCredit?: boolean;
+  carryForward?: boolean;
 };
 export type Question = {
   metadataConfidence?: {
@@ -165,8 +172,11 @@ export type Question = {
   collectionTitle?: string;
   passage?: string;
   rubric?: RubricItem[];
+  gradingRule?: import('./grading-rules').GradingRule;
   solution?: string[];
   diagram?: Diagram;
+  media?: {id:string;src:string;alt:string;purpose?:'question'|'solution'}[];
+  diagramChoice?: 'original'|'redraw'|'skip';
   source: string;
   tags: string[];
   verified?: boolean;
@@ -175,6 +185,11 @@ export type Question = {
   version: string;
 };
 export type Grade = {
+  ruleId?: string;
+  ruleVersion?: string;
+  ruleSnapshot?: import('./grading-rules').GradingRule;
+  referenceSnapshot?: string;
+  solo?: {level:'L1'|'L2'|'L3'|'L4'|'L5';reason:string;evidence:string};
   criteria: {
     id: string;
     score: number;
@@ -328,6 +343,7 @@ export type Pack = {
     description: string;
     changelog: string;
     compatibility: string;
+    scoringPolicy?: import('./grading-rules').ScoringPolicy;
       /** Exact installed content membership; older manifests may need re-importing. */
       nodeIds?: string[];
       questionIds?: string[];

@@ -21,7 +21,8 @@ export type AppContext = {
   cloudUser: { id: string; email: string } | null;
   setCloudUser: (u: any) => void;
   aiReady: boolean;
-  sync: () => Promise<void>;
+  sync: () => Promise<void | boolean>;
+  syncStatus?: {account:string|null;lastSyncAt?:string;error?:string};
   pending: number;
   syncing: boolean;
   prepare: () => Promise<void>;

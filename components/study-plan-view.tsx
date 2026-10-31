@@ -482,9 +482,9 @@ export default function StudyPlanView() {
                     <FileText />
                     笔记与资料
                   </button>
-                  <button className="secondary" onClick={() => navigate('you')}>
+                  <button className="secondary" onClick={() => navigate('results','all','schedule')}>
                     <CalendarDays />
-                    考试与时间管理
+                    考试安排
                   </button>
                   <button
                     className="secondary"

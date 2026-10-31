@@ -10,6 +10,12 @@ import {
 } from './model';
 import { assertQuestionFormat } from './question-tools';
 import { assetPath } from './runtime';
+import {
+  rubricItemSchema,
+  gradingRuleSchema,
+  scoringPolicySchema,
+} from './grading-rules';
+import { diagramSchema } from './diagram-spec';
 const subjects = SUBJECTS.map((x) => x.id);
 const safeText = z.string().max(100000);
 const skillSchema = z.object({
@@ -109,11 +115,21 @@ export const questionSchema = z.object({
   matching: z
     .object({
       left: z
-        .array(z.object({ id: z.string().max(30), text: z.string().max(1000) }))
+        .array(
+          z.object({
+            id: z.string().min(1).max(30),
+            text: z.string().min(1).max(1000),
+          }),
+        )
         .min(2)
         .max(8),
       right: z
-        .array(z.object({ id: z.string().max(30), text: z.string().max(1000) }))
+        .array(
+          z.object({
+            id: z.string().min(1).max(30),
+            text: z.string().min(1).max(1000),
+          }),
+        )
         .min(2)
         .max(8),
     })
@@ -122,20 +138,30 @@ export const questionSchema = z.object({
   collectionId: z.string().max(160).optional(),
   collectionTitle: z.string().max(200).optional(),
   passage: z.string().max(30000).optional(),
-  rubric: z
+  rubric: z.array(rubricItemSchema).max(20).optional(),
+  gradingRule: gradingRuleSchema.optional(),
+  solution: z.array(z.string().max(4000)).max(12).optional(),
+  diagram: diagramSchema.optional(),
+  media: z
     .array(
       z.object({
-        id: z.string(),
-        title: z.string(),
-        max: z.number().positive().max(100),
-        description: z.string().max(3000),
-        skillId: z.string(),
+        id: z.string().min(1).max(160),
+        src: z
+          .string()
+          .max(900000)
+          .refine(
+            (s) =>
+              /^data:image\/(png|jpeg|webp);base64,[a-zA-Z0-9+/=]+$/.test(s) ||
+              /^assets\/[a-zA-Z0-9_./-]+\.(png|jpe?g|webp)$/i.test(s),
+            '仅支持包内 PNG、JPG、WebP 图片',
+          ),
+        alt: z.string().max(400),
+        purpose: z.enum(['question', 'solution']).optional(),
       }),
     )
-    .max(20)
+    .max(8)
     .optional(),
-  solution: z.array(z.string().max(4000)).max(12).optional(),
-  diagram: z.any().optional(),
+  diagramChoice: z.enum(['original', 'redraw', 'skip']).optional(),
   source: safeText,
   tags: z.array(z.string()).max(30),
   version: z.string().max(50),
@@ -155,12 +181,65 @@ export function validatePack(value: any): Pack {
     value.questions.length > 15000
   )
     throw new Error('学习包缺少清单、知识或题目，或超过导入上限');
-  const knowledge = value.knowledge.map((x: any) => nodeSchema.parse(x));
+  const manifestResult = z
+    .object({
+      id: z.string().min(1).max(160),
+      title: z.string().min(1).max(300).default('导入学习包'),
+      version: z
+        .string()
+        .min(1)
+        .max(50)
+        .regex(/^\d+(?:\.\d+){0,3}(?:[-+][\w.-]+)?$/, '版本号格式不正确'),
+      subject: z
+        .enum(['all', ...subjects] as [string, ...string[]])
+        .default('all'),
+      description: safeText.default(''),
+      changelog: safeText.default(''),
+      compatibility: z.string().max(200).default('Review 1.x'),
+      scoringPolicy: scoringPolicySchema.optional(),
+    })
+    .safeParse(value.manifest);
+  if (!manifestResult.success)
+    throw new Error('学习包清单需要有效的名称、版本号与学科。');
+  const knowledge = value.knowledge.map((x: any, i: number) => {
+    const result = nodeSchema.safeParse(x);
+    if (!result.success) throw new Error(`第 ${i + 1} 个知识点的结构不完整。`);
+    if (
+      new Set(result.data.skills.map((s) => s.id)).size !==
+      result.data.skills.length
+    )
+      throw new Error(`知识点「${result.data.title}」的能力 ID 重复。`);
+    return result.data;
+  });
   const ids = new Map<string, Node>(knowledge.map((n: Node) => [n.id, n]));
   if (ids.size !== knowledge.length) throw new Error('知识点 ID 重复');
   const seen = new Set();
-  const questions = value.questions.map((x: any) => {
-    const q = questionSchema.parse(x);
+  const questions = value.questions.map((x: any, i: number) => {
+    const linked = Array.isArray(value.rubrics)
+      ? value.rubrics.find((r: any) => r.questionId === x.id)
+      : undefined;
+    const input = {
+      ...x,
+      ...(!x.rubric && linked?.rubric ? { rubric: linked.rubric } : {}),
+      ...(!x.gradingRule && linked?.gradingRule
+        ? { gradingRule: linked.gradingRule }
+        : {}),
+    };
+    if (input.gradingRule) {
+      if(Array.isArray(input.rubric)&&Array.isArray(input.gradingRule.criteria)){
+        const fields=(rows:any[])=>rows.map(({id,title,max,description,skillId})=>({id,title,max,description,skillId}));
+        if(JSON.stringify(fields(input.rubric))!==JSON.stringify(fields(input.gradingRule.criteria)))throw new Error(`第 ${i+1} 题同时提供了不同的两套评分点，请统一后再导入。`);
+      }
+      input.rubric = input.gradingRule.criteria;
+    }
+    if(input.type!=='matching')delete input.matching;
+    const parsed = questionSchema.safeParse(input);
+    if (!parsed.success)
+      throw new Error(
+        `第 ${i + 1} 题「${String(x.prompt ?? '').slice(0, 25)}」需要检查：${[...new Set(parsed.error.issues.map((issue) => ({ rubric: '评分点', gradingRule: '评分规则', diagram: '图形结构', media: '插图资源', matching: '配对选项', solution: '解题步骤' })[String(issue.path[0])] ?? '题目格式'))].join('、')}。`,
+      );
+    const q = parsed.data;
+    if((q.media??[]).reduce((sum,m)=>sum+m.src.length,0)>1500000)throw new Error(`第 ${i+1} 题的图片总量过大，请压缩后导入，以便跨设备同步。`);
     const n = ids.get(q.nodeId);
     if (
       !n ||
@@ -169,23 +248,23 @@ export function validatePack(value: any): Pack {
       seen.has(q.id)
     )
       throw new Error('题目引用了不存在的知识点或能力，或 ID 重复');
-    assertQuestionFormat(q as Question);
+    if (q.rubric?.some((r) => !n.skills.some((s) => s.id === r.skillId)))
+      throw new Error(`第 ${i + 1} 题的评分点引用了未知能力。`);
+    if (q.rubric && new Set(q.rubric.map((r) => r.id)).size !== q.rubric.length)
+      throw new Error(`第 ${i + 1} 题的评分点 ID 重复。`);
+    // Missing subjective rubrics enter the import review; they cannot be installed until confirmed.
+    if (q.type !== 'subjective' || q.rubric?.length)
+      assertQuestionFormat(q as Question);
     seen.add(q.id);
     return { ...q, verified: false, verification: undefined };
   });
   return {
     schemaVersion: 1,
-    manifest: {
-      id: String(value.manifest.id).slice(0, 160),
-      title: String(value.manifest.title ?? '导入学习包').slice(0, 300),
-      version: String(value.manifest.version),
-      subject: String(value.manifest.subject ?? 'all'),
-      description: String(value.manifest.description ?? ''),
-      changelog: String(value.manifest.changelog ?? ''),
-      compatibility: String(value.manifest.compatibility ?? 'Review 1.x'),
-    },
+    manifest: manifestResult.data,
     knowledge,
     questions,
+    ...(Array.isArray(value.rubrics) ? { rubrics: value.rubrics } : {}),
+    ...(Array.isArray(value.keyterms) ? { keyterms: value.keyterms } : {}),
   };
 }
 export function guessSubject(text: string): Subject {
@@ -300,20 +379,35 @@ export function download(
   a.click();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
-export function downloadPack(pack: Pack) {
-  const files = {
+export function packZip(pack: Pack) {
+  const files: Record<string, Uint8Array> = {
     'manifest.json': strToU8(
       JSON.stringify({ schemaVersion: 1, ...pack.manifest }, null, 2),
     ),
     'knowledge.json': strToU8(JSON.stringify(pack.knowledge)),
-    'questions.json': strToU8(JSON.stringify(pack.questions)),
     'keyterms.json': strToU8(JSON.stringify(pack.keyterms ?? [])),
     'rubrics.json': strToU8(JSON.stringify(pack.rubrics ?? [])),
     'assets/README.txt': strToU8(
       'Knowledge content is separate from personal mastery and answer history.',
     ),
   };
-  const zipped = zipSync(files);
+  const questions = pack.questions.map((q, qi) => ({
+    ...q,
+    media: q.media?.map((m, mi) => {
+      if (!m.src.startsWith('data:'))
+        throw new Error('插图尚未载入，不能导出不完整的学习包。');
+      const match = m.src.match(/^data:image\/(png|jpeg|webp);base64,(.+)$/)!;
+      if (!match) throw new Error('插图格式不支持导出');
+      const path = `assets/q${qi}-${mi}.${match[1] === 'jpeg' ? 'jpg' : match[1]}`;
+      files[path] = Uint8Array.from(atob(match[2]), (c) => c.charCodeAt(0));
+      return { ...m, src: path };
+    }),
+  }));
+  files['questions.json'] = strToU8(JSON.stringify(questions));
+  return zipSync(files);
+}
+export function downloadPack(pack: Pack) {
+  const zipped = packZip(pack);
   download(
     `${pack.manifest.id}-${pack.manifest.version}.zip`,
     new Blob([zipped as BlobPart], { type: 'application/zip' }),
@@ -344,12 +438,50 @@ export async function extractFile(
       const parse = (name: string) =>
         JSON.parse(strFromU8(zip[name] ?? new Uint8Array()));
       const manifest = parse('manifest.json');
+      const questions = parse('questions.json');
+      if (!Array.isArray(questions)) throw new Error('题目文件需要为题目列表');
+      let mediaTotal = 0;
+      for (const q of questions)
+        if (Array.isArray(q.media))
+          for (const m of q.media) {
+            if (typeof m.src !== 'string' || !m.src.startsWith('assets/'))
+              continue;
+            if (
+              m.src.includes('..') ||
+              !/^assets\/[a-zA-Z0-9_./-]+\.(png|jpe?g|webp)$/i.test(m.src)
+            )
+              throw new Error('插图路径不安全');
+            const data = zip[m.src];
+            if (!data) throw new Error(`缺少插图文件：${m.src}`);
+            mediaTotal += data.length;
+            if (data.length > 650000 || mediaTotal > 5000000)
+              throw new Error(
+                '插图较大，请将每张压缩到 650 KB 以内、总计 5 MB 以内。',
+              );
+            const png =
+                data[0] === 137 &&
+                data[1] === 80 &&
+                data[2] === 78 &&
+                data[3] === 71,
+              jpeg = data[0] === 255 && data[1] === 216 && data[2] === 255,
+              webp =
+                strFromU8(data.slice(0, 4)) === 'RIFF' &&
+                strFromU8(data.slice(8, 12)) === 'WEBP';
+            if (!png && !jpeg && !webp)
+              throw new Error('插图不是有效的 PNG、JPG 或 WebP 文件');
+            let binary = '';
+            for (let i = 0; i < data.length; i += 8192)
+              binary += String.fromCharCode(...data.subarray(i, i + 8192));
+            m.src = `data:image/${png ? 'png' : jpeg ? 'jpeg' : 'webp'};base64,${btoa(binary)}`;
+          }
       return {
         pack: validatePack({
           schemaVersion: manifest.schemaVersion,
           manifest,
           knowledge: parse('knowledge.json'),
-          questions: parse('questions.json'),
+          questions,
+          ...(zip['rubrics.json'] ? { rubrics: parse('rubrics.json') } : {}),
+          ...(zip['keyterms.json'] ? { keyterms: parse('keyterms.json') } : {}),
         }),
       };
     }

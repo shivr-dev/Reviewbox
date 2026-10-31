@@ -7,14 +7,14 @@ async function mount(component:any){const host=document.createElement('div');doc
 test('library defaults to owned content, has three main tabs and no legacy sample install action',async()=>{
  await switchAccount('library-ui');await installPack(fixture());const view=await mount(<Library initialTab="content"/>);
  try{assert.deepEqual([...view.host.querySelectorAll('[role=tab]')].map(e=>e.textContent),['学习资料','题目库','学习包']);assert.ok(view.host.textContent?.includes('我的语文包'));assert.ok(!view.host.textContent?.includes('多学科基础学习包'));assert.equal([...view.host.querySelectorAll('button')].filter(e=>e.textContent==='导入').length,1);
- const devices=[...view.host.querySelectorAll('button')].find(e=>e.textContent==='设备同步')!;await act(()=>devices.click());assert.ok(view.host.textContent?.includes('我的学习包 · 带到手表'));assert.ok(!view.host.textContent?.includes('公共学习包'));
+ const devices=[...view.host.querySelectorAll('button')].find(e=>e.textContent==='设备同步')!;await act(()=>devices.click());assert.ok(view.host.textContent?.includes('关联设备'));assert.ok(!view.host.textContent?.includes('公共学习包'));
  }finally{await view.close();}
 });
 test('version diff blocks conflicts until explicitly resolved, commits through the real store and displays results',async()=>{
  const p=fixture();await put('question',{...p.questions[0],prompt:'我自己的修改',verified:true});const next={...p,manifest:{...p.manifest,version:'2'},questions:[{...p.questions[0],prompt:'新版题干'}]};
  const view=await mount(<PackUpdateReview pack={next} onDone={()=>{}} onCancel={()=>{}}/>);
  try{await act(async()=>{await new Promise(r=>setTimeout(r,40));});const button=[...view.host.querySelectorAll('button')].find(e=>e.textContent==='确认更新')!;assert.ok(button.disabled);assert.ok(view.host.textContent?.includes('我自己的修改'));assert.ok(view.host.textContent?.includes('新版题干'));
- const label=[...view.host.querySelectorAll('label')].find(e=>e.textContent?.includes('使用新版内容'))!;await act(()=>label.querySelector('input')!.click());assert.equal(button.disabled,false);await act(async()=>{button.click();await new Promise(r=>setTimeout(r,40));});assert.match(view.host.textContent!,/已完成：新增 0 题，修改 1 题/);assert.equal((await allRecords()).find(r=>r.id==='ui:q')!.payload.verified,false);
+ const label=[...view.host.querySelectorAll('label')].find(e=>e.textContent?.includes('使用新版内容'))!;await act(()=>label.querySelector('input')!.click());assert.equal(button.disabled,false);await act(async()=>{button.click();await new Promise(r=>setTimeout(r,40));});assert.ok(view.host.querySelector('[role=status]')?.textContent?.includes('学习包已更新'));assert.match(view.host.querySelector('.update-result-grid')!.textContent!,/1修改/);assert.equal((await allRecords()).find(r=>r.id==='ui:q')!.payload.verified,false);
  }finally{await view.close();}
 });
 test('installed package pagination and search reach content beyond the first page',async()=>{

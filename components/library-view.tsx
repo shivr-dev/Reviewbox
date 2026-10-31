@@ -1,5 +1,7 @@
 'use client';
+import type {watchRequest} from '@/lib/watch-client';
 import ManualImport from './manual-import';
+import ImportSkillCard from './import-skill-card';
 import PackWorkspace from './pack-workspace';
 import PackUpdateReview from './pack-update-review';
 
@@ -62,9 +64,9 @@ import {
 
 import { Choice, Empty, Heading, SubjectChoice, dateLabel } from './shared';
 export default function LibraryView({
-  initialTab = 'materials',
-}: { initialTab?: string } = {}) {
-  const { data, refresh, start, notify, subject: routeSubject } = useReview();
+  initialTab = 'materials',packageRequest,
+}: { initialTab?: string;packageRequest?:typeof watchRequest } = {}) {
+  const { data, refresh, start, notify, navigate, subject: routeSubject } = useReview();
   const initialSubject = SUBJECTS.some((s) => s.id === routeSubject)
     ? (routeSubject as Subject)
     : 'chinese';
@@ -316,14 +318,14 @@ export default function LibraryView({
     }
   }
   return (
-    <>
+    <div className="library-page settings-scope">
       <Heading
         eyebrow="YOUR LEARNING LIBRARY"
         title="资料库"
         description="管理自己的资料、题目与学习包。"
         action={
           <div className="button-row">
-            <button className="secondary" onClick={()=>setTab('data')}>备份与数据</button>
+            <button className="secondary" onClick={()=>setTab('data')}>导入工具</button>
             <button
               className="primary"
               onClick={() => {
@@ -465,7 +467,7 @@ export default function LibraryView({
           </div>
           <footer className="pack-pagination"><button disabled={qp===0} onClick={()=>setQuestionPage(qp-1)}>上一页</button><span>{qp+1} / {questionPages}</span><button disabled={qp+1>=questionPages} onClick={()=>setQuestionPage(qp+1)}>下一页</button></footer>
         </TabsContent>
-        <TabsContent value="content"><PackWorkspace onImport={()=>{setStage(null);setImportOpen(true);}}/><details className="pack-export"><summary>导出我整理的内容</summary>          <section className="panel">
+        <TabsContent value="content"><PackWorkspace request={packageRequest} onImport={()=>{setStage(null);setImportOpen(true);}}/><details className="pack-export"><summary>导出我整理的内容</summary>          <section className="panel">
             <h2>打包自己的课程</h2>
             <p className="muted">
               导出题目、知识点和评分标准，保存在自己的设备中，或用于私有云端备份。
@@ -501,7 +503,7 @@ export default function LibraryView({
             </button>
           </section>
 </details></TabsContent>
-        <TabsContent value="data">
+        <TabsContent value="data"><ImportSkillCard/>
           <WrongNotebook />
           <div className="subject-stat-row">
             {[
@@ -520,38 +522,7 @@ export default function LibraryView({
             ))}
           </div>
           <div className="home-columns">
-            <section className="panel">
-              <h2>我的备份</h2>
-              <p className="muted">
-                导出本设备完整学习数据，包括知识、掌握记录、笔记和计划。
-              </p>
-              <div className="button-row">
-                <button
-                  className="primary"
-                  onClick={async () =>
-                    download(
-                      'review-backup-' +
-                        new Date().toISOString().slice(0, 10) +
-                        '.json',
-                      await exportBackup(),
-                    )
-                  }
-                >
-                  <Download size={16} />
-                  导出完整备份
-                </button>
-                <button
-                  className="secondary"
-                  onClick={() => setImportOpen(true)}
-                >
-                  <Upload size={16} />
-                  恢复备份
-                </button>
-              </div>
-              <p className="inline-hint">
-                备份含个人作答内容，请保存在自己的设备中。
-              </p>
-            </section>
+            <section className="panel"><h2>备份与恢复</h2><button className="text-button" onClick={()=>navigate('you','all','data')}>前往数据与隐私 →</button></section>
             <section className="panel">
               <h2>错题再看</h2>
               <p className="muted">只保留仍未通过后续练习巩固的题目。</p>
@@ -902,6 +873,6 @@ export default function LibraryView({
           </form>
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   );
 }

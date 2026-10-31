@@ -250,9 +250,8 @@ export async function pagesApi(
             await import('./study-advice-server')
           ).analyzeStudyAdvice(body),
         });
-      const { generate, solve, judge, grade } = await import('./ai-server');
+      const { generate, solve, judge, grade, createGradingRule } = await import('./ai-server');
       const { questionSchema } = await import('./importer');
-      const { seedQuestions } = await import('./seed');
       if (body.action === 'diagnose-process')
         return Response.json({
           diagnosis: await (
@@ -261,9 +260,8 @@ export async function pagesApi(
         });
       if (body.action === 'generate')
         return Response.json({ question: await generate(body) });
-      const question = questionSchema.parse(
-        seedQuestions.find((q) => q.id === body.question?.id) ?? body.question,
-      );
+      if (body.action === 'grading-rule') return Response.json({rule:await createGradingRule(body)});
+      const question = questionSchema.parse(body.question);
       if (body.action === 'solve')
         return Response.json({
           solver: await solve(question as any, body.slot),
@@ -309,7 +307,7 @@ export async function pagesApi(
     throw new Error('不支持的请求');
   } catch (error) {
     return Response.json(
-      { error: error instanceof Error ? error.message : '请求暂时不可用' },
+      { error: error instanceof Error ? error.message : '请求暂时不可用', ...((error as any)?.code === 'generation-format' ? {code:'generation-format',retryFeedback:(error as any).retryFeedback}: {}) },
       { status: 503 },
     );
   }

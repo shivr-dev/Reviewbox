@@ -10,7 +10,7 @@ export default function ImportSkillCard() {
     <section className="panel import-skill-card">
       <div>
         <p className="eyebrow">BRING YOUR OWN QUESTIONS</p>
-        <h2>让外部 AI 按你的方式出题</h2>
+        <h2>让外部 AI 按你的方式出题 <small className="settings-caption">Skill 2.0</small></h2>
         <p className="muted">
           复制 Skill 给 AI，再把它输出的完整学习包粘贴到「资料库 → 智能导入」。
         </p>

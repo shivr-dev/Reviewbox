@@ -46,7 +46,7 @@ export async function previewPack(pack:Pack,records:LocalRecord[]) {
       changes.push({id,kind,action:'remove',conflict:!old||stable(content(row.payload))!==stable(content(old)),before:row.payload});
     }
   }
-  const hash=await packHash({knowledge:pack.knowledge.map(content),questions:pack.questions.map(content)});
+  const hash=await packHash({knowledge:pack.knowledge.map(content),questions:pack.questions.map(content),scoringPolicy:pack.manifest.scoringPolicy});
   return {pack,manifest,hash,changes,status:!manifest?'new':(manifest.sourceContentHash??manifest.contentHash)===hash&&manifest.version===pack.manifest.version&&changes.every(c=>c.action==='same')?'installed':'update',versions};
 }
 export type PackPreview=Awaited<ReturnType<typeof previewPack>>;

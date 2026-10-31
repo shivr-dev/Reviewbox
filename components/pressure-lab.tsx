@@ -12,7 +12,7 @@ import {
 } from '@/lib/learning-intelligence';
 import MatchingInput from './matching-input';
 import MathText from './math-text';
-import Diagram from './diagram';
+import QuestionVisual from './question-visual';
 import { RemediationLauncher } from './remediation-course';
 import QuestionReviewButton from './question-review';
 
@@ -438,7 +438,7 @@ export default function PressureLab({
                         <MathText>{q.passage}</MathText>
                       </blockquote>
                     )}
-                    {q.diagram && <Diagram spec={q.diagram} />}
+                    <QuestionVisual question={q}/>
                     <div className="question-options">
                       {q.options?.map((option) => (
                         <button

@@ -1,6 +1,7 @@
 import { apiFetch } from './runtime';
 import { put, currentNamespace } from './store';
 import { type Node, type Skill, type Question, type Grade } from './model';
+import { VARIANT_FAILURE } from './generation-format';
 import {
   attributesFor,
   conceptsFor,
@@ -29,11 +30,18 @@ async function call(body: any): Promise<any> {
   const r = await apiFetch('/api/ai', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+    // Qwen consumes validated semantic diagrams and textual rules, never base64 image payloads.
+    body: JSON.stringify(body, (key, value) =>
+      key === 'media' ? undefined : value,
+    ),
     signal: AbortSignal.timeout(65000),
   });
   const v: any = await r.json();
-  if (!r.ok) throw new Error(v.error ?? '题目生成暂时不可用');
+  if (!r.ok)
+    throw Object.assign(new Error(v.error ?? '题目生成暂时不可用'), {
+      code: v.code,
+      retryFeedback: v.retryFeedback,
+    });
   return v;
 }
 export async function gradeAnswer(
@@ -41,6 +49,13 @@ export async function gradeAnswer(
   answer: string,
 ): Promise<Grade> {
   return (await call({ action: 'grade', question, answer })).grade;
+}
+export async function proposeGradingRule(
+  question: Question,
+  policy?: import('./grading-rules').ScoringPolicy,
+) {
+  return (await call({ action: 'grading-rule', question, policy }))
+    .rule as import('./grading-rules').GradingRule;
 }
 export async function resumeVerifiedJob(
   original: GenerationJob,
@@ -67,17 +82,21 @@ export async function resumeVerifiedJob(
             style: job.style,
             previousErrors: job.previousErrors,
             rejectedQuestions: job.rejectedQuestions,
-            questionType: job.questionType,
+            questionType: job.questionType ?? job.transferFrom?.type,
             transferFrom: job.transferFrom,
             transferConcept: job.transferConcept,
           });
         } catch (e) {
           const message = e instanceof Error ? e.message : '';
-          if (/已丢弃|结构检查|评分点|内容不完整/.test(message)) {
+          if (
+            (e as any)?.code === 'generation-format' ||
+            /已丢弃|结构检查|评分点|内容不完整/.test(message)
+          ) {
+            progress(message);
             job.attempt++;
             job.rejectedQuestions = [
               ...(job.rejectedQuestions ?? []),
-              { prompt: '', reason: message },
+              { prompt: '', reason: (e as any)?.retryFeedback ?? message },
             ].slice(-4);
             await persist('job', job);
             continue;
@@ -156,7 +175,7 @@ export async function resumeVerifiedJob(
       await persist('job', job);
       return ready;
     }
-    throw new Error('题目未通过核验，请换一个知识点再试');
+    throw new Error(VARIANT_FAILURE);
   } catch (e) {
     job.status = 'failed';
     job.error = e instanceof Error ? e.message : '未完成';

@@ -1,7 +1,7 @@
 import { sameOrigin, readBody, requireSiteUser, fail } from '@/lib/server';
-import { generate, solve, judge, grade } from '@/lib/ai-server';
+import { generate, solve, judge, grade, createGradingRule } from '@/lib/ai-server';
 import { questionSchema } from '@/lib/importer';
-import { seedQuestions } from '@/lib/seed';
+import { GenerationFormatError } from '@/lib/generation-format';
 import { diagnoseProcess } from '@/lib/process-server';
 const limits = new Map<string, { at: number; count: number }>();
 const planLimits = new Map<string, number[]>();
@@ -31,9 +31,8 @@ export async function POST(req: Request) {
       return Response.json({ diagnosis: await diagnoseProcess(b) });
     if (b.action === 'generate')
       return Response.json({ question: await generate(b) });
-    const q = questionSchema.parse(
-      seedQuestions.find((q) => q.id === b.question?.id) ?? b.question,
-    );
+    if (b.action === 'grading-rule') return Response.json({rule:await createGradingRule(b)});
+    const q = questionSchema.parse(b.question);
     if (b.action === 'solve') {
       if (![1, 2, 3].includes(b.slot)) throw new Error('无效核验步骤');
       return Response.json({ solver: await solve(q as any, b.slot) });
@@ -59,6 +58,7 @@ export async function POST(req: Request) {
     }
     throw new Error('不支持的请求');
   } catch (e) {
+    if(e instanceof GenerationFormatError) return Response.json({error:e.message,code:e.code,retryFeedback:e.retryFeedback},{status:422});
     return fail(e, 422);
   }
 }

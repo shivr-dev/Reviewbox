@@ -1,0 +1,917 @@
+'use client';
+import { useEffect, useRef, useState } from 'react';
+import type { Pack, Question } from '@/lib/model';
+import {
+  gradingModes,
+  gradingRuleSchema,
+  ruleForQuestion,
+  soloNames,
+  type GradingRule,
+} from '@/lib/grading-rules';
+import { inspectPackContent } from '@/lib/import-review';
+import { proposeGradingRule } from '@/lib/ai-client';
+import { currentNamespace } from '@/lib/store';
+import { useReview } from './review-context';
+import Diagram from './diagram';
+import {
+  semanticDiagramSchema,
+  type SemanticDiagram,
+} from '@/lib/diagram-spec';
+
+export function RuleEditor({
+  question: q,
+  initial,
+  onSave,
+  onCancel,
+}: {
+  question: Question;
+  initial?: GradingRule;
+  onSave: (r: GradingRule) => void;
+  onCancel: () => void;
+}) {
+  const [draft, setDraft] = useState<GradingRule>(() => {
+      if (initial) return structuredClone(initial);
+      try {
+        return structuredClone(ruleForQuestion(q));
+      } catch {
+        return {
+          id: 'rule:' + q.id,
+          version: '1',
+          mode: 'points',
+          maxScore: 5,
+          criteria: [
+            {
+              id: 'criterion-1',
+              title: '',
+              max: 5,
+              description: '',
+              skillId: q.skillId,
+            },
+          ],
+        };
+      }
+    }),
+    [error, setError] = useState('');
+  function changeCriterion(
+    index: number,
+    changes: Partial<GradingRule['criteria'][number]>,
+  ) {
+    const criteria = draft.criteria.map((c, i) =>
+      i === index ? { ...c, ...changes } : c,
+    );
+    setDraft({
+      ...draft,
+      criteria,
+      maxScore: criteria.reduce((n, c) => n + c.max, 0),
+    });
+  }
+  return (
+    <section className="rule-editor" aria-label="评分标准编辑">
+      <div className="rule-editor-head">
+        <label>
+          评分方式
+          <select
+            value={draft.mode}
+            onChange={(e) => {
+              const mode = e.target.value as GradingRule['mode'];
+              setDraft({
+                ...draft,
+                mode,
+                ...(['solo', 'rubric-solo'].includes(mode)
+                  ? {
+                      solo: draft.solo ?? {
+                        levels: Object.entries(soloNames).map(([level]) => ({
+                          level: level as 'L1',
+                          description: '',
+                        })),
+                        fullCreditLevel: 'L4',
+                      },
+                    }
+                  : { solo: undefined }),
+              });
+            }}
+          >
+            {gradingModes
+              .filter(([id]) => id !== 'auto')
+              .map(([id, label]) => (
+                <option key={id} value={id}>
+                  {label}
+                </option>
+              ))}
+          </select>
+        </label>
+        <span>
+          满分 <b>{draft.maxScore}</b>
+        </span>
+      </div>
+      {draft.criteria.map((c, i) => (
+        <fieldset className="rubric-criterion-editor" key={c.id}>
+          <legend>评分点 {i + 1}</legend>
+          <div className="criterion-heading">
+            <label>
+              名称
+              <input
+                aria-label={`评分点 ${i + 1} 名称`}
+                value={c.title}
+                onChange={(e) => changeCriterion(i, { title: e.target.value })}
+              />
+            </label>
+            <label>
+              分值
+              <input
+                type="number"
+                min="0.1"
+                max="100"
+                step="0.5"
+                value={c.max}
+                onChange={(e) =>
+                  changeCriterion(i, { max: Number(e.target.value) })
+                }
+              />
+            </label>
+          </div>
+          <label>
+            得分依据
+            <textarea
+              rows={2}
+              value={c.fullCredit ?? c.description}
+              onChange={(e) =>
+                changeCriterion(i, {
+                  description: e.target.value,
+                  fullCredit: e.target.value,
+                })
+              }
+            />
+          </label>
+          <details>
+            <summary>部分得分、等价答案与过程分</summary>
+            <label>
+              部分得分条件
+              <textarea
+                rows={2}
+                value={c.partialCredit ?? ''}
+                onChange={(e) =>
+                  changeCriterion(i, { partialCredit: e.target.value })
+                }
+              />
+            </label>
+            <label>
+              扣分条件
+              <input
+                value={c.deductions ?? ''}
+                onChange={(e) =>
+                  changeCriterion(i, { deductions: e.target.value })
+                }
+              />
+            </label>
+            <label>
+              等价答案（每行一个）
+              <textarea
+                rows={2}
+                value={(c.equivalentAnswers ?? []).join('\n')}
+                onChange={(e) =>
+                  changeCriterion(i, {
+                    equivalentAnswers: e.target.value
+                      .split('\n')
+                      .filter(Boolean),
+                  })
+                }
+              />
+            </label>
+            <label className="inline-check">
+              <input
+                type="checkbox"
+                checked={!!c.independentCredit}
+                onChange={(e) =>
+                  changeCriterion(i, { independentCredit: e.target.checked })
+                }
+              />
+              本步骤可独立得分
+            </label>
+            <label className="inline-check">
+              <input
+                type="checkbox"
+                checked={!!c.carryForward}
+                onChange={(e) =>
+                  changeCriterion(i, { carryForward: e.target.checked })
+                }
+              />
+              允许前一步计算错误的合理后续过程分
+            </label>
+            <p className="settings-caption">能力：{c.skillId}</p>
+          </details>
+          {draft.criteria.length > 1 && (
+            <button
+              type="button"
+              className="text-button"
+              onClick={() => {
+                const criteria = draft.criteria.filter((_, j) => j !== i);
+                setDraft({
+                  ...draft,
+                  criteria,
+                  maxScore: criteria.reduce((n, c) => n + c.max, 0),
+                });
+              }}
+            >
+              移除此评分点
+            </button>
+          )}
+        </fieldset>
+      ))}
+      {draft.criteria.length < 20 && (
+        <button
+          type="button"
+          className="secondary"
+          onClick={() => {
+            const criteria = [
+              ...draft.criteria,
+              {
+                id: 'criterion-' + crypto.randomUUID(),
+                title: '',
+                max: 1,
+                description: '',
+                skillId: q.skillId,
+              },
+            ];
+            setDraft({
+              ...draft,
+              criteria,
+              maxScore: criteria.reduce((n, c) => n + c.max, 0),
+            });
+          }}
+        >
+          添加评分点
+        </button>
+      )}
+      {draft.solo && (
+        <fieldset>
+          <legend>本题的 SOLO 描述</legend>
+          {draft.solo.levels.map((l, i) => (
+            <label key={l.level}>
+              {l.level} · {soloNames[l.level]}
+              <textarea
+                rows={2}
+                value={l.description}
+                onChange={(e) =>
+                  setDraft({
+                    ...draft,
+                    solo: {
+                      ...draft.solo!,
+                      levels: draft.solo!.levels.map((v, j) =>
+                        j === i ? { ...v, description: e.target.value } : v,
+                      ),
+                    },
+                  })
+                }
+              />
+            </label>
+          ))}
+          <label>
+            本题达到哪个等级即可满足满分要求？
+            <select
+              value={draft.solo.fullCreditLevel}
+              onChange={(e) =>
+                setDraft({
+                  ...draft,
+                  solo: {
+                    ...draft.solo!,
+                    fullCreditLevel: e.target.value as 'L1',
+                  },
+                })
+              }
+            >
+              {Object.entries(soloNames).map(([id, name]) => (
+                <option key={id} value={id}>
+                  {id} · {name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p className="settings-caption">
+            思维等级单独评价，不按字数判断，也不额外改变评分点总分。
+          </p>
+        </fieldset>
+      )}
+      {error && (
+        <p role="alert" className="pack-error">
+          {error}
+        </p>
+      )}
+      <div className="button-row">
+        <button type="button" className="secondary" onClick={onCancel}>
+          取消编辑
+        </button>
+        <button
+          type="button"
+          className="primary"
+          onClick={() => {
+            const result = gradingRuleSchema.safeParse(draft);
+            if (
+              !result.success ||
+              draft.criteria.some(
+                (c) => !c.description.trim() && !c.fullCredit?.trim(),
+              )
+            ) {
+              setError(
+                '请填写评分点名称、分值和得分依据；SOLO 模式还需要完整的五级描述。',
+              );
+              return;
+            }
+            onSave({ ...result.data, version: crypto.randomUUID() });
+          }}
+        >
+          确认评分标准
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function diagramSuggestion(q: Question): SemanticDiagram | undefined {
+  if (q.diagram?.type === 'semantic') return q.diagram;
+  const labels = q.diagram?.labelsText?.map((l) => l.text).join(' ') ?? '',
+    text = q.prompt + ' ' + labels;
+  if (!/蒸发|evaporat/i.test(text) || !/蒸发皿|evaporating dish/i.test(text))
+    return;
+  const apparatus: Extract<
+    SemanticDiagram,
+    { kind: 'experiment' }
+  >['apparatus'] = [{ id: 'dish', kind: 'evaporating_dish', label: '蒸发皿' }];
+  for (const [pattern, kind, name] of [
+    [/玻璃棒|glass rod/i, 'glass_rod', '玻璃棒'],
+    [/酒精灯|alcohol lamp/i, 'alcohol_lamp', '酒精灯'],
+    [/铁架台|三脚架|stand|tripod/i, 'stand', '支架'],
+  ] as const)
+    if (pattern.test(text)) apparatus.push({ id: kind, kind, label: name });
+  return {
+    type: 'semantic',
+    kind: 'experiment',
+    setup: 'evaporation',
+    apparatus,
+  };
+}
+function DiagramReview({
+  q,
+  onChange,
+}: {
+  q: Question;
+  onChange: (q: Question) => void;
+}) {
+  const [draft, setDraft] = useState<SemanticDiagram | undefined>(() =>
+      diagramSuggestion(q),
+    ),
+    [editing, setEditing] = useState(false),
+    [error, setError] = useState('');
+  const images =
+    q.media?.filter((m) => (m.purpose ?? 'question') === 'question') ?? [];
+  const identical =
+    !images.length &&
+    q.diagram?.type === 'semantic' &&
+    JSON.stringify(q.diagram) === JSON.stringify(draft);
+  return (
+    <div className="import-diagram-review">
+      <div className={'pack-compare' + (identical ? ' single-diagram' : '')}>
+        {!identical && (
+          <div>
+            <h4>原有插图</h4>
+            {images.length ? (
+              images.map((m) => (
+                <img
+                  className="import-original-image"
+                  key={m.id}
+                  src={m.src}
+                  alt={m.alt}
+                />
+              ))
+            ) : q.diagram ? (
+              <Diagram spec={q.diagram} />
+            ) : (
+              <p className="settings-caption">无插图</p>
+            )}
+          </div>
+        )}
+        <div>
+          <h4>{identical ? '结构化插图预览' : '专业重绘预览'}</h4>
+          {draft ? (
+            <Diagram spec={draft} />
+          ) : (
+            <p className="settings-caption">
+              没有足够的结构信息。保留原图；普通照片不会自动转换成精确图形。
+            </p>
+          )}
+        </div>
+      </div>
+      <div className="button-row">
+        {!!images.length && (
+          <button
+            type="button"
+            className={q.diagramChoice === 'original' ? 'primary' : 'secondary'}
+            onClick={() => onChange({ ...q, diagramChoice: 'original' })}
+          >
+            保留原图
+          </button>
+        )}
+        {draft && (
+          <button
+            type="button"
+            className="primary"
+            onClick={() => {
+              const parsed = semanticDiagramSchema.safeParse(draft);
+              if (!parsed.success) {
+                setError(parsed.error.issues.map((i) => i.message).join('；'));
+                return;
+              }
+              onChange({ ...q, diagram: parsed.data, diagramChoice: 'redraw' });
+            }}
+          >
+            使用专业重绘
+          </button>
+        )}
+        {draft && (
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => setEditing(!editing)}
+          >
+            修改标注 / 重新绘制
+          </button>
+        )}
+        <button
+          type="button"
+          className="text-button"
+          onClick={() => onChange({ ...q, diagramChoice: 'skip' })}
+        >
+          跳过本题图形处理
+        </button>
+      </div>
+      {editing && draft && (
+        <div className="diagram-label-editor">
+          <p className="settings-caption">
+            只调整标注。坐标、尺寸与物理条件须由原始结构数据确定。
+          </p>
+          {draft.kind === 'experiment' ? (
+            draft.apparatus.map((a, i) => (
+              <label key={a.id}>
+                器材 {i + 1}
+                <input
+                  value={a.label ?? ''}
+                  onChange={(e) =>
+                    setDraft({
+                      ...draft,
+                      apparatus: draft.apparatus.map((v, j) =>
+                        i === j ? { ...v, label: e.target.value } : v,
+                      ),
+                    })
+                  }
+                />
+              </label>
+            ))
+          ) : draft.kind === 'geometry' ? (
+            draft.points.map((p, i) => (
+              <label key={p.id}>
+                点 {p.id}
+                <input
+                  value={p.label ?? p.id}
+                  onChange={(e) =>
+                    setDraft({
+                      ...draft,
+                      points: draft.points.map((v, j) =>
+                        i === j ? { ...v, label: e.target.value } : v,
+                      ),
+                    })
+                  }
+                />
+              </label>
+            ))
+          ) : draft.kind === 'forces' ? (
+            draft.forces.map((f, i) => (
+              <label key={f.id}>
+                力 {i + 1}
+                <input
+                  value={f.label}
+                  onChange={(e) =>
+                    setDraft({
+                      ...draft,
+                      forces: draft.forces.map((v, j) =>
+                        i === j ? { ...v, label: e.target.value } : v,
+                      ),
+                    })
+                  }
+                />
+              </label>
+            ))
+          ) : (
+            <label>
+              图注
+              <input
+                value={draft.caption ?? ''}
+                onChange={(e) =>
+                  setDraft({ ...draft, caption: e.target.value })
+                }
+              />
+            </label>
+          )}
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => {
+              const result = semanticDiagramSchema.safeParse(draft);
+              if (!result.success) {
+                setError(result.error.issues.map((i) => i.message).join('；'));
+                return;
+              }
+              setDraft(result.data);
+              setError('');
+              setEditing(false);
+            }}
+          >
+            重新绘制预览
+          </button>
+        </div>
+      )}
+      {error && (
+        <p role="alert" className="pack-error">
+          {error}
+        </p>
+      )}
+    </div>
+  );
+}
+
+export default function PackContentReview({
+  pack,
+  onChange,
+  busy: outerBusy,
+  onPendingChange,
+}: {
+  pack: Pack;
+  onChange: (pack: Pack) => void;
+  busy: boolean;
+  onPendingChange?: (blocked: boolean) => void;
+}) {
+  const { data, aiReady } = useReview(),
+    report = inspectPackContent(
+      pack,
+      data.nodes.map((n) => n.id),
+    );
+  const [selected, setSelected] = useState(
+      pack.questions.find((q) => q.type === 'subjective')?.id ?? '',
+    ),
+    [editor, setEditor] = useState(false),
+    [pending, setPending] = useState<Record<string, GradingRule>>({}),
+    [failures, setFailures] = useState<Record<string, string>>({}),
+    [busy, setBusy] = useState(false),
+    [tab, setTab] = useState<'scoring' | 'diagrams'>('scoring'),
+    [diagramId, setDiagramId] = useState('');
+  const mounted = useRef(true),
+    origin = useRef(currentNamespace()),
+    latest = useRef(pack);
+  latest.current = pack;
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  useEffect(() => {
+    onPendingChange?.(busy || Object.keys(pending).length > 0);
+  }, [busy, pending, onPendingChange]);
+  const subjective = pack.questions.filter((q) => q.type === 'subjective'),
+    illustrated = pack.questions.filter((q) => q.diagram || q.media?.length),
+    q = pack.questions.find((q) => q.id === selected),
+    dq = illustrated.find((q) => q.id === diagramId) ?? illustrated[0];
+  const safe = () => mounted.current && origin.current === currentNamespace();
+  const update = (q: Question) => {
+    if (safe())
+      onChange({
+        ...latest.current,
+        questions: latest.current.questions.map((v) => (v.id === q.id ? q : v)),
+      });
+  };
+  async function generate(ids: string[]) {
+    if (!aiReady || busy) return;
+    setBusy(true);
+    try {
+      for (const id of ids.slice(0, 5)) {
+        if (!safe()) return;
+        const current = latest.current.questions.find((q) => q.id === id)!;
+        try {
+          const r = await proposeGradingRule(
+            current,
+            latest.current.manifest.scoringPolicy,
+          );
+          if (!safe()) return;
+          setPending((p) => ({ ...p, [id]: r }));
+          setFailures((f) => {
+            const n = { ...f };
+            delete n[id];
+            return n;
+          });
+        } catch (e) {
+          if (safe())
+            setFailures((f) => ({ ...f, [id]: (e as Error).message }));
+        }
+      }
+    } finally {
+      if (safe()) setBusy(false);
+    }
+  }
+  function saveRule(rule: GradingRule) {
+    if (!q) return;
+    update({ ...q, gradingRule: rule, rubric: rule.criteria });
+    setPending((p) => {
+      const next = { ...p };
+      delete next[q.id];
+      return next;
+    });
+    setEditor(false);
+  }
+  return (
+    <section className="pack-content-review" aria-label="智能导入内容检查">
+      <div className="import-check-summary">
+        <span>
+          {pack.knowledge.length} 个知识点 · {pack.questions.length} 道题
+        </span>
+        <span
+          className={
+            report.blocked.length ? 'pack-status-update' : 'settings-caption'
+          }
+        >
+          {report.blocked.length
+            ? `${report.blocked.length} 题待确认`
+            : '内容检查通过'}
+        </span>
+      </div>
+      {!!report.missingReferences.length && (
+        <details className="import-reference-warning">
+          <summary>
+            {report.missingReferences.length} 处关联知识未在当前资料库找到
+          </summary>
+          {report.missingReferences.slice(0, 20).map((r, i) => (
+            <p key={i}>
+              {r.title} → {r.reference}
+            </p>
+          ))}
+          <p className="settings-caption">
+            请补充对应知识点；这些关联不会被编造成已掌握的内容。
+          </p>
+        </details>
+      )}
+      <nav className="pack-subnav" aria-label="内容检查类型">
+        <button
+          type="button"
+          aria-current={tab === 'scoring' ? 'page' : undefined}
+          onClick={() => setTab('scoring')}
+        >
+          评分标准 · {subjective.length}
+        </button>
+        <button
+          type="button"
+          aria-current={tab === 'diagrams' ? 'page' : undefined}
+          onClick={() => setTab('diagrams')}
+        >
+          插图与图形 · {illustrated.length}
+        </button>
+      </nav>
+      {tab === 'scoring' ? (
+        <>
+          <div className="import-scoring-policy">
+            <label>
+              学习包评分方式
+              <select
+                disabled={busy || outerBusy}
+                value={pack.manifest.scoringPolicy?.mode ?? 'auto'}
+                onChange={(e) =>
+                  onChange({
+                    ...pack,
+                    manifest: {
+                      ...pack.manifest,
+                      scoringPolicy: {
+                        mode: e.target.value as 'auto',
+                        preferences:
+                          pack.manifest.scoringPolicy?.preferences ?? '',
+                      },
+                    },
+                  })
+                }
+              >
+                {gradingModes.map(([id, label]) => (
+                  <option key={id} value={id}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              评分偏好（可选）
+              <textarea
+                rows={2}
+                placeholder="例如：阅读题重视文本证据；数学保留合理过程分。"
+                value={pack.manifest.scoringPolicy?.preferences ?? ''}
+                onChange={(e) =>
+                  onChange({
+                    ...pack,
+                    manifest: {
+                      ...pack.manifest,
+                      scoringPolicy: {
+                        mode: pack.manifest.scoringPolicy?.mode ?? 'auto',
+                        preferences: e.target.value,
+                      },
+                    },
+                  })
+                }
+              />
+            </label>
+            <p className="settings-caption">
+              已有标准原样保留。偏好仅用于你主动生成或修订的标准。
+            </p>
+          </div>
+          {!subjective.length ? (
+            <p className="settings-caption">
+              本包为客观题，无需主观题评分标准。
+            </p>
+          ) : (
+            <>
+              <div className="import-scoring-toolbar">
+                <label>
+                  查看题目
+                  <select
+                    value={selected}
+                    disabled={busy}
+                    onChange={(e) => {
+                      setSelected(e.target.value);
+                      setEditor(false);
+                    }}
+                  >
+                    {subjective.map((q, i) => (
+                      <option key={q.id} value={q.id}>
+                        {i + 1}. {q.prompt.slice(0, 50)}
+                        {report.questions.find((r) => r.id === q.id)?.scoring
+                          .length
+                          ? ' · 待补充'
+                          : ''}
+                        {pending[q.id] ? ' · 待确认' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  className="secondary"
+                  disabled={
+                    busy ||
+                    !aiReady ||
+                    !report.questions.some(
+                      (r) => r.scoring.length && !pending[r.id],
+                    )
+                  }
+                  onClick={() =>
+                    void generate(
+                      report.questions
+                        .filter((r) => r.scoring.length && !pending[r.id])
+                        .map((r) => r.id),
+                    )
+                  }
+                >
+                  {busy ? '正在生成评分建议…' : '补全缺失标准（每批最多 5 题）'}
+                </button>
+              </div>
+              {!aiReady && (
+                <p className="settings-caption">
+                  连接智能服务后可补全，或手动填写评分标准。
+                </p>
+              )}
+              {(Object.keys(pending).length > 0 ||
+                Object.keys(failures).length > 0) && (
+                <p role="status" className="settings-caption">
+                  已生成 {Object.keys(pending).length} · 待确认{' '}
+                  {Object.keys(pending).length} · 失败{' '}
+                  {Object.keys(failures).length}
+                </p>
+              )}
+              {q && (
+                <article className="import-scoring-question">
+                  <h4>{q.prompt}</h4>
+                  <details>
+                    <summary>参考答案</summary>
+                    <p>{q.answer}</p>
+                  </details>
+                  {failures[q.id] && (
+                    <p role="alert" className="pack-error">
+                      {failures[q.id]}
+                    </p>
+                  )}
+                  {editor || pending[q.id] ? (
+                    <RuleEditor
+                      key={q.id + String(!!pending[q.id])}
+                      question={q}
+                      initial={pending[q.id]}
+                      onCancel={() => {
+                        setEditor(false);
+                        setPending((p) => {
+                          const n = { ...p };
+                          delete n[q.id];
+                          return n;
+                        });
+                      }}
+                      onSave={saveRule}
+                    />
+                  ) : (
+                    <>
+                      <RuleSummary question={q} />
+                      <div className="button-row">
+                        <button
+                          type="button"
+                          className="secondary"
+                          disabled={busy}
+                          onClick={() => setEditor(true)}
+                        >
+                          编辑评分标准
+                        </button>
+                        <button
+                          type="button"
+                          className="text-button"
+                          disabled={busy || !aiReady}
+                          onClick={() => void generate([q.id])}
+                        >
+                          请 AI 提议新标准
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </article>
+              )}
+            </>
+          )}
+        </>
+      ) : illustrated.length ? (
+        <>
+          <label>
+            查看插图
+            <select
+              value={dq?.id ?? ''}
+              onChange={(e) => setDiagramId(e.target.value)}
+            >
+              {illustrated.map((q, i) => (
+                <option key={q.id} value={q.id}>
+                  {i + 1}. {q.prompt.slice(0, 50)}
+                </option>
+              ))}
+            </select>
+          </label>
+          {dq && <DiagramReview key={dq.id} q={dq} onChange={update} />}
+        </>
+      ) : (
+        <p className="settings-caption">本包没有插图。</p>
+      )}
+      {busy && (
+        <p role="status">
+          正在根据题目和参考答案准备建议；确认之前不会替换已有规则。
+        </p>
+      )}
+    </section>
+  );
+}
+export function RuleSummary({ question: q }: { question: Question }) {
+  let rule: GradingRule;
+  try {
+    rule = ruleForQuestion(q);
+  } catch {
+    return <p className="pack-status-update">尚缺评分标准</p>;
+  }
+  return (
+    <div className="rule-summary">
+      <p>
+        <strong>{gradingModes.find(([id]) => id === rule.mode)?.[1]}</strong> ·
+        满分 {rule.maxScore}
+      </p>
+      <ol>
+        {rule.criteria.map((c) => (
+          <li key={c.id}>
+            <b>
+              {c.title} · {c.max} 分
+            </b>
+            <p>{c.fullCredit ?? c.description}</p>
+            {c.partialCredit && (
+              <p className="settings-caption">部分得分：{c.partialCredit}</p>
+            )}
+          </li>
+        ))}
+      </ol>
+      {rule.solo && (
+        <details>
+          <summary>查看本题 SOLO 五级描述</summary>
+          {rule.solo.levels.map((l) => (
+            <p key={l.level}>
+              <b>
+                {l.level} · {soloNames[l.level]}
+              </b>
+              ：{l.description}
+            </p>
+          ))}
+          <p>满分要求：{rule.solo.fullCreditLevel}</p>
+        </details>
+      )}
+    </div>
+  );
+}

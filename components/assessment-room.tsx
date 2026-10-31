@@ -19,7 +19,7 @@ import {
 } from '@/lib/assessment';
 import MathText from './math-text';
 import MatchingInput from './matching-input';
-import Diagram from './diagram';
+import QuestionVisual from './question-visual';
 import QuestionReviewButton from './question-review';
 import { RemediationLauncher } from './remediation-course';
 export default function AssessmentRoom({
@@ -378,7 +378,7 @@ export default function AssessmentRoom({
           <h2>
             <MathText>{q.prompt}</MathText>
           </h2>
-          {q.diagram && <Diagram spec={q.diagram} />}{' '}
+          <QuestionVisual question={q}/>{' '}
           {isPinyin(q) ? (
             <div className="pinyin-test-note">
               <p>在心里回忆，或在纸上写下答案。</p>

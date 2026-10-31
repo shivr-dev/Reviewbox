@@ -243,13 +243,24 @@ export default function Workspace() {
     setData(await loadData());
     setPending(await pendingCount());
   }, []);
+  const [syncStatus,setSyncStatus]=useState<{account:string|null;lastSyncAt?:string;error?:string}>({account:null});
+  useEffect(()=>{setSyncStatus({account:cloudUser?.id??null});},[cloudUser?.id]);
   const sync = useCallback(async () => {
+    const syncNamespace=currentNamespace();
     setSyncing(true);
     try {
+      if(syncNamespace==='local')throw new Error('请先登录学习账户');
+      if(!navigator.onLine)throw new Error('当前离线，联网后可同步');
       await syncCloud();
+      if(syncNamespace!==currentNamespace())return false;
       await refresh();
+      if(syncNamespace!==currentNamespace())return false;
+      setSyncStatus({account:syncNamespace,lastSyncAt:new Date().toISOString()});
+      return true;
     } catch (e) {
+      if(syncNamespace===currentNamespace())setSyncStatus({account:syncNamespace,error:e instanceof Error?e.message:'同步未完成'});
       notify(e instanceof Error ? e.message : '云端暂时不可用，本地学习正常');
+      return false;
     } finally {
       setSyncing(false);
     }
@@ -491,6 +502,7 @@ export default function Workspace() {
         sync,
         pending,
         syncing,
+        syncStatus,
         prepare,
         preparing,
       }}
@@ -853,6 +865,7 @@ export default function Workspace() {
                 />
               )}
               {page === 'analytics' && <AnalyticsView />}
+              {page === 'results' && <AlphaResults initialView={section||'scores'}/>}
             </div>
           </main>
         </SidebarProvider>

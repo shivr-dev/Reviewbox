@@ -43,7 +43,7 @@ import {
   completeActiveSession,
 } from '@/lib/store';
 import { gradeAnswer } from '@/lib/ai-client';
-import Diagram from './diagram';
+import QuestionVisual from './question-visual';
 import { Empty, Heading } from './shared';
 import QuestionReviewButton from './question-review';
 import ProcessNotebook from './process-notebook';
@@ -1105,7 +1105,7 @@ export default function StudyView({
             <MathText>{q.passage}</MathText>
           </blockquote>
         )}
-        {q.diagram && <Diagram spec={q.diagram} />}
+        <QuestionVisual question={q}/>
         <div className="question-options">
           {q.options?.map((option) => (
             <button
@@ -1291,13 +1291,16 @@ export default function StudyView({
                           <span> / {grade.maxScore}</span>
                         </strong>
                       </div>
+                      <p>{grade.feedback}</p>
+                      {grade.solo&&<p><b>SOLO {grade.solo.level}</b> · {grade.solo.reason}</p>}
+                      <details className="grading-details"><summary>评分点与改进建议（{grade.criteria.length} 项）</summary>
                       {grade.criteria.map((c) => (
                         <div className="criterion" key={c.id}>
                           <div>
-                            <b>{q.rubric?.find((r) => r.id === c.id)?.title}</b>
+                            <b>{(grade.ruleSnapshot?.criteria??q.rubric)?.find((r) => r.id === c.id)?.title}</b>
                             <span>
                               {c.score} /{' '}
-                              {q.rubric?.find((r) => r.id === c.id)?.max}
+                              {(grade.ruleSnapshot?.criteria??q.rubric)?.find((r) => r.id === c.id)?.max}
                             </span>
                           </div>
                           {c.evidence && (
@@ -1307,7 +1310,8 @@ export default function StudyView({
                           <p className="muted">{c.suggestion}</p>
                         </div>
                       ))}
-                      <p>{grade.feedback}</p>
+                      {grade.ruleVersion&&<p className="muted">评分规则版本：{grade.ruleVersion}</p>}
+                      </details>
                       <details>
                         <summary>查看示例答案</summary>
                         <p>{grade.exampleAnswer}</p>

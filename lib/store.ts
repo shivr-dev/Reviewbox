@@ -174,11 +174,13 @@ export async function commitPackUpdate(preview:PackPreview&{records:LocalRecord[
   const ns=preview.namespace;
   if(ns!==currentNamespace())throw new Error('账户已切换，请重新查看更新');
   assertWritable(ns);
+  const {assertPackReady}=await import('./import-review');
   if(preview.status==='installed')return {added:0,modified:0,archived:0,retained:0,reverify:0};
   const draft=planPack(preview,preview.records,choices),merged=new Map(preview.records.filter(r=>!r.deleted).map(r=>[r.id,r]));
   for(const r of draft.writes){if(r.deleted)merged.delete(r.id);else merged.set(r.id,r);}
   const installed=draft.writes.find(r=>r.kind==='pack')!.payload;
-  const effectiveHash=await packHash({knowledge:installed.nodeIds.map((id:string)=>content(merged.get(id)!.payload)),questions:installed.questionIds.map((id:string)=>content(merged.get(id)!.payload))});
+  assertPackReady({...preview.pack,knowledge:installed.nodeIds.map((id:string)=>merged.get(id)!.payload),questions:installed.questionIds.map((id:string)=>merged.get(id)!.payload)});
+  const effectiveHash=await packHash({knowledge:installed.nodeIds.map((id:string)=>content(merged.get(id)!.payload)),questions:installed.questionIds.map((id:string)=>content(merged.get(id)!.payload)),scoringPolicy:installed.scoringPolicy});
   const plan=planPack(preview,preview.records,choices,draft.writes[0].updated_at,draft.id,effectiveHash),db=await database();
   const tx=db.transaction(['records','queue'],'readwrite');
   try {
@@ -431,7 +433,7 @@ export async function exportBackup() {
     records: await allRecords(),
   };
 }
-export async function restoreBackup(value: any) {
+export async function restoreBackup(value: any, ns=currentNamespace()) {
   if (
     value?.schemaVersion !== 1 ||
     !Array.isArray(value.records) ||
@@ -450,7 +452,8 @@ export async function restoreBackup(value: any) {
     'pack',
     'job',
   ];
-  const current = new Map((await allRecords()).map((r) => [r.id, r]));
+  const current = new Map((await allRecords(ns)).map((r) => [r.id, r]));
+  if(ns!==currentNamespace())throw new Error('账户已切换，请重新选择备份');
   const rows: LocalRecord[] = [];
   for (const r of value.records) {
     if (
@@ -471,7 +474,8 @@ export async function restoreBackup(value: any) {
         deleted: !!r.deleted,
       });
   }
-  await saveRecords(rows);
+  if(ns!==currentNamespace())throw new Error('账户已切换，请重新选择备份');
+  await saveRecords(rows,true,ns);
   return rows.length;
 }
 
