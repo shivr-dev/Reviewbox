@@ -1,13 +1,11 @@
 import {SUBJECTS,subjectName,type StudyData,type Pack,type LocalRecord} from './model';
-import {corePack} from './seed';
 
 /** Metadata is synced independently of question downloads, so the watch can browse all installed packs. */
 export function watchPackageCatalog(data:StudyData) {
-  return data.packs.map(manifest=>{
-    const core=manifest.id===corePack.manifest.id;
-    const nodeIds=manifest.nodeIds??(core?corePack.knowledge.map(n=>n.id):null);
-    const questionIds=manifest.questionIds??(core?corePack.questions.map(q=>q.id):null);
-    return {packId:manifest.id,title:manifest.title,version:manifest.version,subject:manifest.subject,
+  return data.packs.filter(p=>!['review-core','review-framework'].includes(p.id)).map(manifest=>{
+    const nodeIds=manifest.nodeIds??null;
+    const questionIds=manifest.questionIds??null;
+    return {packId:manifest.id,title:manifest.title,version:manifest.version,contentHash:(manifest as any).contentHash,subject:manifest.subject,
       questionCount:questionIds?.length??0,downloadable:!!(nodeIds?.length&&questionIds?.length),
       unavailableReason:nodeIds&&questionIds?'':'旧学习包缺少内容清单，请在网页重新导入原包'};
   });
@@ -15,14 +13,15 @@ export function watchPackageCatalog(data:StudyData) {
 
 /** Reconstruct only this installed package, never all content from its subject. */
 export function installedWatchPackage(data:StudyData,packId:string):Pack {
+  if(['review-core','review-framework'].includes(packId))throw new Error('系统框架与早期示例仅保留存档，不再提供学习包下载入口');
   const manifest=data.packs.find(p=>p.id===packId);
   if(!manifest)throw new Error('学习包尚未安装，请先在网页导入');
-  const nodeIds=manifest.nodeIds??(packId===corePack.manifest.id?corePack.knowledge.map(n=>n.id):null);
-  const questionIds=manifest.questionIds??(packId===corePack.manifest.id?corePack.questions.map(q=>q.id):null);
+  const nodeIds=manifest.nodeIds??null;
+  const questionIds=manifest.questionIds??null;
   if(!nodeIds||!questionIds)throw new Error('此旧学习包缺少内容清单，请重新导入原学习包以恢复下载');
   const knowledge=data.nodes.filter(n=>nodeIds.includes(n.id));
   const questions=data.questions.filter(q=>questionIds.includes(q.id)&&knowledge.some(n=>n.id===q.nodeId));
-  if(!knowledge.length||!questions.length)throw new Error('学习包内容不完整，请重新导入');
+  if(!knowledge.length||!questions.length||knowledge.length!==new Set(nodeIds).size||questions.length!==new Set(questionIds).size)throw new Error('学习包内容尚未完整同步，请完成同步后重试；不会下载不完整的版本');
   return {schemaVersion:1,manifest:{...manifest,nodeIds:knowledge.map(n=>n.id),questionIds:questions.map(q=>q.id)},knowledge,questions};
 }
 

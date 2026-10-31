@@ -14,7 +14,7 @@ export function projectRecords(input: LocalRecord[]): StudyData {
     const stamp=(r:LocalRecord)=>Date.parse(r.updated_at)||0;
     if(!previous||stamp(row)>stamp(previous)||(stamp(row)===stamp(previous)&&row.id===id))logicalJobs.set(id,row);
   }
-  const jobs = [...logicalJobs.values()].map(r=>r.payload);
+  const jobs = [...logicalJobs.values()].filter(r=>r.payload.kind!=='pack-version-part').map(r=>r.payload);
   const jobMap = new Map(jobs.map((j) => [j.id, j]));
   const hydrated = jobs.map((j) =>
     j.kind === 'course' && j.storageVersion === 1

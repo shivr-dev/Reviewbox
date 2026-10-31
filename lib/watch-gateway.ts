@@ -1,4 +1,5 @@
 import { projectRecords } from './record-projection';
+import {previewPack} from './pack-versions';
 import { watchAnswerEvent, WATCH_CORE_VERSION } from './watch-core';
 import { validResult, validExamDate } from './exam-outcomes';
 import {startWatchSession,answerWatchSession,finishWatchSession} from './watch-session';
@@ -118,6 +119,10 @@ export function createWatchGateway(options:GatewayOptions) {
           const status=await rpc('status',{accessHash});
           if(action==='public-pack-download') {
             if(!/^[a-f0-9-]{36}$/.test(body.publicId??''))throw new Error('学习包标识无效');
+            const published=await rest('/rest/v1/review_public_packs?id=eq.'+encodeURIComponent(body.publicId)+'&published=eq.true&select=pack&limit=1');
+            if(!published[0]?.pack)throw new Error('学习包已撤回或不存在');
+            const preview=await previewPack(published[0].pack,await ownedRecords(status.userId,true));
+            if(preview.changes.some(c=>c.conflict)||(preview.manifest&&(preview.manifest.version!==published[0].pack.manifest.version||preview.changes.some(c=>c.action!=='same'))))throw new Error('此学习包需要确认版本差异，请先在资料库处理更新；手表原有下载与作答已保留');
             // The database reads the published content itself, derives the account from the
             // device grant and preserves previously reviewed private copies on repeat download.
             const installed=await rpc('install-public-pack',{accessHash,publicId:body.publicId});

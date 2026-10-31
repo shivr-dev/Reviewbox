@@ -371,12 +371,15 @@ class WatchModel @JvmOverloads constructor(app: Application, client: WatchDevice
         val localId=if(publicPack)pack.getJSONObject("manifest").getString("id") else packId
         val info = JSONObject().put("id", localId).put("questionIds", JSONArray(pack.getJSONArray("questions").objects().map { it.getString("id") }))
             .put("subject", pack.getJSONObject("manifest").optString("subject")).put("version", pack.getJSONObject("manifest").getString("version"))
-            .put("title", pack.getJSONObject("manifest").getString("title"))
+            .put("title", pack.getJSONObject("manifest").getString("title")).put("contentHash",pack.getJSONObject("manifest").optString("contentHash"))
             .put("bytes", result.getInt("bytes")).put("questions", pack.getJSONArray("questions").length()).put("downloadedAt", Instant.now().toString())
         val publicId=if(publicPack)packId else downloads.find {it.optString("id")==localId}?.optString("publicId")
         if(!publicId.isNullOrBlank())info.put("publicId",publicId)
         store.transaction {
-            val all = records().objects().associateBy { it.getString("id") }.toMutableMap()
+            val oldPacks=store.array("downloaded-packs").objects()
+            val oldRecords=records().objects()
+            val retained=if(oldPacks.any{it.optString("id")==localId})offlineRemoval(oldPacks,localId,oldRecords,store.json("active-session")).records else oldRecords
+            val all = retained.associateBy { it.getString("id") }.toMutableMap()
             result.getJSONArray("records").objects().forEach { all[it.getString("id")] = it }
             store.put("records", JSONArray(all.values.toList()).toString()); store.put("package:$localId", source)
             store.put("downloaded-packs", JSONArray(store.array("downloaded-packs").objects().filter { it.optString("id") != localId } + info).toString())

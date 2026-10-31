@@ -15,6 +15,11 @@ class LearningCoreRuntimeTest {
         val core = LearningCore(context)
         val records = JSONArray(context.assets.open("demo-records.json").bufferedReader().use { it.readText() })
         val now = Instant.parse("2026-10-25T00:10:00Z").toEpochMilli()
+        // The demo is generated on build day; keep evidence before this test's fixed clock.
+        records.objects().filter {it.optString("kind")=="exam"}.forEach {row ->
+            val exam=row.getJSONObject("payload")
+            if(exam.has("result")){exam.put("date","2026-10-23");exam.getJSONObject("result").put("recordedAt","2026-10-24T12:00:00Z")}
+        }
         suspend fun call(op: String, input: JSONObject = JSONObject()) = core.invoke(JSONObject().put("op", op).put("records", records).put("now", now).put("input", input)) as JSONObject
         try {
             val snapshot = call("snapshot")

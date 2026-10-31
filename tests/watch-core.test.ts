@@ -229,7 +229,7 @@ test('native public catalog requires a valid grant, and public download installs
    if(u.pathname.endsWith('review_device_api')){const c=JSON.parse(init.body);assert.equal(c.actor,null);
      if(c.action==='status')return Response.json({userId:'owner',deviceId:'device'});
      assert.equal(c.action,'install-public-pack');assert.deepEqual(Object.keys(c.body).sort(),['accessHash','publicId']);installed=true;return Response.json({packId:manifest.id});}
-   if(u.pathname.endsWith('review_public_packs')){assert.equal(u.searchParams.get('published'),'eq.true');assert.ok(!u.searchParams.get('select')?.includes('owner'));listed=true;return Response.json([{id:'12345678-1234-1234-1234-123456789abc',title:'公共样例'}]);}
+   if(u.pathname.endsWith('review_public_packs')){assert.equal(u.searchParams.get('published'),'eq.true');assert.ok(!u.searchParams.get('select')?.includes('owner'));listed=true;return Response.json([{id:'12345678-1234-1234-1234-123456789abc',title:'公共样例',pack:{schemaVersion:1,manifest,knowledge:[n],questions:[q]}}]);}
    assert.equal(u.searchParams.get('user_id'),'eq.owner');return Response.json(rows);
  }) as any});
  const make=(action:string,body:any={},auth=true)=>new Request('https://edge.invalid',{method:'POST',headers:auth?{Authorization:'Device '+'a'.repeat(64)}:{},body:JSON.stringify({action,body})});
@@ -243,6 +243,19 @@ test('gateway normalizes database expiry for older Android clients without chang
  const gateway=createWatchGateway({url:'https://test.invalid',serviceKey:'server',fetcher:(async()=>Response.json({accessUntil:'2026-10-25T12:38:32.613642+00:00',refreshUntil:'2026-11-25T12:38:32.613642+00:00'})) as any});
  const r=await gateway(new Request('https://edge.invalid',{method:'POST',body:JSON.stringify({action:'refresh',body:{refresh:'a'.repeat(64),nextAccess:'b'.repeat(64),nextRefresh:'c'.repeat(64),requestId:'12345678-1234-1234-1234-123456789abc'}})}));
  assert.equal(r.status,200);assert.equal((await r.json() as any).accessUntil,'2026-10-25T12:38:32.613Z');
+});
+test('native public updates cannot silently return an old version or install a conflicting manifest',async()=>{
+ const d=fixture(),q=d.questions[0],n=d.nodes.find(n=>n.id===q.nodeId)!;
+ const manifest={id:'preflight-package',title:'版本测试',subject:q.subject,version:'1',nodeIds:[n.id],questionIds:[q.id]};
+ let rows=[...records(d),{id:'pack:'+manifest.id,kind:'pack',payload:manifest,updated_at:new Date(now).toISOString(),deleted:false}],installed=false;
+ const incoming={schemaVersion:1,manifest:{...manifest,version:'2'},knowledge:[n],questions:[{...q,prompt:'新版内容'}]};
+ const gateway=createWatchGateway({url:'https://test.invalid',serviceKey:'server',fetcher:(async(url:any,init:any)=>{
+  const u=new URL(url);if(u.pathname.endsWith('review_device_api')){const body=JSON.parse(init.body);if(body.action==='status')return Response.json({userId:'owner',deviceId:'device'});installed=true;throw new Error('Must not write');}
+  if(u.pathname.endsWith('review_public_packs'))return Response.json([{pack:incoming}]);assert.equal(u.searchParams.get('user_id'),'eq.owner');return Response.json(rows);
+ }) as any});
+ const call=()=>gateway(new Request('https://edge.invalid',{method:'POST',headers:{Authorization:'Device '+'a'.repeat(64)},body:JSON.stringify({action:'public-pack-download',body:{publicId:'12345678-1234-1234-1234-123456789abc'}})}));
+ const result=await call();assert.equal(result.status,400);assert.match((await result.json() as any).error,/版本差异/);assert.equal(installed,false);
+ rows=rows.filter(r=>r.kind!=='pack');assert.equal((await call()).status,400);assert.equal(installed,false);
 });
 
 

@@ -176,7 +176,7 @@ import org.json.JSONObject
                         if(packages.isEmpty())item { Copy("还没有学习包。在网页导入“我的学习包”，同步后即可在这里选择。", Muted) }
                         items(packages) { p ->
                             val installed=vm.downloads.find { it.optString("id",it.optString("subject"))==p.getString("packId") }
-                            val status=if(installed==null)"未下载" else if(installed.optString("version")==p.optString("version"))"已下载" else "有更新"
+                            val status=if(installed==null)"未下载" else if(installed.optString("version")==p.optString("version")&&(p.optString("contentHash").isBlank()||installed.optString("contentHash")==p.optString("contentHash")))"已下载" else "有更新"
                             NavigationRow(if(installed==null)"↓" else "✓",p.optString("title"),status+" · "+p.optInt("questionCount",installed?.optInt("questions")?:0)+" 题") {
                                 vm.detail=p;vm.go("offline-package")
                             }

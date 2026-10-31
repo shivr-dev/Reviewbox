@@ -1,3 +1,4 @@
+import {previewPack,planPack,stable,content,packHash,packVersions,type PackPreview,type PackChoices} from './pack-versions';
 import { apiFetch } from './runtime';
 import { openDB, type IDBPDatabase } from 'idb';
 import { corePack } from './seed';
@@ -166,36 +167,51 @@ export async function loadData(ns = namespace): Promise<StudyData> {
   return projectRecords(await allRecords(ns));
 }
 
-export async function installPack(pack: Pack, ns = currentNamespace()) {
-  const existing = await allRecords(ns);
-  if (currentNamespace() !== ns) throw new Error('账户已切换，请重新安装学习包');
-  const old = new Map(existing.map((r) => [r.id, r]));
-  const records: LocalRecord[] = [];
-  const now = new Date().toISOString();
-  for (const [kind, list] of [
-    ['node', pack.knowledge],
-    ['question', pack.questions],
-  ] as const) {
-    for (const payload of list) {
-      const r = old.get(payload.id);
-      if (r && r.payload.source !== payload.source) continue;
-      records.push({
-        id: payload.id,
-        kind,
-        payload,
-        updated_at: now,
-        deleted: false,
-      });
+export async function previewInstallPack(pack:Pack,ns=currentNamespace()) {
+  const records=await allRecords(ns);return {...await previewPack(pack,records),records,namespace:ns};
+}
+export async function commitPackUpdate(preview:PackPreview&{records:LocalRecord[];namespace:string},choices:PackChoices={}) {
+  const ns=preview.namespace;
+  if(ns!==currentNamespace())throw new Error('账户已切换，请重新查看更新');
+  assertWritable(ns);
+  if(preview.status==='installed')return {added:0,modified:0,archived:0,retained:0,reverify:0};
+  const draft=planPack(preview,preview.records,choices),merged=new Map(preview.records.filter(r=>!r.deleted).map(r=>[r.id,r]));
+  for(const r of draft.writes){if(r.deleted)merged.delete(r.id);else merged.set(r.id,r);}
+  const installed=draft.writes.find(r=>r.kind==='pack')!.payload;
+  const effectiveHash=await packHash({knowledge:installed.nodeIds.map((id:string)=>content(merged.get(id)!.payload)),questions:installed.questionIds.map((id:string)=>content(merged.get(id)!.payload))});
+  const plan=planPack(preview,preview.records,choices,draft.writes[0].updated_at,draft.id,effectiveHash),db=await database();
+  const tx=db.transaction(['records','queue'],'readwrite');
+  try {
+    const rows=await tx.objectStore('records').getAll();
+    const changedQuestions=new Set(plan.writes.filter(r=>r.kind==='question').map(r=>r.id));
+    if(rows.some(r=>r.namespace===ns&&!r.deleted&&r.kind==='job'&&['active','break'].includes(r.payload.status)&&(r.payload.items??[]).some((i:any)=>changedQuestions.has(i.question?.id??i.questionId))))throw new Error('这些题目正在未完成的学习或考试中使用，请先完成或退出该任务后再更新');
+    const old=new Map(preview.records.map(r=>[r.id,r]));
+    const guarded=new Set([...plan.writes.filter(r=>r.kind!=='job').map(r=>r.id),...preview.changes.map(c=>c.id)]);
+    for(const id of guarded){const r={id};
+      const current=rows.find(x=>x.key===ns+'/'+r.id),expected=old.get(r.id);
+      if(stable(current?{kind:current.kind,payload:current.payload,deleted:current.deleted}:null)!==stable(expected?{kind:expected.kind,payload:expected.payload,deleted:expected.deleted}:null))throw new Error('内容刚刚发生变化，请重新查看更新；尚未写入任何修改');
     }
-  }
-  records.push({
-    id: 'pack:' + pack.manifest.id,
-    kind: 'pack',
-    payload: { ...pack.manifest, nodeIds: pack.knowledge.map(n => n.id), questionIds: pack.questions.map(q => q.id) },
-    updated_at: now,
-    deleted: false,
-  });
-  await saveRecords(records, true, ns);
+    if(ns!==currentNamespace())throw new Error('账户已切换');
+    for(const r of plan.writes){const row={...r,key:ns+'/'+r.id,namespace:ns};await tx.objectStore('records').put(row);await tx.objectStore('queue').put(row);}
+    await tx.done;return plan.counts;
+  } catch(e){try{tx.abort();}catch{}await tx.done.catch(()=>{});throw e;}
+}
+export async function installPack(pack:Pack,ns=currentNamespace(),choices:PackChoices={}) {
+  return commitPackUpdate(await previewInstallPack(pack,ns),choices);
+}
+export async function undoPackUpdate(versionId:string,ns=currentNamespace()) {
+  assertWritable(ns);const db=await database(),tx=db.transaction(['records','queue'],'readwrite');
+  try {
+    const rows=(await tx.objectStore('records').getAll()).filter(r=>r.namespace===ns);
+    const version=packVersions(rows).find(r=>r.id===versionId)?.payload;
+    if(version?.incomplete)throw new Error('版本历史尚未完整同步，请稍后重试');
+    if(!version||rows.find(r=>r.kind==='pack'&&!r.deleted&&r.payload.id===version.packId)?.payload.installationId!==versionId)throw new Error('只可直接撤销当前版本；更早版本请使用版本预览');
+    for(const after of version.after){const current=rows.find(r=>r.id===after.id);if(!current||stable(current.payload)!==stable(after.payload)||current.deleted!==after.deleted)throw new Error('更新后内容已被修改，请通过版本预览回滚以保护你的修改');}
+    if(ns!==currentNamespace())throw new Error('账户已切换');
+    const at=new Date().toISOString();
+    for(const after of version.after){const before=version.before.find((r:LocalRecord)=>r.id===after.id);if(after.kind==='node'&&!before)continue;const r={...(before??after),deleted:before?.deleted??true,updated_at:at,key:ns+'/'+after.id,namespace:ns};await tx.objectStore('records').put(r);await tx.objectStore('queue').put(r);}
+    await tx.done;
+  }catch(e){try{tx.abort();}catch{}await tx.done.catch(()=>{});throw e;}
 }
 export async function initialize() {
   if (!(await allRecords()).some((r) => r.kind === 'node'))
@@ -223,25 +239,6 @@ export async function initialize() {
         })),
     );
     await setMeta('biology-framework-v1:' + namespace, true);
-  }
-  if (!(await getMeta('personal-mode:' + namespace))) {
-    const rows = await allRecords();
-    const used = new Set(
-      rows.filter((r) => r.kind === 'event').map((r) => r.payload.questionId),
-    );
-    const optional = rows.filter(
-      (r) =>
-        r.kind === 'question' && r.id.startsWith('core-') && !used.has(r.id),
-    );
-    if (optional.length)
-      await saveRecords(
-        optional.map((r) => ({
-          ...r,
-          deleted: true,
-          updated_at: new Date().toISOString(),
-        })),
-      );
-    await setMeta('personal-mode:' + namespace, true);
   }
   try {
     await navigator.storage?.persist?.();

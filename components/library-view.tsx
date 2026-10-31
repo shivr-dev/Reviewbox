@@ -1,7 +1,8 @@
 'use client';
 import ManualImport from './manual-import';
-import WatchPackageCard from './watch-package-card';
-import PublicPackLibrary from './public-pack-library';
+import PackWorkspace from './pack-workspace';
+import PackUpdateReview from './pack-update-review';
+
 import QuestionReviewButton from './question-review';
 import { parseImportText } from '@/lib/import-skill';
 import {
@@ -58,7 +59,7 @@ import {
   validatePack,
   questionSchema,
 } from '@/lib/importer';
-import { corePack } from '@/lib/seed';
+
 import { Choice, Empty, Heading, SubjectChoice, dateLabel } from './shared';
 export default function LibraryView({
   initialTab = 'materials',
@@ -90,6 +91,9 @@ export default function LibraryView({
     [type, setType] = useState('recall'),
     [difficulty, setDifficulty] = useState('2'),
     [newNodeTitle, setNewNodeTitle] = useState('');
+  const [materialPage,setMaterialPage]=useState(0),[questionPage,setQuestionPage]=useState(0),[materialOrder,setMaterialOrder]=useState('new');
+  useEffect(()=>{setMaterialPage(0);setQuestionPage(0);},[search,filter]);
+  const materials=data.materials.filter(m=>(filter==='all'||m.subject===filter)&&m.name.toLowerCase().includes(search.toLowerCase())).sort((a,b)=>materialOrder==='name'?a.name.localeCompare(b.name,'zh-CN'):b.date.localeCompare(a.date));
   const fileInput = useRef<HTMLInputElement>(null);
   const chosenNode = data.nodes.find((n) => n.id === nodeId);
   const visibleNodes = data.nodes.filter((n) => n.subject === subject);
@@ -100,6 +104,8 @@ export default function LibraryView({
         .toLowerCase()
         .includes(search.toLowerCase()),
   );
+  const materialPages=Math.max(1,Math.ceil(materials.length/12)),questionPages=Math.max(1,Math.ceil(questions.length/20));
+  const mp=Math.min(materialPage,materialPages-1),qp=Math.min(questionPage,questionPages-1);
   const wrongQuestions = getWrongQuestions(data);
 
   async function file(file?: File) {
@@ -309,19 +315,15 @@ export default function LibraryView({
       setBusy(false);
     }
   }
-  const packs = [
-    corePack,
-    ...remotePacks.filter((p) => p.manifest.id !== corePack.manifest.id),
-  ];
   return (
     <>
       <Heading
         eyebrow="YOUR LEARNING LIBRARY"
-        title="把资料，变成自己的知识。"
-        description="个人资料和学习记录只同步到自己的云端账户。"
+        title="资料库"
+        description="管理自己的资料、题目与学习包。"
         action={
           <div className="button-row">
-            <ManualImport subject={initialSubject} />
+            <button className="secondary" onClick={()=>setTab('data')}>备份与数据</button>
             <button
               className="primary"
               onClick={() => {
@@ -330,7 +332,7 @@ export default function LibraryView({
               }}
             >
               <Upload size={16} />
-              智能导入
+              导入
             </button>
           </div>
         }
@@ -339,37 +341,14 @@ export default function LibraryView({
         <TabsList variant="line" className="page-tabs">
           <TabsTrigger value="materials">学习资料</TabsTrigger>
           <TabsTrigger value="questions">题目库</TabsTrigger>
-          <TabsTrigger value="content">我的学习包</TabsTrigger>
-          <TabsTrigger value="data">数据中心</TabsTrigger>
+          <TabsTrigger value="content">学习包</TabsTrigger>
+
         </TabsList>
         <TabsContent value="materials">
-          <div className="toolbar"><button className="secondary" onClick={() => setTab('content')}><Upload size={16}/> 上传 / 浏览公共学习包</button><span className="muted">在“我的学习包”中下载到手表；公开发布前需单独确认。</span></div>
-          <div
-            className="import-callout"
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => {
-              e.preventDefault();
-              setImportOpen(true);
-              void file(e.dataTransfer.files[0]);
-            }}
-          >
-            <span className="import-icon">
-              <Upload size={25} />
-            </span>
-            <div className="grow">
-              <h2>课件、笔记、字词，都可以从这里开始</h2>
-              <p className="muted">
-                PDF · DOCX · PPTX · 图片 · 文本 · JSON · CSV · Excel
-              </p>
-            </div>
-            <button className="secondary" onClick={() => setImportOpen(true)}>
-              选择文件或粘贴文字
-              <ArrowRight size={16} />
-            </button>
-          </div>
-          {data.materials.length ? (
+          <div className="pack-toolbar"><input aria-label="搜索资料" placeholder="搜索我的资料" value={search} onChange={e=>setSearch(e.target.value)}/><SubjectChoice value={filter} onChange={setFilter} all/><select aria-label="资料排序" value={materialOrder} onChange={e=>setMaterialOrder(e.target.value)}><option value="new">最近添加</option><option value="name">按名称</option></select></div>
+          {materials.length ? (
             <div className="material-grid">
-              {data.materials.map((m) => (
+              {materials.slice(mp*12,mp*12+12).map((m) => (
                 <section className="panel" key={m.id}>
                   <FileText size={21} />
                   <h3>{m.name}</h3>
@@ -409,6 +388,7 @@ export default function LibraryView({
               </Empty>
             </section>
           )}
+          <footer className="pack-pagination"><button disabled={mp===0} onClick={()=>setMaterialPage(mp-1)}>上一页</button><span>{mp+1} / {materialPages}</span><button disabled={mp+1>=materialPages} onClick={()=>setMaterialPage(mp+1)}>下一页</button></footer>
         </TabsContent>
         <TabsContent value="questions">
           <div className="toolbar">
@@ -431,7 +411,7 @@ export default function LibraryView({
             共 {questions.length} 道题目 · 每道题都关联一个知识点与具体能力
           </p>
           <div className="panel question-list">
-            {questions.slice(0, 100).map((q) => (
+            {questions.slice(qp*20,qp*20+20).map((q) => (
               <details key={q.id}>
                 <summary>
                   <span className="grow">
@@ -483,72 +463,9 @@ export default function LibraryView({
               </Empty>
             )}
           </div>
+          <footer className="pack-pagination"><button disabled={qp===0} onClick={()=>setQuestionPage(qp-1)}>上一页</button><span>{qp+1} / {questionPages}</span><button disabled={qp+1>=questionPages} onClick={()=>setQuestionPage(qp+1)}>下一页</button></footer>
         </TabsContent>
-        <TabsContent value="content">
-          <WatchPackageCard/>
-          <PublicPackLibrary/>
-          <div className="content-heading">
-            <h2>学习包</h2>
-            <p className="muted">可选示例包；个人内容仅在你明确确认发布后公开。</p>
-          </div>
-          <div className="pack-grid">
-            {packs.map((p) => {
-              const installed = data.packs.find((x) => x.id === p.manifest.id);
-              return (
-                <section className="panel pack-card" key={p.manifest.id}>
-                  <div className="section-head">
-                    <span className="pack-icon">
-                      <Package size={24} />
-                    </span>
-                    <span className="subtle-badge">v{p.manifest.version}</span>
-                  </div>
-                  <h2>{p.manifest.title}</h2>
-                  <p className="muted">{p.manifest.description}</p>
-                  <div className="pack-meta">
-                    <span>{p.knowledge.length} 个知识点</span>
-                    <span>{p.questions.length} 道题目</span>
-                    <span>{p.manifest.compatibility}</span>
-                  </div>
-                  <details>
-                    <summary>更新说明</summary>
-                    <p>{p.manifest.changelog}</p>
-                  </details>
-                  <div className="button-row">
-                    <button
-                      className="primary"
-                      disabled={data.questions.some(
-                        (q) => q.id === p.questions[0]?.id,
-                      )}
-                      onClick={async () => {
-                        await installPack(p);
-                        await refresh();
-                        notify('学习包已安装');
-                      }}
-                    >
-                      {installed?.version === p.manifest.version ? (
-                        <>
-                          <Check size={15} />
-                          已安装
-                        </>
-                      ) : installed ? (
-                        '更新学习包'
-                      ) : (
-                        '安装学习包'
-                      )}
-                    </button>
-                    <button
-                      className="secondary"
-                      onClick={() => downloadPack(p)}
-                    >
-                      <Download size={15} />
-                      下载
-                    </button>
-                  </div>
-                </section>
-              );
-            })}
-          </div>
-          <section className="panel">
+        <TabsContent value="content"><PackWorkspace onImport={()=>{setStage(null);setImportOpen(true);}}/><details className="pack-export"><summary>导出我整理的内容</summary>          <section className="panel">
             <h2>打包自己的课程</h2>
             <p className="muted">
               导出题目、知识点和评分标准，保存在自己的设备中，或用于私有云端备份。
@@ -583,7 +500,7 @@ export default function LibraryView({
               导出自建学习包
             </button>
           </section>
-        </TabsContent>
+</details></TabsContent>
         <TabsContent value="data">
           <WrongNotebook />
           <div className="subject-stat-row">
@@ -706,7 +623,7 @@ export default function LibraryView({
             accept=".pdf,.docx,.pptx,.txt,.md,.json,.csv,.tsv,.xlsx,.xls,.zip,image/*"
             onChange={(e) => void file(e.target.files?.[0])}
           />
-          {stage ? (
+          {stage?.pack ? <PackUpdateReview pack={stage.pack} onCancel={()=>setStage(null)} onDone={()=>{setStage(null);setImportOpen(false);setText('');}}/> : stage ? (
             <>
               <div className="import-result">
                 <Check size={21} />
@@ -763,7 +680,7 @@ export default function LibraryView({
                   <Upload size={16} />
                   {busy ? '正在识别文件…' : '选择文件'}
                 </button>
-                <span className="muted">最多 15 MB · 图片识别首次需要联网</span>
+                <ManualImport subject={initialSubject}/><span className="muted">最多 15 MB · 图片识别首次需要联网</span>
               </div>
               <label>
                 资料名称
