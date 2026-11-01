@@ -7,6 +7,7 @@ import OnboardingAccount from '../components/onboarding-account';
 import { ReviewContext } from '../components/review-context';
 import { loadData, switchAccount, put } from '../lib/store';
 import { AGREEMENT_VERSION } from '../lib/product-agreement';
+import i18n from '../lib/i18n';
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 Object.defineProperty(globalThis, 'localStorage', {
   value: window.localStorage,
@@ -14,6 +15,10 @@ Object.defineProperty(globalThis, 'localStorage', {
 });
 window.scrollTo = () => {};
 const pause = () => new Promise((r) => setTimeout(r, 15));
+async function until(predicate: () => boolean) {
+  for (let attempt=0; attempt<120 && !predicate(); attempt++) await act(async()=>{await pause();});
+  assert.ok(predicate(), 'Expected the asynchronous UI transition to finish');
+}
 test('a locked device can enter its connection passphrase and account credentials in one form', async () => {
   const host = document.createElement('div'); document.body.appendChild(host); const root = createRoot(host);
   const original = globalThis.fetch;
@@ -105,13 +110,18 @@ test('onboarding requires agreement, permits statistics opt-out, then allows ski
     const saved = (await loadData()).settings;
     assert.equal(saved.termsAcceptance?.version, AGREEMENT_VERSION);
     assert.equal(saved.productDataCollection?.enabled, false);
+    await until(() => !!host.querySelector('form input[type=email]'));
     assert.match(host.textContent!, /连接你的学习账户/);
     assert.ok(host.querySelector('input[type=email]'));
     assert.ok(host.querySelector('input[type=password]'));
+    await act(async()=>{await i18n.changeLanguage('ja');});
+    assert.match(host.querySelector('h1')!.textContent!, /学習アカウントを接続/);
+    await act(async()=>{await i18n.changeLanguage('zh-CN');});
     await act(async () => {
       button('暂时跳过').click();
       await pause();
     });
+    await until(() => !!host.querySelector('.onboarding-beta'));
     assert.match(host.textContent!, /一起打磨 Reviewbox 测试版/);
     assert.match(host.textContent!, /我的 → 数据与隐私 → 反馈/);
     await act(async () => {
@@ -119,9 +129,7 @@ test('onboarding requires agreement, permits statistics opt-out, then allows ski
       await pause();
     });
     assert.ok((await loadData()).settings.assistant?.onboardedAt);
-    for (let attempt = 0; attempt < 20 && !destinations.length; attempt++) {
-      await act(async () => { await pause(); });
-    }
+    await until(() => !!destinations.length);
     assert.deepEqual(destinations, ['home']);
   } finally {
     globalThis.fetch = original;

@@ -1,5 +1,6 @@
 'use client';
 import { tr } from '@/lib/i18n';
+import { useTranslation } from 'react-i18next';
 import { useRef, useState, type CSSProperties } from 'react';
 import {
   ArrowLeft,
@@ -27,19 +28,11 @@ import {
 } from '@/lib/product-agreement';
 import { collectionEnabled, trackProductEvent } from '@/lib/product-insights';
 import OnboardingAccount from './onboarding-account';
-const steps = [
-  '欢迎来到 Review',
-  tr('planner:先回忆，再核对'),
-  tr('planner:认识几个标志'),
-  tr('planner:每天留多少时间？'),
-  tr('planner:最重视哪几科？'),
-  tr('planner:导入你的学习内容'),
-  tr('planner:建立你的能力起点'),
-  tr('settings:使用协议与隐私说明'),
-  tr('settings:连接你的学习账户'),
-  tr('settings:一起打磨 Reviewbox 测试版'),
-];
 export default function OnboardingView() {
+  useTranslation();
+  const steps = ['planner:欢迎来到 Review','planner:先回忆，再核对','planner:认识几个标志','planner:每天留多少时间？',
+    'planner:最重视哪几科？','planner:导入你的学习内容','planner:建立你的能力起点','settings:使用协议与隐私说明',
+    'settings:连接你的学习账户','settings:一起打磨 Reviewbox 测试版'].map(key => tr(key));
   const { data, navigate, refresh, notify, start, cloudUser } = useReview();
   const previous = data.settings.assistant;
   const [step, setStep] = useState(() =>

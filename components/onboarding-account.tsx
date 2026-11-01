@@ -79,7 +79,7 @@ export default function OnboardingAccount({
         throw new Error(tr('settings:账户已切换，请重新打开引导。'));
       if (result.confirmationRequired) {
         trackProductEvent('registration_confirmation', 'profile');
-        setMessage(result.message);
+        setMessage(tr('settings:' + result.message));
         setRegister(false);
         return;
       }
@@ -132,7 +132,7 @@ export default function OnboardingAccount({
       }
       setError(
         e instanceof Error
-          ? e.message
+          ? tr('settings:' + e.message)
           : tr('settings:连接未完成，请稍后重试。'),
       );
     } finally {

@@ -16,7 +16,16 @@ export function resolveLocale(saved:string|undefined,browser:readonly string[]=[
 }
 void i18n.use({type:'backend',init(){},read(language:string,namespace:string,callback:(error:Error|null,data?:Record<string,string>)=>void){const loader=localeLoaders[language]?.[namespace];if(!loader){callback(null,{});return;}void loader().then(m=>callback(null,m.default)).catch(e=>callback(e));}}).use(initReactI18next).init({resources,partialBundledLanguages:true,lng:'zh-CN',fallbackLng:'zh-CN',supportedLngs:LOCALES,defaultNS:'common',ns:Object.keys(resources['zh-CN']),keySeparator:false,initAsync:false,interpolation:{escapeValue:false},returnEmptyString:false});
 /** Only authored UI strings call this. Imported content never passes through it. */
-export function tr(key:string,options:Record<string,unknown>={}){return String(i18n.t(key,{defaultValue:key.slice(key.indexOf(':')+1),...options}));}
+export function tr(key:string,options:Record<string,unknown>={}){
+ const split=key.indexOf(':'), namespace=split>=0?key.slice(0,split):'';
+ if(namespace&&Object.hasOwn(resources['zh-CN'],namespace)){
+  const text=key.slice(split+1);
+  // Natural-language keys containing spaces/punctuation bypass i18next's namespace
+  // heuristic. Pass the namespace explicitly and keep literal colons in authored text.
+  return String(i18n.t(text,{ns:namespace,nsSeparator:false,defaultValue:text,...options}));
+ }
+ return String(i18n.t(key,{defaultValue:key,...options}));
+}
 export function formatNumber(value:number,options?:Intl.NumberFormatOptions){return new Intl.NumberFormat(i18n.resolvedLanguage??'zh-CN',options).format(value);}
 export function formatDate(value:Date|string|number,options:Intl.DateTimeFormatOptions={dateStyle:'medium'}){return new Intl.DateTimeFormat(i18n.resolvedLanguage??'zh-CN',options).format(new Date(value));}
 export default i18n;

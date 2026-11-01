@@ -113,7 +113,7 @@ export default function BugFeedback() {
       if (manual && alive())
         setError(
           e instanceof Error
-            ? e.message
+            ? tr('settings:' + e.message)
             : tr('settings:状态检查未完成，请重试。'),
         );
     } finally {
@@ -188,7 +188,7 @@ export default function BugFeedback() {
     } catch (e) {
       if (alive())
         setError(
-          e instanceof Error ? e.message : tr('settings:反馈未送达，请重试。'),
+          e instanceof Error ? tr('settings:' + e.message) : tr('settings:反馈未送达，请重试。'),
         );
     } finally {
       sending.current = false;
