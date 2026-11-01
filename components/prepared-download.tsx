@@ -1,4 +1,5 @@
 'use client';
+import { trackProductEvent } from '@/lib/product-insights';
 import { useEffect, useRef, useState } from 'react';
 export type PreparedFile = {
   url: string;
@@ -53,7 +54,7 @@ export function PreparedDownload({ file }: { file: PreparedFile | undefined }) {
         className="primary"
         href={file.url}
         download={file.name}
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e) => { e.stopPropagation(); trackProductEvent('export_download_clicked', 'subjects'); }}
       >
         下载 Word 文档
       </a>

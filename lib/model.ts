@@ -392,6 +392,8 @@ export type StudyData = {
     dailyMinutes: number;
     name: string;
     surprise: boolean;
+    productDataCollection?: { enabled: boolean; updatedAt: string };
+    termsAcceptance?: { version: string; acceptedAt: string };
     dailyQuestionGoal?: number;
     superPromoDismissed?: boolean;
     gameSound?: boolean;

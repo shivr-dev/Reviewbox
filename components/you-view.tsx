@@ -41,12 +41,17 @@ import { useReview } from './review-context';
 import ClearDataCard from './clear-data-card';
 import WatchDeviceManager from './watch-device-manager';
 import { GameProfile } from './learning-game';
+import ProductDataSettings from './product-data-settings';
+import BugFeedback from './bug-feedback';
+import AgreementSettings from './usage-agreement';
 const titles: Record<string, string> = {
   account: '账户管理',
   preferences: '学习偏好',
   appearance: '外观设置',
   devices: '我的设备',
   data: '数据与隐私',
+  feedback: '反馈',
+  agreement: '使用协议与隐私说明',
   danger: '危险操作',
   advanced: '高级设置与实验功能',
   partner: '企鹅空间',
@@ -262,9 +267,9 @@ export default function YouView() {
         {view !== 'home' && (
           <button
             className="settings-back"
-            onClick={() => open(view === 'danger' ? 'data' : 'home')}
+            onClick={() => open(['danger', 'feedback', 'agreement'].includes(view) ? 'data' : 'home')}
           >
-            <ArrowLeft size={17} />{tr("settings:返回")}{view === 'danger' ? tr("settings:数据与隐私") : tr("settings:我的")}
+            <ArrowLeft size={17} />{tr("settings:返回")}{['danger', 'feedback', 'agreement'].includes(view) ? tr("settings:数据与隐私") : tr("settings:我的")}
           </button>
         )}
         <h1 tabIndex={-1} ref={heading}>
@@ -566,6 +571,11 @@ export default function YouView() {
         ))}
       {view === 'data' && (
         <div className="settings-detail">
+          <ProductDataSettings />
+          <div className="settings-list">
+            <Entry title="反馈" note={tr('settings:提交 Bug、建议或问题，自动发布到 GitHub Issues')} onClick={() => open('feedback')} />
+            <Entry title="使用协议与隐私说明" onClick={() => open('agreement')} />
+          </div>
           <div className="settings-sync-line">
             <span>
               <strong>{tr("settings:数据库同步")}</strong>
@@ -681,6 +691,8 @@ export default function YouView() {
         </div>
       )}
       {view === 'danger' && <ClearDataCard />}
+      {view === 'feedback' && <BugFeedback key={currentNamespace()} />}
+      {view === 'agreement' && <AgreementSettings key={currentNamespace()} />}
       {view === 'advanced' && (
         <div className="settings-detail advanced-settings">
           {' '}

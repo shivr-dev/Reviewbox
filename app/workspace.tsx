@@ -24,6 +24,8 @@ import RemediationCourse from '@/components/remediation-course';
 import HomeView from '@/components/home-view';
 import StudyView from '@/components/study-view';
 import YouView from '@/components/you-view';
+import ProductInsights from '@/components/product-insights';
+import { trackProductEvent } from '@/lib/product-insights';
 import WatchDevices from '@/components/watch-devices';
 import WorkshopExperience from '@/components/workshop-experience';
 import ProductShell, { ProductHome } from '@/components/product-shell';
@@ -312,6 +314,7 @@ export default function Workspace() {
               )
               .catch(() => {});
           setSession(next);
+          if (mode === 'review') trackProductEvent('study_start', 'study');
           navigate('study');
         })
         .catch(() => notify('未能保存复习进度，请检查设备存储'));
@@ -474,6 +477,7 @@ export default function Workspace() {
       }}
     >
       <ProductLocale locale={data.settings.locale} ready={ready}/>
+      {ready && <ProductInsights page={page} />}
       {ready && <RewardsBridge />}
       {ready &&
       [

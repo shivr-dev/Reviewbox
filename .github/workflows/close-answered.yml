@@ -1,0 +1,27 @@
+name: Close answered feedback
+on:
+  issues:
+    types: [labeled, reopened]
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/close-answered.yml'
+permissions:
+  contents: read
+  issues: write
+jobs:
+  close:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const {pathToFileURL} = await import('node:url');
+            const {closeAnsweredIssues} = await import(pathToFileURL(process.env.GITHUB_WORKSPACE + '/scripts/publish-feedback-issues.mjs'));
+            const count = await closeAnsweredIssues({github, eventName: context.eventName, payload: context.payload});
+            core.info(`Closed ${count} answered issues.`);

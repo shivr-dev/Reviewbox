@@ -58,6 +58,7 @@ import { rewardSound } from '@/lib/game-client';
 import { createLearningTimer } from '@/lib/learning-timer';
 import { errorCauseEstimate } from '@/lib/learning-evidence';
 import {chestEligibility} from '@/lib/chest-eligibility';
+import { trackProductEvent } from '@/lib/product-insights';
 import { Heart, Zap, Volume2, VolumeX } from 'lucide-react';
 export default function StudyView({
   session,
@@ -471,6 +472,7 @@ export default function StudyView({
             originNamespace.current,
           );
         await completeActiveSession(session.id, originNamespace.current);
+        trackProductEvent('practice_complete', 'study');
         setAnswerPanelOpen(false);
         setRevealed(false);
         setDone(true);
@@ -955,7 +957,7 @@ export default function StudyView({
       <RewardFlash reward={reward} />
       <ComboCelebration reward={reward} />
       <div className="session-top">
-        <button className="quiet" onClick={finish}>
+        <button className="quiet" onClick={() => { trackProductEvent('study_saved_exit', 'study'); finish(); }}>
           <ArrowLeft size={16} />{tr("study:保存并退出")}</button>
         <span>
           {isTest

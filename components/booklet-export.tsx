@@ -1,4 +1,5 @@
 'use client';
+import { trackProductEvent } from '@/lib/product-insights';
 import { tr } from '@/lib/i18n';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -62,6 +63,7 @@ export default function BookletExport({ close }: { close: () => void }) {
     )
     .slice(0, limit);
   async function run() {
+    trackProductEvent('export_started', 'subjects');
     setBusy(true);
     setError('');
     const controller = new AbortController();
@@ -102,7 +104,9 @@ export default function BookletExport({ close }: { close: () => void }) {
           '.docx',
       );
       setStatus(`已生成 ${questions.length} 题，请点击下载 Word 文档`);
+      trackProductEvent('export_ready', 'subjects');
     } catch (e) {
+      trackProductEvent('export_error', 'subjects');
       setError((e as Error).message);
       setStatus('');
     } finally {

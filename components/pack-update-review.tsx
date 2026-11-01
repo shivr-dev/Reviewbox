@@ -1,6 +1,7 @@
 'use client';
 import {tr} from '@/lib/i18n';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { trackProductEvent } from '@/lib/product-insights';
 import type { Pack } from '@/lib/model';
 import { previewInstallPack, commitPackUpdate, setMeta } from '@/lib/store';
 import type { PackChoices } from '@/lib/pack-versions';
@@ -72,6 +73,7 @@ export default function PackUpdateReview({
   onCancel: () => void;
 }) {
   const { refresh, data } = useReview();
+  const reviewLogged = useRef(false);
   const [candidate, setCandidate] = useState(pack),
     [preview, setPreview] =
       useState<Awaited<ReturnType<typeof previewInstallPack>>>(),
@@ -82,6 +84,7 @@ export default function PackUpdateReview({
     [result, setResult] = useState<any>(),
     [changeFilter, setChangeFilter] = useState('all');
   useEffect(() => {
+    reviewLogged.current = false;
     setCandidate(pack);
     setChoices({});
     setResult(undefined);
@@ -91,7 +94,13 @@ export default function PackUpdateReview({
     setPreview(undefined);
     void previewInstallPack(candidate)
       .then((p) => {
-        if (live) setPreview(p);
+        if (live) {
+          setPreview(p);
+          if (!reviewLogged.current) {
+            trackProductEvent(inspectPackContent(candidate).blocked.length ? 'import_review_required' : 'import_ready', 'subjects');
+            reviewLogged.current = true;
+          }
+        }
       })
       .catch((e) => {
         if (live) setError(e.message);
@@ -113,7 +122,9 @@ export default function PackUpdateReview({
     let counts;
     try {
       counts = await commitPackUpdate(preview, choices);
+      trackProductEvent('import_complete', 'subjects');
     } catch (e) {
+      trackProductEvent('import_apply_error', 'subjects');
       setError((e as Error).message);
       await setMeta(
         'pack-update-error:' + preview.namespace + ':' + candidate.manifest.id,

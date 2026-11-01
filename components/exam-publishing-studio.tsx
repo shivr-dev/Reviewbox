@@ -1,4 +1,5 @@
 'use client';
+import { trackProductEvent } from '@/lib/product-insights';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import type { Question } from '@/lib/model';
 import { uid } from '@/lib/model';
@@ -262,6 +263,7 @@ export default function ExamPublishingStudio() {
     setBusy(true);
     setError('');
     try {
+      trackProductEvent('export_started', 'subjects');
       if (missing.length) throw Error('请先准备题图，检查A4预览后再导出');
       const { exportBooklet } = await import('@/lib/export-docx');
       const publishing: PublishingLayout = {
@@ -287,7 +289,9 @@ export default function ExamPublishingStudio() {
         (title.replace(/[\\/:*?"<>|]/g, '').slice(0, 100) || '试卷') + '.docx',
       );
       setStatus('文档已生成，请点击下载 Word 文档保存。');
+      trackProductEvent('export_ready', 'subjects');
     } catch (e) {
+      trackProductEvent('export_error', 'subjects');
       setError((e as Error).message);
     } finally {
       setBusy(false);
