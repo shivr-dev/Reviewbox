@@ -27,9 +27,17 @@
 .onboarding-beta p { font-size: 16px; line-height: 1.8; margin: 22px 0; }
 .onboarding-beta-label { font-size: 12px; letter-spacing: .12em; font-weight: 700; padding: 6px 10px; border: 1px solid #c4dce9; border-radius: 6px; color: #287aab; }
 .onboarding-account { width: 100%; max-width: 400px; margin: 20px auto; text-align: left; }
-.onboarding-account form { display: grid; gap: 17px; margin: 22px 0; }
-.onboarding-account form label { display: grid; gap: 7px; font-size: 14px; }
-.onboarding-account input { width: 100%; padding: 11px 13px; border: 1px solid #dce5eb; border-radius: 8px; background: var(--card, white); color: var(--foreground, #263a48); font: inherit; }
+.onboarding-account form { display: grid; gap: 12px; margin: 12px 0; }
+.onboarding-account form label { display: grid; gap: 7px; font-size: 14px; margin: 0; }
+.onboarding-account input { width: 100%; margin: 0; padding: 11px 13px; border: 1px solid #dce5eb; border-radius: 8px; background: var(--card, white); color: var(--foreground, #263a48); font: inherit; }
+.onboarding-account-step { padding-top: 22px; padding-bottom: 18px; }
+.onboarding-account-step > nav { margin-top: 22px; margin-bottom: 12px; }
+.onboarding-account-step .onboarding-coach { margin: 0 0 10px; }
+.onboarding-account-step .onboarding-coach .learning-penguin { width: 75px; height: 85px; }
+.onboarding-account-step .onboarding-coach > div:last-child { padding: 14px 20px; }
+.onboarding-account-step .onboarding-account { margin: 10px auto; }
+.onboarding-account-step .onboarding-step-body small { text-align: left; line-height: 1.5; }
+.onboarding-account-step .onboarding-content footer { margin-top: 16px; padding-top: 14px; }
 @media (max-width: 600px) {
   .bug-feedback form > button { width: 100%; }
   .feedback-receipts li { align-items: flex-start; flex-wrap: wrap; gap: 8px; }

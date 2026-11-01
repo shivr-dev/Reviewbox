@@ -171,7 +171,7 @@ export default function OnboardingView() {
   return (
     <main
       className={
-        'onboarding-page onboarding-simple' +
+        'onboarding-page onboarding-simple' + (step === 8 ? ' onboarding-account-step' : '') +
         (importOpen && step === 5 ? ' onboarding-import-expanded' : '')
       }
     >
