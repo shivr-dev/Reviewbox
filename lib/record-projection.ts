@@ -16,7 +16,7 @@ export function projectRecords(input: LocalRecord[]): StudyData {
     const stamp=(r:LocalRecord)=>Date.parse(r.updated_at)||0;
     if(!previous||stamp(row)>stamp(previous)||(stamp(row)===stamp(previous)&&row.id===id))logicalJobs.set(id,row);
   }
-  const jobs = [...logicalJobs.values()].filter(r=>!['pack-version-part','pack-removal-part'].includes(r.payload.kind)).map(r=>{
+  const jobs = [...logicalJobs.values()].filter(r=>!['pack-version-part','pack-removal-part','pack-studio-part'].includes(r.payload.kind)).map(r=>{
     const j=r.payload;
     if(!['active','break','queued','pending'].includes(j.status))return j;
     const blocked=new Set(guards.flatMap(g=>g.questionIds));

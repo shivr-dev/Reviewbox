@@ -332,7 +332,7 @@ export default function LibraryView({
         description={tr("library:管理自己的资料、题目与学习包。")}
         action={
           <div className="button-row">
-            <button className="secondary" onClick={()=>setBookletOpen(true)}>{tr("library:导出 Word")}</button>
+            <details className="library-studio-menu"><summary>制作与排版</summary><div><button onClick={()=>navigate('subjects',routeSubject,'studio')}>学习包制作台</button><button onClick={()=>navigate('subjects',routeSubject,'publish')}>试卷排版工作台</button><button onClick={()=>setBookletOpen(true)}>快速导出 Word</button></div></details>
             <button className="secondary" onClick={()=>setTab('data')}>{tr("library:导入工具")}</button>
             <button
               className="primary"

@@ -15,6 +15,7 @@ import { proposeGradingRule } from '@/lib/ai-client';
 import { currentNamespace } from '@/lib/store';
 import { useReview } from './review-context';
 import Diagram from './diagram';
+import GroupedReviewWorkspace from './grouped-review-workspace';
 import ScientificAuthoring from './scientific-authoring';
 import {validateChemicalDiagram} from '@/lib/chemical-engine';
 import {bioAsset} from '@/lib/bioicons';
@@ -26,11 +27,13 @@ import {
 export function RuleEditor({
   question: q,
   initial,
+  skills,
   onSave,
   onCancel,
 }: {
   question: Question;
   initial?: GradingRule;
+  skills?: {id:string;title:string}[];
   onSave: (r: GradingRule) => void;
   onCancel: () => void;
 }) {
@@ -184,7 +187,7 @@ export function RuleEditor({
                   changeCriterion(i, { carryForward: e.target.checked })
                 }
               />{tr("library:允许前一步计算错误的合理后续过程分")}</label>
-            <p className="settings-caption">{tr("library:能力：")}{c.skillId}</p>
+            <label>评分对应能力{skills?<select value={c.skillId} onChange={e=>changeCriterion(i,{skillId:e.target.value})}>{!skills.some(s=>s.id===c.skillId)&&<option value={c.skillId}>原能力（请重新选择）</option>}{skills.map(s=><option key={s.id} value={s.id}>{s.title}</option>)}</select>:<span>{c.skillId}</span>}</label>
           </details>
           {draft.criteria.length > 1 && (
             <button
@@ -616,6 +619,7 @@ export default function PackContentReview({
             : tr("library:内容检查通过")}
         </span>
       </div>
+      <GroupedReviewWorkspace key={pack.manifest.id+':'+pack.manifest.version} pack={pack} onChange={onChange} onFix={(id,kind)=>{setTab(kind);if(kind==='scoring'){setSelected(id);setEditor(true);}else setDiagramId(id);requestAnimationFrame(()=>document.querySelector('.pack-content-review .pack-subnav')?.scrollIntoView({behavior:'smooth',block:'start'}));}}/>
       {!!report.missingReferences.length && (
         <details className="import-reference-warning">
           <summary>

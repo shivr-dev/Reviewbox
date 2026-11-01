@@ -21,6 +21,8 @@ import { AdventureShop } from './adventure-panels';
 import { MaterialArt } from './equipment-art';
 import ExamSchedule from './exam-schedule';
 export { default as ExamSchedule } from './exam-schedule';
+const LearningPackStudio=lazy(()=>import('./learning-pack-studio'));
+const ExamPublishingStudio=lazy(()=>import('./exam-publishing-studio'));
 const KnowledgeMap=lazy(()=>import('./knowledge-map'));
 
 export function ProductSubjects({
@@ -29,6 +31,8 @@ export function ProductSubjects({
   const { subject, section, navigate } = useReview();
   const view = section || initialView,
     selected = SUBJECTS.some((s) => s.id === subject) ? subject : 'all';
+  if(view==='studio')return <Suspense fallback={<p role="status">制作台加载中…</p>}><LearningPackStudio key={selected}/></Suspense>;
+  if(view==='publish')return <Suspense fallback={<p role="status">排版工作台加载中…</p>}><ExamPublishingStudio key={selected}/></Suspense>;
   return (
     <section className="alpha-workspace">
       {view === 'courses' && (
