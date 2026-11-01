@@ -22,6 +22,7 @@ import {
 import { isPinyin } from './question-tools';
 import { examFeedback } from './exam-outcomes';
 import { policyFor } from './policy-config';
+import { createTopicRotation } from './topic-rotation';
 import {
   assessmentInformation,
   examImpact,
@@ -374,25 +375,36 @@ export function dailyStudyPlan(data: StudyData, now = Date.now()) {
       a.item.question.id.localeCompare(b.item.question.id),
   );
   const selected: typeof candidates = [],
-    perSkill = new Map<string, number>();
+    perSkill = new Map(
+      [...history].map(([key, rows]) => [
+        key,
+        rows.filter((e) => dayOf(e) === today).length,
+      ]),
+    );
+  const rotation = createTopicRotation(events, now);
   let seconds = 0;
   while (candidates.length) {
-    const index = candidates.findIndex((c) => {
-      const q = c.item.question,
-        key = keyOf(q.nodeId, q.skillId);
-      if (
-        seconds + c.seconds > remainingSeconds ||
-        (perSkill.get(key) ?? 0) >= skillPracticeLimit(states[key], policy)
-      )
-        return false;
-      // Every prerequisite with available diagnostic material is scheduled before its dependent.
-      return !(blocked.get(q.nodeId) ?? []).some(
-        (id) => !selected.some((x) => x.item.question.nodeId === id),
-      );
-    });
+    const index = rotation.nextIndex(
+      candidates,
+      (c) => c.item.question,
+      (c) => {
+        const q = c.item.question,
+          key = keyOf(q.nodeId, q.skillId);
+        if (
+          seconds + c.seconds > remainingSeconds ||
+          (perSkill.get(key) ?? 0) >= skillPracticeLimit(states[key], policy)
+        )
+          return false;
+        // Every prerequisite with available diagnostic material is scheduled before its dependent.
+        return !(blocked.get(q.nodeId) ?? []).some(
+          (id) => !selected.some((x) => x.item.question.nodeId === id),
+        );
+      },
+    );
     if (index < 0) break;
     const c = candidates.splice(index, 1)[0];
     selected.push(c);
+    rotation.record(c.item.question);
     seconds += c.seconds;
     const key = keyOf(c.item.question.nodeId, c.item.question.skillId);
     perSkill.set(key, (perSkill.get(key) ?? 0) + 1);
@@ -486,21 +498,27 @@ export function dailyStudyPlan(data: StudyData, now = Date.now()) {
             Number(subjectEvents.some((e) => e.questionId === b.id)) ||
           a.id.localeCompare(b.id),
       );
-      const questions = ordered
-        .filter((q) => {
-          const k = keyOf(q.nodeId, q.skillId),
-            n = seenSkills.get(k) ?? 0;
-          if (n >= policy.evidence.retentionLimit) return false;
-          seenSkills.set(k, n + 1);
-          return true;
-        })
-        .slice(
-          0,
-          mode === 'initial'
-            ? policy.assistant.initialPerSubject
-            : policy.utility.candidateLimit,
-        )
-        .map((question) => ({ question, reason, priority: value }));
+      const assessmentRotation = createTopicRotation(events, now);
+      const questions: QueueItem[] = [];
+      const limit =
+        mode === 'initial'
+          ? policy.assistant.initialPerSubject
+          : policy.utility.candidateLimit;
+      while (ordered.length && questions.length < limit) {
+        const index = assessmentRotation.nextIndex(
+          ordered,
+          (q) => q,
+          (q) =>
+            (seenSkills.get(keyOf(q.nodeId, q.skillId)) ?? 0) <
+            policy.evidence.retentionLimit,
+        );
+        if (index < 0) break;
+        const question = ordered.splice(index, 1)[0];
+        const key = keyOf(question.nodeId, question.skillId);
+        seenSkills.set(key, (seenSkills.get(key) ?? 0) + 1);
+        assessmentRotation.record(question);
+        questions.push({ question, reason, priority: value });
+      }
       if (questions.length)
         recommendations.push({
           mode,

@@ -22,13 +22,13 @@ import {
 import { dueRemediation } from './remediation';
 import { DEFAULT_POLICY, policyFor, type PolicyConfig } from './policy-config';
 import { metadataQuality, createSignalContext } from './learning-signals';
+import { createTopicRotation } from './topic-rotation';
 import {
   answerEvidenceWeight,
   hintEvidenceWeight,
   effectiveAnswerTime,
   adaptiveRecallInterval,
   errorCauseEstimate,
-  acquisitionMode,
   skillPracticeLimit,
   dependencyLinks,
 } from './learning-evidence';
@@ -512,33 +512,30 @@ export function buildQueue(
   );
   const queue: QueueItem[] = [];
   const perSkill = new Map<string, number>();
+  const rotation = createTopicRotation(events, now);
   let seconds = 0;
   while (candidates.length && queue.length < target) {
-    const idx = candidates.findIndex((c) => {
-      const k = keyOf(c.question.nodeId, c.question.skillId);
-      const state = states[k] ?? initial(c.question.nodeId, c.question.skillId);
-      const acquisition = acquisitionMode(state) && !opts.test;
-      const count = perSkill.get(k) ?? 0;
-      const limit = opts.test
-        ? policy.evidence.retentionLimit
-        : skillPracticeLimit(state, policy);
-      const interleaved =
-        !queue
-          .slice(-3)
-          .some((x) => keyOf(x.question.nodeId, x.question.skillId) === k) &&
-        queue.at(-1)?.question.nodeId !== c.question.nodeId;
-      // Prefer interleaving where alternatives exist; acquisition may use a short consecutive worked block.
-      const alternate = candidates.some(
-        (x) =>
-          keyOf(x.question.nodeId, x.question.skillId) !== k &&
-          !queue.some((q) => q.question.id === x.question.id),
-      );
-      return (
-        count < limit &&
-        (interleaved || (acquisition && !alternate)) &&
-        !queue.some((x) => x.question.id === c.question.id)
-      );
-    });
+    const idx = rotation.nextIndex(
+      candidates,
+      (c) => c.question,
+      (c) => {
+        const k = keyOf(c.question.nodeId, c.question.skillId);
+        const state =
+          states[k] ?? initial(c.question.nodeId, c.question.skillId);
+        const count = perSkill.get(k) ?? 0;
+        const limit = opts.test
+          ? policy.evidence.retentionLimit
+          : skillPracticeLimit(state, policy);
+        return (
+          count < limit &&
+          (opts.test ||
+            !queue.length ||
+            seconds + boundedExpectedSeconds(c.question.expectedSeconds) <=
+              data.settings.dailyMinutes * 60) &&
+          !queue.some((x) => x.question.id === c.question.id)
+        );
+      },
+    );
     if (idx < 0) break;
     const c = candidates.splice(idx, 1)[0];
     if (
@@ -549,6 +546,7 @@ export function buildQueue(
     )
       continue;
     queue.push(c);
+    rotation.record(c.question);
     seconds += boundedExpectedSeconds(c.question.expectedSeconds);
     const k = keyOf(c.question.nodeId, c.question.skillId);
     perSkill.set(k, (perSkill.get(k) ?? 0) + 1);
