@@ -1,4 +1,5 @@
 'use client';
+import {tr} from '@/lib/i18n';
 import { useEffect, useRef, useState } from 'react';
 import { ArrowRight, Clock3, FileCheck2, Pause } from 'lucide-react';
 import { useReview } from './review-context';
@@ -140,10 +141,8 @@ export function FullExamHub({
       <div className="section-head">
         <div>
           <p className="eyebrow">THE FULL TEST EXPERIENCE</p>
-          <h2>英语专项模拟</h2>
-          <p className="muted">
-            使用已保存或导入的试卷，按模拟器完整流程作答，结束后查看解析。
-          </p>
+          <h2>{tr("results:英语专项模拟")}</h2>
+          <p className="muted">{tr("results:使用已保存或导入的试卷，按模拟器完整流程作答，结束后查看解析。")}</p>
         </div>
         <FileCheck2 size={25} />
       </div>
@@ -175,7 +174,7 @@ export function FullExamHub({
       </div>
       {exam === 'MAP' && (
         <div className="map-hub-options">
-          <div className="segmented" aria-label="MAP 科目">
+          <div className="segmented" aria-label={tr("results:MAP 科目")}>
             {(['Reading', 'Language Usage'] as const).map((s) => (
               <button
                 key={s}
@@ -207,14 +206,12 @@ export function FullExamHub({
               ))}
             </select>
           </label>
-          <label>
-            模式
-            <select
+          <label>{tr("results:模式")}<select
               value={mapPractice ? 'practice' : 'test'}
               onChange={(e) => setMapPractice(e.target.value === 'practice')}
             >
-              <option value="test">自适应测试 · 结束后解析</option>
-              <option value="practice">专项练习 · 逐题解析</option>
+              <option value="test">{tr("results:自适应测试 · 结束后解析")}</option>
+              <option value="practice">{tr("results:专项练习 · 逐题解析")}</option>
             </select>
           </label>
         </div>
@@ -230,9 +227,7 @@ export function FullExamHub({
                 setWriting(e.target.checked);
                 setLive(null);
               }}
-            />
-            Writing · 1 篇
-          </label>
+            />{tr("results:Writing · 1 篇")}</label>
         </div>
       )}
       <div className="exam-blueprint">
@@ -240,13 +235,13 @@ export function FullExamHub({
           <div key={s.id}>
             <span>{s.title}</span>
             <b>
-              {s.count} {s.section === 'Writing' ? '篇' : '题'}
+              {s.count} {s.section === 'Writing' ? tr("results:篇") : tr("results:题")}
             </b>
             <small>
               {exam === 'DET'
-                ? '按任务计时'
+                ? tr("results:按任务计时")
                 : exam === 'MAP'
-                  ? '不设倒计时'
+                  ? tr("common:不设倒计时")
                   : s.seconds / 60 + ' min'}
             </small>
           </div>
@@ -255,13 +250,13 @@ export function FullExamHub({
       <p className="muted exam-duration">
         <Clock3 size={14} />{' '}
         {exam === 'DET'
-          ? '完整题型个人模拟，阅读与听力题组共享时间；不换算官方分数。'
+          ? tr("results:完整题型个人模拟，阅读与听力题组共享时间；不换算官方分数。")
           : exam === 'MAP'
-            ? '按照个人节奏完成；提交后不能返回上一题。'
+            ? tr("common:按照个人节奏完成；提交后不能返回上一题。")
             : '作答 ' +
               stages.reduce((n, s) => n + s.seconds, 0) / 60 +
               ' 分钟'}
-        {exam === 'ACT' && writing ? ' · 写作前休息 5 分钟' : ''}
+        {exam === 'ACT' && writing ? tr("results: · 写作前休息 5 分钟") : ''}
       </p>
       <div className="button-row">
         <button
@@ -269,7 +264,7 @@ export function FullExamHub({
           disabled={busy || !readyPaper}
           onClick={() => shown && void enter(shown)}
         >
-          {readyPaper ? '使用已保存试卷开始' : '暂无完整的已保存试卷'}
+          {readyPaper ? tr("results:使用已保存试卷开始") : tr("results:暂无完整的已保存试卷")}
           <ArrowRight size={15} />
         </button>
         {busy && (
@@ -280,36 +275,26 @@ export function FullExamHub({
               setMessage('当前题组完成后暂停');
             }}
           >
-            <Pause size={15} />
-            暂停准备
-          </button>
+            <Pause size={15} />{tr("results:暂停准备")}</button>
         )}
       </div>
-      <p className="muted exam-reuse-note">
-        同一试卷可以重复测试。开始测试会建立新的作答记录，无需重新生成题目。
-      </p>
+      <p className="muted exam-reuse-note">{tr("results:同一试卷可以重复测试。开始测试会建立新的作答记录，无需重新生成题目。")}</p>
       {exam !== 'TOEFL' && (
         <details className="exam-about">
-          <summary>试卷生成设置</summary>
+          <summary>{tr("results:试卷生成设置")}</summary>
           <label className="check-inline">
             <input
               type="checkbox"
               checked={allowGeneration}
               onChange={(e) => setAllowGeneration(e.target.checked)}
               disabled={busy}
-            />
-            允许生成新题（使用模型额度）
-          </label>
-          <p className="muted">
-            默认关闭。已有试卷可直接复用；只有需要另一套题目时才启用。尚未完成的旧试卷会保留进度。
-          </p>
+            />{tr("results:允许生成新题（使用模型额度）")}</label>
+          <p className="muted">{tr("results:默认关闭。已有试卷可直接复用；只有需要另一套题目时才启用。尚未完成的旧试卷会保留进度。")}</p>
           <button
             className="secondary"
             disabled={!allowGeneration || busy || !aiReady}
             onClick={() => void prepare()}
-          >
-            编制一份新试卷
-          </button>
+          >{tr("results:编制一份新试卷")}</button>
         </details>
       )}
       <ExamImportPanel
@@ -332,12 +317,12 @@ export function FullExamHub({
           <div className="section-head">
             <b>
               {shown.title ?? shown.exam} ·{' '}
-              {shown.options.writing ? '含 Writing · ' : ''}
+              {shown.options.writing ? tr("results:含 Writing · ") : ''}
               {new Date(shown.createdAt).toLocaleDateString()}
             </b>
             <span>
               {Object.keys(shown.questions).length}/{allSlots(shown).length}{' '}
-              {shown.origin === 'imported' ? '已导入' : '已核验'}
+              {shown.origin === 'imported' ? tr("results:已导入") : tr("results:已核验")}
             </span>
           </div>
           <progress
@@ -352,7 +337,7 @@ export function FullExamHub({
                   ? '完整试卷已保存，可离线进入考场。'
                   : '可继续上次的准备进度。'))}
             {shown.exam === 'SAT' && !shown.origin
-              ? ' 题池含第二模块的两条难度路线，实际作答 54 题。'
+              ? tr("results: 题池含第二模块的两条难度路线，实际作答 54 题。")
               : ''}
           </p>
           <button
@@ -372,57 +357,36 @@ export function FullExamHub({
             }
           >
             {paperReady(shown, data.questions)
-              ? '进入考场'
+              ? tr("results:进入考场")
               : used
-                ? '同步恢复原试卷'
-                : '继续准备这份试卷'}
+                ? tr("common:同步恢复原试卷")
+                : tr("common:继续准备这份试卷")}
           </button>
         </div>
       )}
       <details className="exam-about">
-        <summary>考试说明与历史试卷</summary>
+        <summary>{tr("results:考试说明与历史试卷")}</summary>
         {exam === 'MAP' && (
-          <p>
-            MAP 模拟采用不设倒计时、逐题提交及本地题池自适应选题。新题池默认保存
-            65 题，实际作答 43 题；较短的导入卷标记为专项练习。Reading
-            涵盖文学、信息文本与词汇，Language Usage
-            涵盖写作修订、语法与书写规范。题池未使用官方标定参数，报告不提供 RIT
-            分数。界面参考 NWEA 公开练习版，内容为私人学习材料。
-          </p>
+          <p>{tr("results:MAP 模拟采用不设倒计时、逐题提交及本地题池自适应选题。新题池默认保存 65 题，实际作答 43 题；较短的导入卷标记为专项练习。Reading 涵盖文学、信息文本与词汇，Language Usage 涵盖写作修订、语法与书写规范。题池未使用官方标定参数，报告不提供 RIT 分数。界面参考 NWEA 公开练习版，内容为私人学习材料。")}</p>
         )}
-        <p>
-          保留现行 SAT / ACT 的完整英语部分，使用原创题目。SAT
-          两模块直接衔接；ACT English 与 Reading 直接衔接，选考 Writing
-          时写作前休息 5 分钟。这是英语专项编排。SAT 参照 Bluebook 布局，ACT
-          参照国际 CBT
-          布局；地区与平台版本可能有差异。成绩显示本卷正确率，不作官方分数换算。SAT
-          第二模块以本卷正确率 65% 作为模拟分流阈值。
-        </p>
-        <p>
-          首次准备整套题目需要数分钟至数十分钟，视模型速度与核验重试而定；可以暂停并续接。正式计时开始后，关闭页面不会暂停考试。
-        </p>
+        <p>{tr("results:保留现行 SAT / ACT 的完整英语部分，使用原创题目。SAT 两模块直接衔接；ACT English 与 Reading 直接衔接，选考 Writing 时写作前休息 5 分钟。这是英语专项编排。SAT 参照 Bluebook 布局，ACT 参照国际 CBT 布局；地区与平台版本可能有差异。成绩显示本卷正确率，不作官方分数换算。SAT 第二模块以本卷正确率 65% 作为模拟分流阈值。")}</p>
+        <p>{tr("results:首次准备整套题目需要数分钟至数十分钟，视模型速度与核验重试而定；可以暂停并续接。正式计时开始后，关闭页面不会暂停考试。")}</p>
         <div className="source-links">
           <a
             href="https://studentresources.nwea.org/"
             target="_blank"
             rel="noreferrer"
-          >
-            MAP 官方练习说明
-          </a>
+          >{tr("results:MAP 官方练习说明")}</a>
           <a
             href="https://satsuite.collegeboard.org/sat/whats-on-the-test/structure"
             target="_blank"
             rel="noreferrer"
-          >
-            SAT 结构
-          </a>
+          >{tr("results:SAT 结构")}</a>
           <a
             href="https://www.act.org/content/act/en/products-and-services/the-act/test-preparation/act-exam-sections-and-structure.html"
             target="_blank"
             rel="noreferrer"
-          >
-            ACT 结构
-          </a>
+          >{tr("results:ACT 结构")}</a>
         </div>
         {papers.map((p) => (
           <div className="service-row" key={p.id}>
@@ -442,9 +406,7 @@ export function FullExamHub({
                 }
                 setLive(p);
               }}
-            >
-              查看
-            </button>
+            >{tr("results:查看")}</button>
           </div>
         ))}
         {data.jobs
@@ -459,8 +421,7 @@ export function FullExamHub({
               className="quiet"
               key={j.id}
               onClick={() => navigate('exam', j.id)}
-            >
-              查看 {j.exam} 成绩 ·{' '}
+            >{tr("results:查看")}{j.exam}{tr("results:成绩 ·")}{' '}
               {new Date(j.completedAt).toLocaleDateString()}
             </button>
           ))}

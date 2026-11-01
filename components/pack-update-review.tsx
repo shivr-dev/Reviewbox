@@ -1,4 +1,5 @@
 'use client';
+import {tr} from '@/lib/i18n';
 import { useEffect, useState } from 'react';
 import type { Pack } from '@/lib/model';
 import { previewInstallPack, commitPackUpdate, setMeta } from '@/lib/store';
@@ -13,7 +14,7 @@ function VersionFields({ value }: { value: any }) {
   return (
     <>
       {Array.isArray(value.options) && (
-        <ul aria-label="选项">
+        <ul aria-label={tr("library:选项")}>
           {value.options.map((v: any, i: number) => (
             <li key={i}>
               {typeof v === 'string'
@@ -24,21 +25,18 @@ function VersionFields({ value }: { value: any }) {
         </ul>
       )}
       {Array.isArray(value.skills) && (
-        <p>能力：{value.skills.map((s: any) => s.title).join('、')}</p>
+        <p>{tr("library:能力：")}{value.skills.map((s: any) => s.title).join('、')}</p>
       )}
       {value.type && (
         <>
-          <p className="settings-caption">
-            难度 {value.difficulty} · 建议用时 {value.expectedSeconds} 秒
-          </p>
-          <p className="settings-caption">
-            知识点：{value.nodeId} · 能力：{value.skillId}
+          <p className="settings-caption">{tr("library:难度")}{value.difficulty}{tr("library:· 建议用时")}{value.expectedSeconds}{tr("library:秒")}</p>
+          <p className="settings-caption">{tr("library:知识点：")}{value.nodeId}{tr("library:· 能力：")}{value.skillId}
           </p>
         </>
       )}
       {value.type === 'subjective' && (
         <details>
-          <summary>评分标准</summary>
+          <summary>{tr("library:评分标准")}</summary>
           <RuleSummary question={value} />
         </details>
       )}
@@ -51,15 +49,15 @@ function VersionFields({ value }: { value: any }) {
 function changedLabels(before: any, after: any) {
   if (!before || !after) return [];
   return [
-    ['prompt', '题干'],
-    ['answer', '参考答案'],
-    ['rubric', '评分点'],
-    ['gradingRule', '评分规则'],
-    ['diagram', '图形数据'],
-    ['media', '插图资源'],
-    ['diagramChoice', '图形选择'],
-    ['nodeId', '知识点'],
-    ['skillId', '能力'],
+    ['prompt', tr("library:题干")],
+    ['answer', tr("library:参考答案")],
+    ['rubric', tr("library:评分点")],
+    ['gradingRule', tr("library:评分规则")],
+    ['diagram', tr("library:图形数据")],
+    ['media', tr("library:插图资源")],
+    ['diagramChoice', tr("library:图形选择")],
+    ['nodeId', tr("library:知识点")],
+    ['skillId', tr("library:能力")],
   ]
     .filter(([field]) => stable(before[field]) !== stable(after[field]))
     .map(([, label]) => label);
@@ -132,7 +130,7 @@ export default function PackUpdateReview({
     try {
       await refresh();
     } catch {
-      setError('内容已保存，请重新打开资料库刷新显示。');
+      setError(tr("library:内容已保存，请重新打开资料库刷新显示。"));
     }
     setBusy(false);
   }
@@ -145,11 +143,11 @@ export default function PackUpdateReview({
   return (
     <section
       className="pack-update-review settings-scope"
-      aria-label="学习包版本差异"
+      aria-label={tr("library:学习包版本差异")}
     >
       <header>
         <span className="muted">
-          {preview?.manifest ? '查看版本更新' : '智能导入检查'}
+          {preview?.manifest ? tr("library:查看版本更新") : tr("library:智能导入检查")}
         </span>
         <h2>{candidate.manifest.title}</h2>
         <p className="diff-version">
@@ -164,7 +162,7 @@ export default function PackUpdateReview({
       )}
       {result ? (
         <>
-          <h3 role="status">学习包已更新</h3>
+          <h3 role="status">{tr("library:学习包已更新")}</h3>
           <div className="update-result-grid">
             {[
               ['新增', result.added],
@@ -180,14 +178,12 @@ export default function PackUpdateReview({
           <p className="settings-caption">
             {result.reverify
               ? result.reverify + ' 题需要核验'
-              : '原有核验状态已保留'}
+              : tr("library:原有核验状态已保留")}
             {result.retained
               ? ' · 保留 ' + result.retained + ' 项个人内容'
               : ''}
           </p>
-          <button className="primary" onClick={onDone}>
-            完成
-          </button>
+          <button className="primary" onClick={onDone}>{tr("library:完成")}</button>
         </>
       ) : (
         <>
@@ -197,7 +193,7 @@ export default function PackUpdateReview({
             busy={busy}
             onPendingChange={setPending}
           />
-          {!preview && !error && <p role="status">正在核对本地版本…</p>}
+          {!preview && !error && <p role="status">{tr("library:正在核对本地版本…")}</p>}
           {preview && (
             <>
               <div className="pack-diff-summary">
@@ -222,29 +218,26 @@ export default function PackUpdateReview({
               {preview.manifest?.scoringPolicy &&
                 stable(preview.manifest.scoringPolicy) !==
                   stable(candidate.manifest.scoringPolicy) && (
-                  <p className="settings-caption">
-                    学习包评分偏好有变化，已确认的逐题规则不会自动重写。
-                  </p>
+                  <p className="settings-caption">{tr("library:学习包评分偏好有变化，已确认的逐题规则不会自动重写。")}</p>
                 )}
               <div className="diff-toolbar">
-                <label>
-                  查看变化{' '}
+                <label>{tr("library:查看变化")}{' '}
                   <select
-                    aria-label="变化类型"
+                    aria-label={tr("library:变化类型")}
                     value={changeFilter}
                     onChange={(e) => setChangeFilter(e.target.value)}
                   >
-                    <option value="all">全部变化</option>
-                    <option value="add">新增</option>
-                    <option value="modify">修改</option>
-                    <option value="remove">移除</option>
-                    <option value="conflict">需要处理的冲突</option>
+                    <option value="all">{tr("library:全部变化")}</option>
+                    <option value="add">{tr("library:新增")}</option>
+                    <option value="modify">{tr("library:修改")}</option>
+                    <option value="remove">{tr("library:移除")}</option>
+                    <option value="conflict">{tr("library:需要处理的冲突")}</option>
                   </select>
                 </label>
-                <span className="settings-caption">只对变化的题目重新核验</span>
+                <span className="settings-caption">{tr("library:只对变化的题目重新核验")}</span>
               </div>
               {preview.status === 'installed' && (
-                <p>版本和内容一致，无需重新安装。核验状态与作答记录已保留。</p>
+                <p>{tr("library:版本和内容一致，无需重新安装。核验状态与作答记录已保留。")}</p>
               )}
               <div className="pack-change-list">
                 {changes
@@ -258,14 +251,14 @@ export default function PackUpdateReview({
                   .map((c) => (
                     <details key={c.kind + c.id} open={c.conflict}>
                       <summary>
-                        {c.kind === 'node' ? '知识点' : '题目'} ·{' '}
+                        {c.kind === 'node' ? tr("library:知识点") : tr("library:题目")} ·{' '}
                         {c.after?.prompt ??
                           c.after?.title ??
                           c.before?.prompt ??
                           c.id}{' '}
                         <small>
                           {c.conflict
-                            ? '需要选择'
+                            ? tr("library:需要选择")
                             : {
                                 add: '新增',
                                 modify: '修改',
@@ -275,9 +268,7 @@ export default function PackUpdateReview({
                         </small>
                       </summary>
                       {c.action === 'modify' && (
-                        <p className="change-fields">
-                          变化：
-                          {changedLabels(c.before, c.after).join('、') ||
+                        <p className="change-fields">{tr("library:变化：")}{changedLabels(c.before, c.after).join('、') ||
                             '内容与说明'}
                         </p>
                       )}
@@ -305,7 +296,7 @@ export default function PackUpdateReview({
                       </div>
                       {c.conflict && (
                         <fieldset>
-                          <legend>如何处理？</legend>
+                          <legend>{tr("library:如何处理？")}</legend>
                           <label>
                             <input
                               type="radio"
@@ -316,8 +307,8 @@ export default function PackUpdateReview({
                               }
                             />
                             {c.action === 'remove'
-                              ? '保留为个人内容'
-                              : '保留我的内容'}
+                              ? tr("library:保留为个人内容")
+                              : tr("library:保留我的内容")}
                           </label>
                           <label>
                             <input
@@ -329,8 +320,8 @@ export default function PackUpdateReview({
                               }
                             />
                             {c.action === 'remove'
-                              ? '归档并保留历史'
-                              : '使用新版内容'}
+                              ? tr("library:归档并保留历史")
+                              : tr("library:使用新版内容")}
                           </label>
                         </fieldset>
                       )}
@@ -340,9 +331,7 @@ export default function PackUpdateReview({
             </>
           )}
           <div className="pack-update-actions">
-            <button className="secondary" disabled={busy} onClick={onCancel}>
-              取消
-            </button>
+            <button className="secondary" disabled={busy} onClick={onCancel}>{tr("library:取消")}</button>
             <button
               className="primary"
               disabled={
@@ -355,18 +344,18 @@ export default function PackUpdateReview({
               onClick={apply}
             >
               {busy
-                ? '正在保存…'
+                ? tr("library:正在保存…")
                 : preview?.status === 'installed'
-                  ? '确认一致'
+                  ? tr("common:确认一致")
                   : preview?.manifest
-                    ? '确认更新'
-                    : '确认安装'}
+                    ? tr("common:确认更新")
+                    : tr("common:确认安装")}
             </button>
           </div>
           {(!!report.blocked.length || pending) && (
             <p className="settings-caption">
               {pending
-                ? '请确认或取消待审阅的评分建议。'
+                ? tr("library:请确认或取消待审阅的评分建议。")
                 : report.blocked.length + ' 题的评分标准或插图需要先确认。'}
             </p>
           )}

@@ -1,4 +1,5 @@
 'use client';
+import {tr} from '@/lib/i18n';
 import { useEffect, useRef, useState } from 'react';
 import { useReview } from './review-context';
 import { put, currentNamespace } from '@/lib/store';
@@ -36,7 +37,7 @@ export default function MapExamRoom({run:initial,paper}:{run:ExamRun;paper:ExamP
   }
   function init() {
     const r=run.current,q=currentQuestion();
-    if(!q||!r.map)return setError('试卷题目缺失，请返回 CE 检查已保存试卷。');
+    if(!q||!r.map)return setError(tr("common:试卷题目缺失，请返回 CE 检查已保存试卷。"));
     send('init',{
       question:nativeMapQuestion(q,paper,r),state:initialMapState(q,r,r.map.order[r.index]),
       student:r.map.studentName || context.current.data.settings.name || 'Student Guest',
@@ -50,7 +51,7 @@ export default function MapExamRoom({run:initial,paper}:{run:ExamRun;paper:ExamP
     active.current=true;ready.current=false;setLoading(true);nonce.current=crypto.randomUUID();timer.current=Date.now();
     let initialized=false;
     const probe=setInterval(()=>{if(!initialized)send('ping');},1000);
-    const timeout=setTimeout(()=>{if(!initialized){setLoading(false);setError('MAP 界面未能加载。请重新连接；已保存的考试与答案不会丢失。');}},12000);
+    const timeout=setTimeout(()=>{if(!initialized){setLoading(false);setError(tr("common:MAP 界面未能加载。请重新连接；已保存的考试与答案不会丢失。"));}},12000);
     async function receive(event:MessageEvent) {
       if(event.source!==frame.current?.contentWindow||!event.data||event.data.channel!=='review-map')return;
       const message=event.data;
@@ -109,8 +110,8 @@ export default function MapExamRoom({run:initial,paper}:{run:ExamRun;paper:ExamP
         Same-origin requests retain the private Sites session for scripts/assets.
         allow-forms is required even for preventDefault() submit handlers: browsers
         otherwise block the form before firing its submit event. */}
-    <iframe key={connection} ref={frame} title="MAP 考试" src={assetPath('map-player/index.html')} sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups" allow="fullscreen" onLoad={()=>send('ping')} />
-    {loading&&<div className="map-native-error" role="status">正在加载 MAP 考试界面…<button onClick={()=>navigate('subjects','ce')}>返回 CE</button></div>}
-    {error&&<div className="map-native-error" role="alert">{error}<button onClick={()=>setError('')} aria-label="关闭错误提示">×</button><button onClick={()=>{setError('');setConnection(n=>n+1);}}>重新连接</button><button onClick={()=>navigate('subjects','ce')}>返回 CE</button></div>}
+    <iframe key={connection} ref={frame} title={tr("common:MAP 考试")} src={assetPath('map-player/index.html')} sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups" allow="fullscreen" onLoad={()=>send('ping')} />
+    {loading&&<div className="map-native-error" role="status">{tr("common:正在加载 MAP 考试界面…")}<button onClick={()=>navigate('subjects','ce')}>{tr("common:返回 CE")}</button></div>}
+    {error&&<div className="map-native-error" role="alert">{error}<button onClick={()=>setError('')} aria-label={tr("common:关闭错误提示")}>×</button><button onClick={()=>{setError('');setConnection(n=>n+1);}}>{tr("common:重新连接")}</button><button onClick={()=>navigate('subjects','ce')}>{tr("common:返回 CE")}</button></div>}
   </main>;
 }

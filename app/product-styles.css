@@ -8,7 +8,6 @@
 @import './editorial.css';
 @import './learning-game.css';
 @import './rewards.css';
-@import './habitat.css';
 @import './home-item-art.css';
 @import './home-companion.css';
 @import './assistant.css';
@@ -23,3 +22,4 @@
 @import './import-quality.css';
 @import './publication-diagrams.css';
 @import './math-authoring.css';
+@import './knowledge-map.css';

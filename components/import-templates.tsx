@@ -1,4 +1,5 @@
 'use client';
+import {tr} from '@/lib/i18n';
 import { useState } from 'react';
 import { QUESTION_TYPES } from '@/lib/question-tools';
 import { MAP_TYPES } from '@/lib/map-model';
@@ -26,13 +27,11 @@ export default function ImportTemplates({
   const [type, setType] = useState(det?'det_read_select':exam ? 'mcq' : 'choice');
   return (
     <details className="manual-templates">
-      <summary>按格式手动导入（无需 AI）</summary>
-      <p className="muted">
-        选择题型后载入可编辑模板，替换题干、答案、解析与知识点，再点击识别预览。不会自动加入示例。
-      </p>
+      <summary>{tr("library:按格式手动导入（无需 AI）")}</summary>
+      <p className="muted">{tr("library:选择题型后载入可编辑模板，替换题干、答案、解析与知识点，再点击识别预览。不会自动加入示例。")}</p>
       <div className="button-row">
         <select
-          aria-label="导入模板题型"
+          aria-label={tr("library:导入模板题型")}
           value={type}
           onChange={(e) => setType(e.target.value)}
         >
@@ -61,15 +60,10 @@ export default function ImportTemplates({
                   : learningTemplate(type),
             )
           }
-        >
-          载入格式模板
-        </button>
+        >{tr("library:载入格式模板")}</button>
       </div>
       {exam && !map && (
-        <p className="muted">
-          Duolingo 模板采用 DET；其他模板默认 TOEFL。SAT / ACT 试卷可按考试包 Skill 修改 exam、flow
-          和对应章节。任意完整 JSON 也可直接粘贴导入。
-        </p>
+        <p className="muted">{tr("library:Duolingo 模板采用 DET；其他模板默认 TOEFL。SAT / ACT 试卷可按考试包 Skill 修改 exam、flow 和对应章节。任意完整 JSON 也可直接粘贴导入。")}</p>
       )}
     </details>
   );

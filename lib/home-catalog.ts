@@ -148,25 +148,3 @@ export const FREEZE_TIERS = [
   { name: '霜晶附魔', days: 2, cost: 60 },
   { name: '永冬附魔', days: 3, cost: 100 },
 ] as const;
-export type HomePlacement = {
-  id: string;
-  item: string;
-  x: number;
-  y: number;
-  rotation: 0 | 1;
-};
-export const STARTER_LAYOUT: HomePlacement[] = [
-  { id: 'starter-desk', item: 'furniture-desk', x: 1, y: 1, rotation: 0 },
-  { id: 'starter-chair', item: 'furniture-chair', x: 2, y: 3, rotation: 0 },
-  { id: 'starter-plant', item: 'furniture-plant', x: 5, y: 1, rotation: 0 },
-];
-export const iso = (x: number, y: number) => ({
-  x: 460 + (x - y) * 48,
-  y: 175 + (x + y) * 24,
-});
-/** Position furniture at the centre of its full footprint, including rotation. */
-export function furnitureCenter(p: HomePlacement) {
-  const shape = FURNITURE[p.item] ?? {w:1,d:1};
-  const w = p.rotation ? shape.d : shape.w, d = p.rotation ? shape.w : shape.d;
-  return {x:p.x+w/2,y:p.y+d/2,depth:p.x+p.y+(w+d)/2};
-}

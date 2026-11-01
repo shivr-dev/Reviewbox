@@ -1,4 +1,5 @@
 'use client';
+import {tr} from '@/lib/i18n';
 import { useState } from 'react';
 import { useReview } from './review-context';
 import {
@@ -21,14 +22,10 @@ export default function ToeflPractice() {
   return (
     <section className="panel toefl-practice">
       <p className="eyebrow">TOEFL PRACTICE</p>
-      <h2>托福专项练习</h2>
-      <p className="muted">
-        从已导入试卷选择一个部分，沿用对应考试流程与计时。题目重复使用，练习记录独立保存。
-      </p>
+      <h2>{tr("common:托福专项练习")}</h2>
+      <p className="muted">{tr("common:从已导入试卷选择一个部分，沿用对应考试流程与计时。题目重复使用，练习记录独立保存。")}</p>
       {!papers.length && (
-        <p>
-          请先在「测试 → TOEFL」导入试卷，即可按阅读、听力、写作或口语进行练习。
-        </p>
+        <p>{tr("common:请先在「测试 → TOEFL」导入试卷，即可按阅读、听力、写作或口语进行练习。")}</p>
       )}
       {papers.map((p) => (
         <details key={p.id}>
@@ -77,8 +74,7 @@ export default function ToeflPractice() {
                   }
                 }}
               >
-                {stage.title} · {stage.count} 页
-              </button>
+                {stage.title} · {stage.count}{tr("common:页")}</button>
             ))}
           </div>
         </details>

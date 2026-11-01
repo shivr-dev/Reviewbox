@@ -2,3 +2,5 @@
 
 .pack-toolbar>input{width:auto;flex:1 1 240px}.pack-toolbar>[role=combobox]{width:160px;flex:0 0 160px}.pack-toolbar>select{width:auto;flex:0 0 auto}.pack-installed-row strong{color:#243f55}.pack-status{font-weight:500}@media(max-width:600px){.pack-toolbar>input{width:100%;flex-basis:100%}}
 .pack-update-review input[type=radio]{width:18px;height:18px;min-width:18px;min-height:18px;padding:0;flex:none}
+
+.booklet-filters{display:grid;grid-template-columns:1fr 1fr;gap:12px}.booklet-filters label{min-width:0}.booklet-filters select{max-width:100%}@media(max-width:480px){.booklet-filters{grid-template-columns:1fr}}

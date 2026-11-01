@@ -229,7 +229,7 @@ test('Auto requires an explicit preference, offers a five-second opt-out, never 
         acknowledgedAt: new Date().toISOString(),
       };
       await render('enabled');
-      assert.match(document.body.textContent!, /5 秒后开始/);
+      assert.match(document.body.textContent!, /5\s*秒后开始/);
       await act(async () => t.mock.timers.tick(4000));
       assert.equal(starts, 0);
       await click('本次不自动开始');

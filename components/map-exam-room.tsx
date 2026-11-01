@@ -1,4 +1,5 @@
 'use client';
+import {tr} from '@/lib/i18n';
 import { useEffect, useRef, useState } from 'react';
 import {
   ArrowRight,
@@ -114,7 +115,7 @@ export default function MapExamRoom({
         }
       });
     writes.current.catch(() => {
-      if (alive.current) setError('本地保存未完成，请保留页面并重试。');
+      if (alive.current) setError(tr("results:本地保存未完成，请保留页面并重试。"));
     });
     return writes.current;
   }
@@ -164,7 +165,7 @@ export default function MapExamRoom({
       await refresh();
       navigate('subjects', 'ce');
     } catch {
-      setError('保存未完成，请重试后离开。');
+      setError(tr("results:保存未完成，请重试后离开。"));
     }
   }
   async function next() {
@@ -333,9 +334,9 @@ export default function MapExamRoom({
   if (!run.map || !q || !item || !slot)
     return (
       <main className="exam-empty">
-        <h1>MAP 本地题目暂未齐全</h1>
-        <p>请同步或重新导入完整题池后继续。</p>
-        <button onClick={() => void exit()}>返回 CE</button>
+        <h1>{tr("results:MAP 本地题目暂未齐全")}</h1>
+        <p>{tr("results:请同步或重新导入完整题池后继续。")}</p>
+        <button onClick={() => void exit()}>{tr("results:返回 CE")}</button>
       </main>
     );
   if (launching)
@@ -355,13 +356,13 @@ export default function MapExamRoom({
         <section>
           <button
             className="map-checkin-close"
-            aria-label="返回 CE"
+            aria-label={tr("results:返回 CE")}
             onClick={() => void exit()}
           >
             <X />
           </button>
           <div className="map-wordmark">
-            MAP <small>学习模拟</small>
+            MAP <small>{tr("results:学习模拟")}</small>
           </div>
           <div className="map-checkin-form">
             <p>Practice / Adaptive Simulation</p>
@@ -374,11 +375,9 @@ export default function MapExamRoom({
               Grade
               <input value={paper.options.grade ?? 8} readOnly />
             </label>
-            <p>
-              不设倒计时；提交下一题后，本题答案锁定。
-              {run.map.practice
-                ? '练习模式会在提交后显示解析。'
-                : '全部完成后查看解析。'}
+            <p>{tr("results:不设倒计时；提交下一题后，本题答案锁定。")}{run.map.practice
+                ? tr("results:练习模式会在提交后显示解析。")
+                : tr("results:全部完成后查看解析。")}
             </p>
             <button
               className="map-start"
@@ -399,7 +398,7 @@ export default function MapExamRoom({
                   ]);
                   start.current = Date.now();
                 } catch {
-                  setError('无法保存，请重试。');
+                  setError(tr("results:无法保存，请重试。"));
                 } finally {
                   setBusy(false);
                   setLaunching(false);
@@ -422,7 +421,7 @@ export default function MapExamRoom({
       <div className="map-surface" ref={surface}>
         <header className="map-toolbar">
           <button
-            aria-label="缩小"
+            aria-label={tr("results:缩小")}
             disabled={zoom <= 80}
             onClick={() => tools({ zoom: zoom - 10 })}
           >
@@ -430,7 +429,7 @@ export default function MapExamRoom({
           </button>
           <output>{zoom}%</output>
           <button
-            aria-label="放大"
+            aria-label={tr("results:放大")}
             disabled={zoom >= 160}
             onClick={() => tools({ zoom: zoom + 10 })}
           >
@@ -438,16 +437,16 @@ export default function MapExamRoom({
           </button>
           <i />
           <button
-            title="高亮文字"
-            aria-label="高亮文字"
+            title={tr("results:高亮文字")}
+            aria-label={tr("results:高亮文字")}
             aria-pressed={tool === 'highlight'}
             onClick={() => setTool(tool === 'highlight' ? '' : 'highlight')}
           >
             <Highlighter />
           </button>
           <button
-            title="清除高亮"
-            aria-label="清除高亮"
+            title={tr("results:清除高亮")}
+            aria-label={tr("results:清除高亮")}
             onClick={() => {
               patch({ highlights: { ...run.highlights, [slot.id]: [] } });
               setTool('');
@@ -456,24 +455,24 @@ export default function MapExamRoom({
             <Eraser />
           </button>
           <button
-            title="阅读辅助线"
-            aria-label="阅读辅助线"
+            title={tr("results:阅读辅助线")}
+            aria-label={tr("results:阅读辅助线")}
             aria-pressed={reader}
             onClick={() => tools({ reader: !reader })}
           >
             <PanelTop />
           </button>
           <button
-            title="笔记"
-            aria-label="笔记"
+            title={tr("results:笔记")}
+            aria-label={tr("results:笔记")}
             aria-pressed={modal === 'notes'}
             onClick={() => setModal('notes')}
           >
             <StickyNote />
           </button>
           <button
-            title="排除选项"
-            aria-label="排除选项"
+            title={tr("results:排除选项")}
+            aria-label={tr("results:排除选项")}
             aria-pressed={tool === 'eliminate'}
             onClick={() => setTool(tool === 'eliminate' ? '' : 'eliminate')}
           >
@@ -481,8 +480,8 @@ export default function MapExamRoom({
           </button>
           <button
             className="map-exit"
-            title="保存并离开"
-            aria-label="保存并离开"
+            title={tr("results:保存并离开")}
+            aria-label={tr("results:保存并离开")}
             onClick={() => void exit()}
           >
             <LogOut size={20} />
@@ -568,7 +567,7 @@ export default function MapExamRoom({
               </>
             )}
             {item.type === 'gap_match' && (
-              <div className="map-wordbank" aria-label="词块库">
+              <div className="map-wordbank" aria-label={tr("results:词块库")}>
                 {item.choices!.map((c) => (
                   <button
                     key={c}
@@ -655,8 +654,8 @@ export default function MapExamRoom({
             className="map-next"
             aria-label={
               run.map.practice && !run.map.checked
-                ? '提交并核对答案'
-                : '提交并进入下一题'
+                ? tr("results:提交并核对答案")
+                : tr("results:提交并进入下一题")
             }
             disabled={busy || !mapAnswered(q, answer)}
             onClick={() => void next()}
@@ -668,10 +667,10 @@ export default function MapExamRoom({
       {error && (
         <div className="map-error" role="alert">
           {error}
-          <button onClick={() => setError('')} aria-label="关闭错误提示">
+          <button onClick={() => setError('')} aria-label={tr("results:关闭错误提示")}>
             <X size={18} />
           </button>
-          <button onClick={() => void next()}>重试</button>
+          <button onClick={() => void next()}>{tr("results:重试")}</button>
         </div>
       )}
       <Dialog

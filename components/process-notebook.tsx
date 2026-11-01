@@ -1,4 +1,5 @@
 'use client';
+import {tr} from '@/lib/i18n';
 import { useEffect, useRef, useState } from 'react';
 import { useReview } from './review-context';
 import { currentNamespace, put } from '@/lib/store';
@@ -66,7 +67,7 @@ export default function ProcessNotebook({
       .then(async () => {
         await put('job', value, id, false, ns.current);
       })
-      .catch(() => setError('草稿未能保存，请检查设备存储'));
+      .catch(() => setError(tr("common:草稿未能保存，请检查设备存储")));
     return writes.current;
   };
   const update = (next: { text?: string; image?: string }) => {
@@ -117,7 +118,7 @@ export default function ProcessNotebook({
       update({ text: parsed.text ?? '' });
       setConfirmed(false);
       if (!parsed.text?.trim())
-        setError('没有识别到清晰文字，请手动填写步骤；手写公式尤其需要校对。');
+        setError(tr("common:没有识别到清晰文字，请手动填写步骤；手写公式尤其需要校对。"));
     } catch (e) {
       setError(e instanceof Error ? e.message : '识别未完成');
     } finally {
@@ -175,27 +176,23 @@ export default function ProcessNotebook({
     }
   }
   return (
-    <aside className="process-notebook" aria-label="草稿过程诊断">
+    <aside className="process-notebook" aria-label={tr("common:草稿过程诊断")}>
       <div className="section-head">
-        <h3>草稿与分步作答</h3>
+        <h3>{tr("common:草稿与分步作答")}</h3>
         <button
           className="quiet"
           onClick={() => {
             void persist();
             onClose();
           }}
-        >
-          关闭
-        </button>
+        >{tr("common:关闭")}</button>
       </div>
-      <p className="muted">
-        可只写草稿，也可选择分析步骤。分析不自动评分；揭晓前获得诊断建议会记录为使用提示。
-      </p>
+      <p className="muted">{tr("common:可只写草稿，也可选择分析步骤。分析不自动评分；揭晓前获得诊断建议会记录为使用提示。")}</p>
       <canvas
         ref={canvas}
         width={800}
         height={320}
-        aria-label="手写草稿"
+        aria-label={tr("common:手写草稿")}
         onPointerDown={(e) => {
           if (busy) return;
           drawing.current = true;
@@ -247,9 +244,7 @@ export default function ProcessNotebook({
             update({ image: '' });
             setConfirmed(true);
           }}
-        >
-          清空手写
-        </button>
+        >{tr("common:清空手写")}</button>
         <button
           className="secondary"
           disabled={busy || !image}
@@ -259,16 +254,12 @@ export default function ProcessNotebook({
                 void ocr(new File([blob], '草稿.png', { type: 'image/png' }));
             })
           }
-        >
-          本地识别草稿
-        </button>
+        >{tr("common:本地识别草稿")}</button>
         <button
           className="quiet"
           disabled={busy}
           onClick={() => file.current?.click()}
-        >
-          导入草稿照片
-        </button>
+        >{tr("common:导入草稿照片")}</button>
       </div>
       <input
         ref={file}
@@ -286,9 +277,7 @@ export default function ProcessNotebook({
           e.target.value = '';
         }}
       />
-      <label>
-        实际解题步骤（每行一步）
-        <textarea
+      <label>{tr("common:实际解题步骤（每行一步）")}<textarea
           disabled={busy}
           maxLength={20000}
           rows={6}
@@ -296,7 +285,7 @@ export default function ProcessNotebook({
           onChange={(e) => {
             update({ text: e.target.value });
           }}
-          placeholder="1. 列出已知条件\n2. 建立关系式\n3. 逐步计算或推导"
+          placeholder={tr("common:1. 列出已知条件\\n2. 建立关系式\\n3. 逐步计算或推导")}
         />
       </label>
       {image && (
@@ -305,9 +294,7 @@ export default function ProcessNotebook({
             type="checkbox"
             checked={confirmed}
             onChange={(e) => setConfirmed(e.target.checked)}
-          />
-          已对照草稿校对文字、公式和步骤顺序
-        </label>
+          />{tr("common:已对照草稿校对文字、公式和步骤顺序")}</label>
       )}
       <button
         className="secondary"
@@ -320,17 +307,15 @@ export default function ProcessNotebook({
         }
         onClick={() => void diagnose()}
       >
-        {busy ? '正在处理…' : '分析首个出错步骤'}
+        {busy ? tr("common:正在处理…") : tr("common:分析首个出错步骤")}
       </button>
-      <small className="muted">
-        识别在本地进行；点击分析才调用 AI，使用现有额度。
-      </small>
+      <small className="muted">{tr("common:识别在本地进行；点击分析才调用 AI，使用现有额度。")}</small>
       {error && <p role="alert">{error}</p>}
       {result && (
         <article className="process-result">
           <b>
             {result.result.firstStep === null
-              ? '过程分析'
+              ? tr("common:过程分析")
               : '第 ' +
                 (result.result.firstStep + 1) +
                 ' 步 · ' +
@@ -351,10 +336,10 @@ export default function ProcessNotebook({
           </p>
           <small className="muted">
             {result.result.status === 'uncertain'
-              ? '证据不足，未作能力归因。'
+              ? tr("common:证据不足，未作能力归因。")
               : result.afterReveal
-                ? '揭晓后补充的步骤，仅供学习参考。'
-                : '以实际步骤为依据；结论仍需结合后续表现。'}
+                ? tr("common:揭晓后补充的步骤，仅供学习参考。")
+                : tr("common:以实际步骤为依据；结论仍需结合后续表现。")}
           </small>
         </article>
       )}

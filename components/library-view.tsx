@@ -1,4 +1,8 @@
 'use client';
+import {subjectLabel as subjectName} from '@/lib/presentation';
+import {tr} from '@/lib/i18n';
+import {lazy,Suspense} from 'react';
+const BookletExport=lazy(()=>import('./booklet-export'));
 import type {watchRequest} from '@/lib/watch-client';
 import ManualImport from './manual-import';
 import ImportSkillCard from './import-skill-card';
@@ -40,15 +44,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { useReview } from './review-context';
-import {
-  SUBJECTS,
-  uid,
-  subjectName,
-  type Subject,
-  type Node,
-  type Question,
-  type Pack,
-} from '@/lib/model';
+import {SUBJECTS,uid,type Subject,type Node,type Question,type Pack} from '@/lib/model';
 import {
   put,
   saveRecords,
@@ -80,6 +76,7 @@ export default function LibraryView({
       SUBJECTS.some((s) => s.id === routeSubject) ? routeSubject : 'all',
     ),
     [importOpen, setImportOpen] = useState(false),
+    [bookletOpen,setBookletOpen]=useState(false),
     [editorOpen, setEditorOpen] = useState(false),
     [text, setText] = useState(''),
     [name, setName] = useState('我的学习资料'),
@@ -154,7 +151,7 @@ export default function LibraryView({
         notify(`已合并 ${count} 条备份记录`);
       } else if (stage.pack) {
         await installPack(stage.pack);
-        notify('学习包已安装，个人学习记录已保留');
+        notify(tr("library:学习包已安装，个人学习记录已保留"));
       } else {
         const now = new Date().toISOString();
         const material = {
@@ -224,7 +221,7 @@ export default function LibraryView({
           relatedNodes: [],
           importance: 0.7,
           examWeight: 0.7,
-          skills: [{ id: 'recall', title: '内容理解', difficulty: 1 }],
+          skills: [{ id: 'recall', title: tr("common:内容理解"), difficulty: 1 }],
           source: '我的题目',
           version: '1.0.0',
         };
@@ -320,7 +317,7 @@ export default function LibraryView({
       ]);
       await refresh();
       setEditorOpen(false);
-      notify('题目已保存并关联知识能力');
+      notify(tr("library:题目已保存并关联知识能力"));
     } catch (e) {
       notify(e instanceof Error ? e.message : '保存未完成');
     } finally {
@@ -331,11 +328,12 @@ export default function LibraryView({
     <div className="library-page settings-scope">
       <Heading
         eyebrow="YOUR LEARNING LIBRARY"
-        title="资料库"
-        description="管理自己的资料、题目与学习包。"
+        title={tr("library:资料库")}
+        description={tr("library:管理自己的资料、题目与学习包。")}
         action={
           <div className="button-row">
-            <button className="secondary" onClick={()=>setTab('data')}>导入工具</button>
+            <button className="secondary" onClick={()=>setBookletOpen(true)}>{tr("library:导出 Word")}</button>
+            <button className="secondary" onClick={()=>setTab('data')}>{tr("library:导入工具")}</button>
             <button
               className="primary"
               onClick={() => {
@@ -343,21 +341,20 @@ export default function LibraryView({
                 setImportOpen(true);
               }}
             >
-              <Upload size={16} />
-              导入
-            </button>
+              <Upload size={16} />{tr("library:导入")}</button>
           </div>
         }
       />
+      {bookletOpen&&<Suspense fallback={<p role="status">{tr("library:导出工具加载中…")}</p>}><BookletExport close={()=>setBookletOpen(false)}/></Suspense>}
       <Tabs value={tab} onValueChange={(v) => setTab(String(v))}>
         <TabsList variant="line" className="page-tabs">
-          <TabsTrigger value="materials">学习资料</TabsTrigger>
-          <TabsTrigger value="questions">题目库</TabsTrigger>
-          <TabsTrigger value="content">学习包</TabsTrigger>
+          <TabsTrigger value="materials">{tr("library:学习资料")}</TabsTrigger>
+          <TabsTrigger value="questions">{tr("library:题目库")}</TabsTrigger>
+          <TabsTrigger value="content">{tr("library:学习包")}</TabsTrigger>
 
         </TabsList>
         <TabsContent value="materials">
-          <div className="pack-toolbar"><input aria-label="搜索资料" placeholder="搜索我的资料" value={search} onChange={e=>setSearch(e.target.value)}/><SubjectChoice value={filter} onChange={setFilter} all/><select aria-label="资料排序" value={materialOrder} onChange={e=>setMaterialOrder(e.target.value)}><option value="new">最近添加</option><option value="name">按名称</option></select></div>
+          <div className="pack-toolbar"><input aria-label={tr("library:搜索资料")} placeholder={tr("library:搜索我的资料")} value={search} onChange={e=>setSearch(e.target.value)}/><SubjectChoice value={filter} onChange={setFilter} all/><select aria-label={tr("library:资料排序")} value={materialOrder} onChange={e=>setMaterialOrder(e.target.value)}><option value="new">{tr("library:最近添加")}</option><option value="name">{tr("library:按名称")}</option></select></div>
           {materials.length ? (
             <div className="material-grid">
               {materials.slice(mp*12,mp*12+12).map((m) => (
@@ -365,11 +362,11 @@ export default function LibraryView({
                   <FileText size={21} />
                   <h3>{m.name}</h3>
                   <p className="muted">
-                    {subjectName(m.subject)} · {m.nodeIds.length} 个知识点 ·{' '}
+                    {subjectName(m.subject)} · {m.nodeIds.length}{tr("library:个知识点 ·")}{' '}
                     {dateLabel(m.date)}
                   </p>
                   <details>
-                    <summary>查看提取内容</summary>
+                    <summary>{tr("library:查看提取内容")}</summary>
                     <p className="pre-wrap">{m.text}</p>
                   </details>
                   <button
@@ -386,21 +383,17 @@ export default function LibraryView({
                         })),
                       );
                     }}
-                  >
-                    复习这份资料
-                    <ArrowRight size={14} />
+                  >{tr("library:复习这份资料")}<ArrowRight size={14} />
                   </button>
                 </section>
               ))}
             </div>
           ) : (
             <section className="panel">
-              <Empty title="你的课程资料，在这里相遇">
-                导入后先检查识别内容，再加入自己的知识地图。
-              </Empty>
+              <Empty title={tr("library:你的课程资料，在这里相遇")}>{tr("library:导入后先检查识别内容，再加入自己的知识地图。")}</Empty>
             </section>
           )}
-          <footer className="pack-pagination"><button disabled={mp===0} onClick={()=>setMaterialPage(mp-1)}>上一页</button><span>{mp+1} / {materialPages}</span><button disabled={mp+1>=materialPages} onClick={()=>setMaterialPage(mp+1)}>下一页</button></footer>
+          <footer className="pack-pagination"><button disabled={mp===0} onClick={()=>setMaterialPage(mp-1)}>{tr("library:上一页")}</button><span>{mp+1} / {materialPages}</span><button disabled={mp+1>=materialPages} onClick={()=>setMaterialPage(mp+1)}>{tr("library:下一页")}</button></footer>
         </TabsContent>
         <TabsContent value="questions">
           <div className="toolbar">
@@ -409,19 +402,15 @@ export default function LibraryView({
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="搜索题目或知识点"
-                aria-label="搜索题目"
+                placeholder={tr("library:搜索题目或知识点")}
+                aria-label={tr("library:搜索题目")}
               />
             </div>
             <SubjectChoice value={filter} onChange={setFilter} all />
             <button className="secondary" onClick={() => setEditorOpen(true)}>
-              <Plus size={16} />
-              新建题目
-            </button>
+              <Plus size={16} />{tr("library:新建题目")}</button>
           </div>
-          <p className="inline-hint">
-            共 {questions.length} 道题目 · 每道题都关联一个知识点与具体能力
-          </p>
+          <p className="inline-hint">{tr("library:共")}{questions.length}{tr("library:道题目 · 每道题都关联一个知识点与具体能力")}</p>
           <div className="panel question-list">
             {questions.slice(qp*20,qp*20+20).map((q) => (
               <details key={q.id}>
@@ -437,12 +426,12 @@ export default function LibraryView({
                         '回忆题'}
                     </small>
                   </span>
-                  <span className="reason-pill">难度 {q.difficulty}</span>
+                  <span className="reason-pill">{tr("library:难度")}{q.difficulty}</span>
                 </summary>
                 <div className="question-list-answer">
                   <p className="pre-wrap">
                     <MathText>
-                      {q.type === 'matching' ? '配对结果见下方解析' : q.answer}
+                      {q.type === 'matching' ? tr("library:配对结果见下方解析") : q.answer}
                     </MathText>
                   </p>
                   <p className="muted">
@@ -456,48 +445,42 @@ export default function LibraryView({
                           { question: q, reason: '自由练习', priority: 1 },
                         ])
                       }
-                    >
-                      练习这道题
-                      <ArrowRight size={14} />
+                    >{tr("library:练习这道题")}<ArrowRight size={14} />
                     </button>
                     <QuestionReviewButton question={q} />
                     <span className="muted">
                       {q.source}
-                      {q.verified ? ' · 已核验' : ''}
+                      {q.verified ? tr("library: · 已核验") : ''}
                     </span>
                   </div>
                 </div>
               </details>
             ))}
             {!questions.length && (
-              <Empty title="没有找到题目">
-                可以导入资料，或用表单建立第一道题。
-              </Empty>
+              <Empty title={tr("library:没有找到题目")}>{tr("library:可以导入资料，或用表单建立第一道题。")}</Empty>
             )}
           </div>
-          <footer className="pack-pagination"><button disabled={qp===0} onClick={()=>setQuestionPage(qp-1)}>上一页</button><span>{qp+1} / {questionPages}</span><button disabled={qp+1>=questionPages} onClick={()=>setQuestionPage(qp+1)}>下一页</button></footer>
+          <footer className="pack-pagination"><button disabled={qp===0} onClick={()=>setQuestionPage(qp-1)}>{tr("library:上一页")}</button><span>{qp+1} / {questionPages}</span><button disabled={qp+1>=questionPages} onClick={()=>setQuestionPage(qp+1)}>{tr("library:下一页")}</button></footer>
         </TabsContent>
-        <TabsContent value="content"><PackWorkspace request={packageRequest} onImport={()=>{setStage(null);setImportOpen(true);}}/><details className="pack-export"><summary>导出我整理的内容</summary>          <section className="panel">
-            <h2>打包自己的课程</h2>
-            <p className="muted">
-              导出题目、知识点和评分标准，保存在自己的设备中，或用于私有云端备份。
-            </p>
+        <TabsContent value="content"><PackWorkspace request={packageRequest} onImport={()=>{setStage(null);setImportOpen(true);}}/><details className="pack-export"><summary>{tr("library:导出我整理的内容")}</summary>          <section className="panel">
+            <h2>{tr("library:打包自己的课程")}</h2>
+            <p className="muted">{tr("library:导出题目、知识点和评分标准，保存在自己的设备中，或用于私有云端备份。")}</p>
             <button
               className="secondary"
               onClick={() => {
                 const ns = data.nodes.filter((n) => !n.id.startsWith('core-'));
                 if (!ns.length) {
-                  notify('先导入或创建一些自己的内容');
+                  notify(tr("library:先导入或创建一些自己的内容"));
                   return;
                 }
                 downloadPack({
                   schemaVersion: 1,
                   manifest: {
                     id: 'my-learning-pack',
-                    title: '我的学习包',
+                    title: tr("common:我的学习包"),
                     subject: 'all',
                     version: '1.0.0',
-                    description: '个人整理的学习内容',
+                    description: tr("common:个人整理的学习内容"),
                     changelog: '自建学习内容',
                     compatibility: 'Review 1.x',
                   },
@@ -508,9 +491,7 @@ export default function LibraryView({
                 });
               }}
             >
-              <Download size={15} />
-              导出自建学习包
-            </button>
+              <Download size={15} />{tr("library:导出自建学习包")}</button>
           </section>
 </details></TabsContent>
         <TabsContent value="data"><ImportSkillCard/>
@@ -532,13 +513,13 @@ export default function LibraryView({
             ))}
           </div>
           <div className="home-columns">
-            <section className="panel"><h2>备份与恢复</h2><button className="text-button" onClick={()=>navigate('you','all','data')}>前往数据与隐私 →</button></section>
+            <section className="panel"><h2>{tr("library:备份与恢复")}</h2><button className="text-button" onClick={()=>navigate('you','all','data')}>{tr("library:前往数据与隐私 →")}</button></section>
             <section className="panel">
-              <h2>错题再看</h2>
-              <p className="muted">只保留仍未通过后续练习巩固的题目。</p>
+              <h2>{tr("library:错题再看")}</h2>
+              <p className="muted">{tr("library:只保留仍未通过后续练习巩固的题目。")}</p>
               <div className="practice-count">
                 {wrongQuestions.length}
-                <span>道需要回看</span>
+                <span>{tr("library:道需要回看")}</span>
               </div>
               <button
                 className="secondary"
@@ -552,16 +533,14 @@ export default function LibraryView({
                     })),
                   )
                 }
-              >
-                开始错题复习
-                <ArrowRight size={16} />
+              >{tr("library:开始错题复习")}<ArrowRight size={16} />
               </button>
             </section>
           </div>
           <section className="panel">
             <div className="section-head">
-              <h2>最近学习记录</h2>
-              <span className="muted">记录保存在本地，同步后可跨设备查看</span>
+              <h2>{tr("library:最近学习记录")}</h2>
+              <span className="muted">{tr("library:记录保存在本地，同步后可跨设备查看")}</span>
             </div>
             {data.events
               .slice(-40)
@@ -571,32 +550,30 @@ export default function LibraryView({
                   <div className="grow">
                     <h3>{data.nodes.find((n) => n.id === e.nodeId)?.title}</h3>
                     <p className="muted">
-                      {dateLabel(e.occurredAt)} · 思考{' '}
-                      {(e.activeThinkMs / 1000).toFixed(1)} 秒 ·{' '}
-                      {e.source === 'rubric' ? '评分标准批改' : '自主判断'}
+                      {dateLabel(e.occurredAt)}{tr("library:· 思考")}{' '}
+                      {(e.activeThinkMs / 1000).toFixed(1)}{tr("library:秒 ·")}{' '}
+                      {e.source === 'rubric' ? tr("library:评分标准批改") : tr("library:自主判断")}
                     </p>
                   </div>
                   <span className={'outcome ' + e.outcome}>
                     {e.outcome === 'correct'
-                      ? '答对'
+                      ? tr("library:答对")
                       : e.outcome === 'unsure'
-                        ? '不确定'
-                        : '答错'}
+                        ? tr("common:不确定")
+                        : tr("common:答错")}
                   </span>
                 </div>
               ))}
             {!data.events.length && (
-              <Empty title="每一次复习，都会被认真记录" />
+              <Empty title={tr("library:每一次复习，都会被认真记录")} />
             )}
           </section>
         </TabsContent>
       </Tabs>
       <Dialog open={importOpen} onOpenChange={setImportOpen}>
         <DialogContent className="import-dialog">
-          <DialogTitle>智能导入</DialogTitle>
-          <DialogDescription>
-            粘贴内容或选择文件，确认识别结果后加入学习。
-          </DialogDescription>
+          <DialogTitle>{tr("library:智能导入")}</DialogTitle>
+          <DialogDescription>{tr("library:粘贴内容或选择文件，确认识别结果后加入学习。")}</DialogDescription>
           <input
             ref={fileInput}
             type="file"
@@ -611,15 +588,15 @@ export default function LibraryView({
                 <div>
                   <h3>
                     {stage.backup
-                      ? '准备恢复学习备份'
+                      ? tr("library:准备恢复学习备份")
                       : stage.pack
                         ? stage.pack.manifest.title
-                        : `识别到 ${stage.nodes.length} 个知识点`}
+                        : tr("common:识别到 {{v0}} 个知识点",{v0:(stage.nodes.length)})}
                   </h3>
                   <p className="muted">
                     {stage.backup
-                      ? '按记录合并，不重复计算答题事件'
-                      : `${stage.questions.length} 道相关练习 · 检查后确认导入`}
+                      ? tr("library:按记录合并，不重复计算答题事件")
+                      : tr("common:{{v0}} 道相关练习 · 检查后确认导入",{v0:(stage.questions.length)})}
                   </p>
                 </div>
               </div>
@@ -638,15 +615,13 @@ export default function LibraryView({
                 ))}
               </div>
               <div className="button-row">
-                <button className="secondary" onClick={() => setStage(null)}>
-                  返回编辑
-                </button>
+                <button className="secondary" onClick={() => setStage(null)}>{tr("library:返回编辑")}</button>
                 <button
                   className="primary"
                   disabled={busy}
                   onClick={acceptImport}
                 >
-                  {busy ? '正在保存…' : '确认导入'}
+                  {busy ? tr("library:正在保存…") : tr("library:确认导入")}
                 </button>
               </div>
             </>
@@ -659,21 +634,17 @@ export default function LibraryView({
                   onClick={() => fileInput.current?.click()}
                 >
                   <Upload size={16} />
-                  {busy ? '正在识别文件…' : '选择文件'}
+                  {busy ? tr("library:正在识别文件…") : tr("library:选择文件")}
                 </button>
-                <ManualImport subject={initialSubject}/><span className="muted">最多 15 MB · 图片识别首次需要联网</span>
+                <ManualImport subject={initialSubject}/><span className="muted">{tr("library:最多 15 MB · 图片识别首次需要联网")}</span>
               </div>
-              <label>
-                资料名称
-                <input
+              <label>{tr("library:资料名称")}<input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   maxLength={200}
                 />
               </label>
-              <label>
-                粘贴学习内容（也支持按模板手动填写 JSON）
-                <textarea
+              <label>{tr("library:粘贴学习内容（也支持按模板手动填写 JSON）")}<textarea
                   rows={8}
                   value={text}
                   onChange={(e) => {
@@ -682,13 +653,11 @@ export default function LibraryView({
                   }}
                   maxLength={300000}
                   placeholder={
-                    '例如：\n沮丧 jǔ sàng\n狼藉 láng jí\n蹒跚 pán shān\n\n或：Suspense: uncertainty and anticipation about what happens next.'
+                    tr("library:例如：\n沮丧 jǔ sàng\n狼藉 láng jí\n蹒跚 pán shān\n\n或：Suspense: uncertainty and anticipation about what happens next.")
                   }
                 />
               </label>
-              <label>
-                识别学科，可调整
-                <SubjectChoice
+              <label>{tr("library:识别学科，可调整")}<SubjectChoice
                   value={subject}
                   onChange={(s) => setSubject(s as Subject)}
                 />
@@ -699,9 +668,7 @@ export default function LibraryView({
                   setSubject(guessSubject(value));
                 }}
               />
-              <p className="inline-hint">
-                基础识别按段落、词条和问答结构提取；复杂课件请在确认前检查。整套课程可导入带版本的学习包。
-              </p>
+              <p className="inline-hint">{tr("library:基础识别按段落、词条和问答结构提取；复杂课件请在确认前检查。整套课程可导入带版本的学习包。")}</p>
               <button
                 className="primary"
                 disabled={!text.trim() || busy}
@@ -720,9 +687,7 @@ export default function LibraryView({
                     notify(String(e));
                   }finally{setBusy(false);}
                 }}
-              >
-                识别并预览
-                <ArrowRight size={16} />
+              >{tr("library:识别并预览")}<ArrowRight size={16} />
               </button>
             </>
           )}
@@ -730,15 +695,11 @@ export default function LibraryView({
       </Dialog>
       <Dialog open={editorOpen} onOpenChange={setEditorOpen}>
         <DialogContent className="editor-dialog">
-          <DialogTitle>新建题目</DialogTitle>
-          <DialogDescription>
-            题目、知识点与能力连接后，练习才会影响掌握度。
-          </DialogDescription>
+          <DialogTitle>{tr("library:新建题目")}</DialogTitle>
+          <DialogDescription>{tr("library:题目、知识点与能力连接后，练习才会影响掌握度。")}</DialogDescription>
           <form onSubmit={saveQuestion}>
             <div className="form-grid">
-              <label>
-                学科
-                <SubjectChoice
+              <label>{tr("library:学科")}<SubjectChoice
                   value={subject}
                   onChange={(v) => {
                     setSubject(v as Subject);
@@ -747,17 +708,15 @@ export default function LibraryView({
                   }}
                 />
               </label>
-              <label>
-                知识点
-                <Choice
-                  label="知识点"
+              <label>{tr("library:知识点")}<Choice
+                  label={tr("library:知识点")}
                   value={nodeId}
                   onChange={(v) => {
                     setNodeId(v);
                     setSkillId('');
                   }}
                   options={[
-                    { value: '', label: '建立新知识点' },
+                    { value: '', label: tr("common:建立新知识点") },
                     ...visibleNodes.map((n) => ({
                       value: n.id,
                       label: n.title,
@@ -766,9 +725,7 @@ export default function LibraryView({
                 />
               </label>
               {!nodeId && (
-                <label>
-                  新知识点名称
-                  <input
+                <label>{tr("library:新知识点名称")}<input
                     required
                     value={newNodeTitle}
                     onChange={(e) => setNewNodeTitle(e.target.value)}
@@ -777,10 +734,8 @@ export default function LibraryView({
                 </label>
               )}
               {chosenNode && (
-                <label>
-                  能力
-                  <Choice
-                    label="能力"
+                <label>{tr("library:能力")}<Choice
+                    label={tr("library:能力")}
                     value={skillId || chosenNode.skills[0].id}
                     onChange={setSkillId}
                     options={chosenNode.skills.map((s) => ({
@@ -790,26 +745,22 @@ export default function LibraryView({
                   />
                 </label>
               )}
-              <label>
-                题目类型
-                <Choice
-                  label="题目类型"
+              <label>{tr("library:题目类型")}<Choice
+                  label={tr("library:题目类型")}
                   value={type}
                   onChange={setType}
                   options={[
-                    { value: 'recall', label: '回忆题' },
-                    { value: 'blank', label: '填空题' },
-                    { value: 'matching', label: '连线题' },
-                    { value: 'pinyin', label: '看拼音写汉字' },
-                    { value: 'choice', label: '选择题' },
-                    { value: 'subjective', label: '主观题' },
+                    { value: 'recall', label: tr("common:回忆题") },
+                    { value: 'blank', label: tr("common:填空题") },
+                    { value: 'matching', label: tr("common:连线题") },
+                    { value: 'pinyin', label: tr("common:看拼音写汉字") },
+                    { value: 'choice', label: tr("common:选择题") },
+                    { value: 'subjective', label: tr("common:主观题") },
                   ]}
                 />
               </label>
-              <label>
-                难度
-                <Choice
-                  label="题目难度"
+              <label>{tr("library:难度")}<Choice
+                  label={tr("library:题目难度")}
                   value={difficulty}
                   onChange={setDifficulty}
                   options={['1', '2', '3', '4', '5'].map((n) => ({
@@ -819,71 +770,53 @@ export default function LibraryView({
                 />
               </label>
             </div>
-            <label>
-              题干
-              <textarea name="prompt" required rows={3} maxLength={12000} />
+            <label>{tr("library:题干")}<textarea name="prompt" required rows={3} maxLength={12000} />
             </label>
             {type === 'matching' && (
-              <label>
-                配对内容（每行：左侧 =&gt; 右侧）
-                <textarea
+              <label>{tr("library:配对内容（每行：左侧 =&gt; 右侧）")}<textarea
                   name="pairs"
                   rows={5}
                   required
-                  placeholder={'Suspense => 悬念\nImagery => 意象'}
+                  placeholder={tr("library:Suspense => 悬念\nImagery => 意象")}
                 />
               </label>
             )}
             {type === 'choice' && (
-              <label>
-                选项（每行一个，含 A. / B. 等标签）
-                <textarea name="options" required rows={4} />
+              <label>{tr("library:选项（每行一个，含 A. / B. 等标签）")}<textarea name="options" required rows={4} />
               </label>
             )}
-            <label>
-              标准答案
-                {supportsMathInput(subject,type)?<MathAnswerComposer name="answer" value={editorAnswer} format={editorAnswerFormat} onChange={setEditorAnswer} onFormatChange={setEditorAnswerFormat}/>:<textarea
+            <label>{tr("library:标准答案")}{supportsMathInput(subject,type)?<MathAnswerComposer name="answer" value={editorAnswer} format={editorAnswerFormat} onChange={setEditorAnswer} onFormatChange={setEditorAnswerFormat}/>:<textarea
                   name="answer"
                 required={type !== 'matching'}
                 disabled={type === 'matching'}
-                placeholder={type === 'matching' ? '根据配对内容自动生成' : ''}
+                placeholder={type === 'matching' ? tr("library:根据配对内容自动生成") : ''}
                 rows={3}
                   maxLength={12000}
                 />}
             </label>
-            <label>
-              解释或解题过程
-              <textarea name="explanation" rows={3} maxLength={12000} />
+            <label>{tr("library:解释或解题过程")}<textarea name="explanation" rows={3} maxLength={12000} />
             </label>
             {type === 'subjective' && (
               <>
-                <label>
-                  原文或材料
-                  <textarea name="passage" rows={3} />
+                <label>{tr("library:原文或材料")}<textarea name="passage" rows={3} />
                 </label>
-                <label>
-                  评分点（每行一项，每项 2 分）
-                  <textarea
+                <label>{tr("library:评分点（每行一项，每项 2 分）")}<textarea
                     name="rubric"
                     required
                     rows={3}
-                    placeholder={'核心观点准确\n使用具体证据\n分析清晰'}
+                    placeholder={tr("library:核心观点准确\n使用具体证据\n分析清晰")}
                   />
                 </label>
               </>
             )}
             <div className="form-grid">
-              <label>
-                标签
-                <input name="tags" placeholder="用逗号分隔" />
+              <label>{tr("library:标签")}<input name="tags" placeholder={tr("library:用逗号分隔")} />
               </label>
-              <label>
-                来源
-                <input name="source" placeholder="教材、笔记或自编" />
+              <label>{tr("library:来源")}<input name="source" placeholder={tr("library:教材、笔记或自编")} />
               </label>
             </div>
             <button className="primary" disabled={busy} type="submit">
-              {busy ? '正在保存…' : '保存题目'}
+              {busy ? tr("library:正在保存…") : tr("library:保存题目")}
             </button>
           </form>
         </DialogContent>

@@ -1,4 +1,5 @@
 'use client';
+import {tr} from '@/lib/i18n';
 import { useId, useRef } from 'react';
 import type { ReactNode } from 'react';
 import {
@@ -923,9 +924,7 @@ export default function SubjectDiagram({ spec }: { spec: SemanticDiagram }) {
     parsed = semanticDiagramSchema.safeParse(spec);
   if (!parsed.success)
     return (
-      <p className="diagram-error" role="status">
-        图形条件需要确认，未显示不可靠的示意图。
-      </p>
+      <p className="diagram-error" role="status">{tr("common:图形条件需要确认，未显示不可靠的示意图。")}</p>
     );
   function exportSVG() {
     if (!ref.current) return;
@@ -971,9 +970,7 @@ export default function SubjectDiagram({ spec }: { spec: SemanticDiagram }) {
       </svg>
       <figcaption>
         {spec.caption}
-        <button type="button" className="diagram-export" onClick={exportSVG}>
-          导出 SVG
-        </button>
+        <button type="button" className="diagram-export" onClick={exportSVG}>{tr("common:导出 SVG")}</button>
       </figcaption>
     </figure>
   );

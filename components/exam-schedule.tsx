@@ -1,4 +1,6 @@
 'use client';
+import {subjectLabel as subjectName} from '@/lib/presentation';
+import {tr} from '@/lib/i18n';
 import { useRef, useState } from 'react';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { useReview } from './review-context';
@@ -10,13 +12,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from './ui/dialog';
-import {
-  SUBJECTS,
-  subjectName,
-  isExamScheduled,
-  type Exam,
-  type Subject,
-} from '@/lib/model';
+import {SUBJECTS,isExamScheduled,type Exam,type Subject} from '@/lib/model';
 import { currentNamespace } from '@/lib/store';
 import {
   saveExamDetails,
@@ -122,34 +118,28 @@ export default function ExamSchedule() {
         className="quiet"
         disabled={!!busy}
         onClick={() => void task('reload', async () => {}, '考试列表已刷新')}
-      >
-        重新加载记录
-      </button>
-      <button type="button" className="quiet" onClick={() => setError('')}>
-        关闭提示
-      </button>
+      >{tr("results:重新加载记录")}</button>
+      <button type="button" className="quiet" onClick={() => setError('')}>{tr("results:关闭提示")}</button>
     </p>
   ) : null;
   return (
     <section className="panel exam-schedule alpha-exam-schedule">
       <div className="section-head">
-        <h2>考试与学习计划</h2>
+        <h2>{tr("results:考试与学习计划")}</h2>
         <button
           className="primary"
           onClick={() => edit(null)}
           disabled={!!busy}
         >
-          <Plus size={17} />
-          添加考试
-        </button>
+          <Plus size={17} />{tr("results:添加考试")}</button>
       </div>
       <ExamResults />
       {editor === undefined && !deleteTarget && errorNotice}
       {!!deleted.length && (
-        <div className="exam-undo-list" aria-label="可撤销的考试删除">
+        <div className="exam-undo-list" aria-label={tr("results:可撤销的考试删除")}>
           {deleted.map((j) => (
             <div key={j.id}>
-              <span>已删除：{j.title}</span>
+              <span>{tr("results:已删除：")}{j.title}</span>
               <button
                 className="secondary"
                 disabled={!!busy}
@@ -162,7 +152,7 @@ export default function ExamSchedule() {
                   );
                 }}
               >
-                {busy === 'undo:' + j.id ? '恢复中…' : '撤销删除'}
+                {busy === 'undo:' + j.id ? tr("results:恢复中…") : tr("results:撤销删除")}
               </button>
             </div>
           ))}
@@ -177,20 +167,18 @@ export default function ExamSchedule() {
                 <div>
                   <h3>{exam.title}</h3>
                   <p>
-                    {subjectName(exam.subject)} · {exam.date} · 目标{' '}
+                    {subjectName(exam.subject)} · {exam.date}{tr("results:· 目标")}{' '}
                     {exam.target}%
                   </p>
                   <small>
                     {exam.scope.length
-                      ? `${exam.scope.length} 个知识点`
-                      : '全学科范围'}{' '}
-                    · 每日建议 {exam.dailyMinutes} 分钟
-                  </small>
+                      ? tr("common:{{v0}} 个知识点",{v0:(exam.scope.length)})
+                      : tr("results:全学科范围")}{' '}{tr("results:· 每日建议")}{exam.dailyMinutes}{tr("results:分钟")}</small>
                   <p className="exam-schedule-status">
-                    {isExamScheduled(exam) ? '安排中' : '已取消安排'}
+                    {isExamScheduled(exam) ? tr("results:安排中") : tr("results:已取消安排")}
                     {exam.result
-                      ? ` · 实际得分 ${exam.result.score} / ${exam.result.maxScore}，成绩仍计入 GPA`
-                      : ' · 尚未录入成绩'}
+                      ? tr("common: · 实际得分 {{v0}} / {{v1}}，成绩仍计入 GPA",{v0:(exam.result.score),v1:(exam.result.maxScore)})
+                      : tr("results: · 尚未录入成绩")}
                   </p>
                 </div>
                 <div className="exam-row-actions">
@@ -200,9 +188,7 @@ export default function ExamSchedule() {
                     disabled={!!busy}
                     onClick={() => edit(exam)}
                   >
-                    <Pencil size={14} />
-                    编辑考试
-                  </button>
+                    <Pencil size={14} />{tr("results:编辑考试")}</button>
                   <button
                     className="quiet"
                     disabled={!!busy}
@@ -223,10 +209,10 @@ export default function ExamSchedule() {
                     }}
                   >
                     {busy === 'schedule:' + exam.id
-                      ? '保存中…'
+                      ? tr("results:保存中…")
                       : isExamScheduled(exam)
-                        ? '取消学习安排'
-                        : '恢复学习安排'}
+                        ? tr("common:取消学习安排")
+                        : tr("common:恢复学习安排")}
                   </button>
                   <button
                     className="quiet danger"
@@ -238,20 +224,15 @@ export default function ExamSchedule() {
                       setDeleteTarget(exam);
                     }}
                   >
-                    <Trash2 size={14} />
-                    删除记录
-                  </button>
+                    <Trash2 size={14} />{tr("results:删除记录")}</button>
                 </div>
               </article>
             ))}
         </div>
       ) : (
-        <p className="muted">添加考试日期、范围与目标，学习计划会据此安排。</p>
+        <p className="muted">{tr("results:添加考试日期、范围与目标，学习计划会据此安排。")}</p>
       )}
-      <p className="muted exam-record-help">
-        取消学习安排会停止后续安排与成绩提醒，保留成绩；删除记录会将该考试移出
-        GPA 统计，可在此撤销。
-      </p>
+      <p className="muted exam-record-help">{tr("results:取消学习安排会停止后续安排与成绩提醒，保留成绩；删除记录会将该考试移出 GPA 统计，可在此撤销。")}</p>
       <Dialog
         open={editor !== undefined}
         onOpenChange={(v) => {
@@ -262,15 +243,11 @@ export default function ExamSchedule() {
         }}
       >
         <DialogContent className="editor-dialog exam-editor-dialog">
-          <DialogTitle>{editor ? '编辑考试' : '添加考试'}</DialogTitle>
-          <DialogDescription>
-            保存后重新计算学习计划，已有成绩不会被编辑表单覆盖。
-          </DialogDescription>
+          <DialogTitle>{editor ? tr("results:编辑考试") : tr("results:添加考试")}</DialogTitle>
+          <DialogDescription>{tr("results:保存后重新计算学习计划，已有成绩不会被编辑表单覆盖。")}</DialogDescription>
           <form key={editor?.id ?? 'new'} onSubmit={save}>
             <fieldset disabled={!!busy}>
-              <label>
-                考试名称
-                <input
+              <label>{tr("results:考试名称")}<input
                   name="title"
                   required
                   maxLength={100}
@@ -278,10 +255,8 @@ export default function ExamSchedule() {
                 />
               </label>
               <div className="form-grid">
-                <label>
-                  学科
-                  <select
-                    aria-label="考试学科"
+                <label>{tr("results:学科")}<select
+                    aria-label={tr("results:考试学科")}
                     value={subject}
                     onChange={(e) => {
                       setSubject(e.target.value as Subject);
@@ -290,23 +265,19 @@ export default function ExamSchedule() {
                   >
                     {SUBJECTS.map((s) => (
                       <option key={s.id} value={s.id}>
-                        {s.name}
+                        {tr('subjects:'+s.name)}
                       </option>
                     ))}
                   </select>
                 </label>
-                <label>
-                  考试日期
-                  <input
+                <label>{tr("results:考试日期")}<input
                     type="date"
                     name="date"
                     required
                     defaultValue={editor?.date ?? ''}
                   />
                 </label>
-                <label>
-                  目标得分率（%）
-                  <input
+                <label>{tr("results:目标得分率（%）")}<input
                     name="target"
                     type="number"
                     min={1}
@@ -315,9 +286,7 @@ export default function ExamSchedule() {
                     defaultValue={editor?.target ?? 85}
                   />
                 </label>
-                <label>
-                  每日建议时间（分钟）
-                  <input
+                <label>{tr("results:每日建议时间（分钟）")}<input
                     name="minutes"
                     type="number"
                     min={5}
@@ -329,9 +298,7 @@ export default function ExamSchedule() {
               </div>
               {subject === 'ce' && (
                 <div className="form-grid">
-                  <label>
-                    配套模拟考试
-                    <select
+                  <label>{tr("results:配套模拟考试")}<select
                       name="simulation"
                       defaultValue={
                         editor?.simulation
@@ -342,7 +309,7 @@ export default function ExamSchedule() {
                           : 'auto'
                       }
                     >
-                      <option value="auto">根据名称识别</option>
+                      <option value="auto">{tr("results:根据名称识别")}</option>
                       {[
                         'SAT',
                         'ACT',
@@ -357,9 +324,7 @@ export default function ExamSchedule() {
                       ))}
                     </select>
                   </label>
-                  <label>
-                    MAP 年级
-                    <input
+                  <label>{tr("results:MAP 年级")}<input
                       type="number"
                       name="grade"
                       min={2}
@@ -378,7 +343,7 @@ export default function ExamSchedule() {
             </fieldset>
             {errorNotice}
             <button className="primary" type="submit" disabled={!!busy}>
-              {busy === 'save' ? '正在保存…' : '保存考试安排'}
+              {busy === 'save' ? tr("results:正在保存…") : tr("results:保存考试安排")}
             </button>
           </form>
         </DialogContent>
@@ -393,21 +358,16 @@ export default function ExamSchedule() {
         }}
       >
         <DialogContent>
-          <DialogTitle>删除考试记录？</DialogTitle>
+          <DialogTitle>{tr("results:删除考试记录？")}</DialogTitle>
           <DialogDescription>
-            《{deleteTarget?.title}》将从考试记录和成绩统计中移除。
-            {deleteTarget?.result ? '已有成绩也会暂时移出 GPA。' : ''}
-            删除后可在考试安排中撤销。
-          </DialogDescription>
+            《{deleteTarget?.title}{tr("results:》将从考试记录和成绩统计中移除。")}{deleteTarget?.result ? tr("results:已有成绩也会暂时移出 GPA。") : ''}{tr("results:删除后可在考试安排中撤销。")}</DialogDescription>
           {errorNotice}
           <div className="exam-delete-actions">
             <button
               className="secondary"
               disabled={!!busy}
               onClick={() => setDeleteTarget(null)}
-            >
-              保留记录
-            </button>
+            >{tr("results:保留记录")}</button>
             <button
               className="danger secondary"
               disabled={!!busy}
@@ -421,7 +381,7 @@ export default function ExamSchedule() {
                   );
               }}
             >
-              {busy.startsWith('delete:') ? '删除中…' : '确认删除记录'}
+              {busy.startsWith('delete:') ? tr("results:删除中…") : tr("results:确认删除记录")}
             </button>
           </div>
         </DialogContent>

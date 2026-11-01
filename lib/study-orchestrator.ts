@@ -60,6 +60,7 @@ export type StudyActionKind =
   | 'rest'
   | 'import';
 export type StudyAction = {
+  localization?:Partial<Record<'title'|'reason'|'label',{key:string;values:Record<string,unknown>}|undefined>>;
   id: string;
   kind: StudyActionKind;
   title: string;
@@ -293,8 +294,7 @@ export function studyAgenda(data: StudyData, now = Date.now()) {
           ),
         ),
         page: j.ownerDeviceId ? 'devices' : 'study',
-        target: j.id,
-      });
+        target: j.id, localization:{title:(j.mode === 'test'?{key:"planner:action.title.0",values:{}}:{key:"planner:action.title.1",values:{}}),reason:{key:"planner:action.reason.2",values:{}},label:(j.ownerDeviceId?{key:"planner:action.label.3",values:{}}:{key:"planner:action.label.4",values:{}})}});
     if (j.kind === 'exam-run' && ['active', 'break'].includes(j.status)) {
       const p = jobs.find((p) => p.kind === 'exam-paper' && p.id === j.paperId);
       if (p && paperReady(p, data.questions))
@@ -306,8 +306,7 @@ export function studyAgenda(data: StudyData, now = Date.now()) {
           label: '恢复考试',
           minutes: 0,
           page: 'exam',
-          target: j.id,
-        });
+          target: j.id, localization:{title:{key:"planner:action.title.5",values:{v0:((p.exam === 'DET' ? 'Duolingo' : p.exam))}},reason:{key:"planner:action.reason.6",values:{}},label:{key:"planner:action.label.7",values:{}}}});
     }
     if (
       j.kind === 'pressure' &&
@@ -328,8 +327,7 @@ export function studyAgenda(data: StudyData, now = Date.now()) {
           question,
           priority: 1,
           reason: '恢复压力测试',
-        })),
-      });
+        })), localization:{title:{key:"planner:action.title.8",values:{}},reason:{key:"planner:action.reason.9",values:{}},label:{key:"planner:action.label.10",values:{}}}});
   }
   for (const e of pendingExamScores(data, now))
     add({
@@ -343,8 +341,7 @@ export function studyAgenda(data: StudyData, now = Date.now()) {
         ' 天。填入得分后，再安排后续巩固。',
       label: '填写考试成绩',
       minutes: 1,
-      examId: e.id,
-    });
+      examId: e.id, localization:{title:{key:"planner:action.title.11",values:{}},reason:{key:"planner:action.reason.12",values:{v0:(e.title),v1:(Math.max(1, dateDays(today, Date.parse(e.date + 'T12:00:00'))))}},label:{key:"planner:action.label.13",values:{}}}});
   const tests = data.tests.filter(
     (t) =>
       recent(t.at, now, 180) &&
@@ -398,8 +395,7 @@ export function studyAgenda(data: StudyData, now = Date.now()) {
       minutes: 6,
       page: 'remedy',
       target: job.id,
-      sourceSessionId: t.sessionId,
-    });
+      sourceSessionId: t.sessionId, localization:{title:{key:"planner:action.title.14",values:{}},label:{key:"planner:action.label.15",values:{}}}});
   }
   const states = computeMastery(data.nodes, events);
   const policy = policyFor(data);
@@ -439,8 +435,7 @@ export function studyAgenda(data: StudyData, now = Date.now()) {
       minutes: 3,
       target: q.id,
       subject: q.subject,
-      items,
-    });
+      items, localization:{title:{key:"planner:action.title.16",values:{v0:(data.nodes.find((n) => n.id === q.nodeId)?.title)}},reason:{key:"planner:action.reason.17",values:{}},label:{key:"planner:action.label.18",values:{}}}});
   }
   const initial = plan.recommendations.find(
     (r) => r.mode === 'initial' && r.subject === 'all',
@@ -504,8 +499,7 @@ export function studyAgenda(data: StudyData, now = Date.now()) {
       courseId: t.course.id,
       coursePhase: t.phase,
       subject: t.course.subject,
-      informationValue: t.phase === 'verify' ? 1 : undefined,
-    });
+      informationValue: t.phase === 'verify' ? 1 : undefined, localization:{reason:(t.phase === 'verify'?{key:"planner:action.reason.19",values:{}}:{key:"planner:action.reason.20",values:{}}),label:(t.phase === 'verify'?{key:"planner:action.label.21",values:{}}:{key:"planner:action.label.22",values:{}})}});
   const imported = jobs.filter(
     (j): j is ExamPaper =>
       j.kind === 'exam-paper' &&
@@ -555,8 +549,7 @@ export function studyAgenda(data: StudyData, now = Date.now()) {
         examId: e.id,
         paperId: p.id,
         examKind: p.exam,
-        subject: 'ce',
-      });
+        subject: 'ce', localization:{title:{key:"planner:action.title.23",values:{v0:((p.exam === 'DET' ? 'Duolingo' : p.exam))}},reason:{key:"planner:action.reason.24",values:{v0:(e.title),v1:(days)}},label:{key:"planner:action.label.25",values:{}}}});
     else if (!p)
       add({
         id: 'import-exam:' + e.id,
@@ -568,8 +561,7 @@ export function studyAgenda(data: StudyData, now = Date.now()) {
         minutes: 0,
         examKind: spec.exam,
         examId: e.id,
-        subject: 'ce',
-      });
+        subject: 'ce', localization:{title:{key:"planner:action.title.26",values:{v0:(spec.exam)}},reason:{key:"planner:action.reason.27",values:{}},label:{key:"planner:action.label.28",values:{}}}});
     else
       add({
         id: 'simulation-time:' + e.id,
@@ -580,8 +572,7 @@ export function studyAgenda(data: StudyData, now = Date.now()) {
         minutes: mins,
         examKind: p.exam,
         examId: e.id,
-        subject: 'ce',
-      });
+        subject: 'ce', localization:{title:{key:"planner:action.title.29",values:{}},reason:{key:"planner:action.reason.30",values:{v0:(mins || '不限时')}},label:{key:"planner:action.label.31",values:{}}}});
   }
   for (const c of jobs.filter(
     (j) =>
@@ -601,8 +592,7 @@ export function studyAgenda(data: StudyData, now = Date.now()) {
         minutes: 8,
         page: 'course',
         target: c.id,
-        subject: c.subject,
-      });
+        subject: c.subject, localization:{title:{key:"planner:action.title.32",values:{v0:(section.title)}},reason:{key:"planner:action.reason.33",values:{}},label:{key:"planner:action.label.34",values:{}}}});
   }
   for (const j of jobs.filter(
     (j): j is Remediation =>
@@ -630,8 +620,7 @@ export function studyAgenda(data: StudyData, now = Date.now()) {
         label: '进入补救课程',
         minutes: 6,
         page: 'remedy',
-        target: j.id,
-      });
+        target: j.id, localization:{title:{key:"planner:action.title.35",values:{}},reason:{key:"planner:action.reason.36",values:{v0:(group.title)}},label:{key:"planner:action.label.37",values:{}}}});
   }
   const practice: QueueItem[] = [];
   let seconds = 0;
@@ -655,8 +644,7 @@ export function studyAgenda(data: StudyData, now = Date.now()) {
       reason: practice[0].reason,
       label: '开始这段学习',
       minutes: qMinutes(practice),
-      items: practice,
-    });
+      items: practice, localization:{title:{key:"planner:action.title.38",values:{v0:((plan.stages[0]?.title ?? '复习'))}},label:{key:"planner:action.label.39",values:{}}}});
   const insights = studyInsights(data, now);
   // Rest remains a selectable candidate when fatigue evidence is high, never an exam override.
   const fatigueSignal = fatigueState(data, now);
@@ -667,8 +655,7 @@ export function studyAgenda(data: StudyData, now = Date.now()) {
       title: '先休息，再继续学习',
       reason: fatigueSignal.explanation,
       label: '查看轻量学习方式',
-      minutes: 0,
-    });
+      minutes: 0, localization:{title:{key:"planner:action.title.40",values:{}},label:{key:"planner:action.label.41",values:{}}}});
   const checkpoint = practiceCheckpoint(data, now);
   if (checkpoint.blocks.length >= 3)
     add({
@@ -677,8 +664,7 @@ export function studyAgenda(data: StudyData, now = Date.now()) {
       title: '三段练习完成，整理一下当前状态',
       reason: `已完成 ${checkpoint.blocks.length} 段练习、${checkpoint.events.length} 次作答。${checkpoint.weak.length ? '先看看反复出错的能力，再调整下一步。' : '看看哪些已经稳定，哪些还需要隔天验证。'}`,
       label: '查看阶段小结',
-      minutes: 2,
-    });
+      minutes: 2, localization:{title:{key:"planner:action.title.42",values:{}},reason:{key:"planner:action.reason.43",values:{v0:(checkpoint.blocks.length),v1:(checkpoint.events.length),v2:(checkpoint.weak.length ? '先看看反复出错的能力，再调整下一步。' : '看看哪些已经稳定，哪些还需要隔天验证。')}},label:{key:"planner:action.label.44",values:{}}}});
   const resultStamp = insights.gpa.rows
     .map((r) => r.exam.result!.recordedAt)
     .sort()
@@ -691,8 +677,7 @@ export function studyAgenda(data: StudyData, now = Date.now()) {
       reason:
         '真实考试 GPA 与复习优先级已更新，看看这次考试给后续学习带来的变化。',
       label: '查看考后回顾',
-      minutes: 2,
-    });
+      minutes: 2, localization:{title:{key:"planner:action.title.45",values:{}},reason:{key:"planner:action.reason.46",values:{}},label:{key:"planner:action.label.47",values:{}}}});
   if (insights.weekCount >= 4)
     add({
       id: 'report:' + weeklyLearningGpa(data, now).period.startDate,
@@ -700,8 +685,7 @@ export function studyAgenda(data: StudyData, now = Date.now()) {
       title: '看看最近的学习变化',
       reason: '这一周的学习记录已整理好，看看保留效果与下一步建议。',
       label: '查看学习回顾',
-      minutes: 2,
-    });
+      minutes: 2, localization:{title:{key:"planner:action.title.48",values:{}},reason:{key:"planner:action.reason.49",values:{}},label:{key:"planner:action.label.50",values:{}}}});
   if (!actions.length)
     add({
       id: 'rest:' + today,
@@ -717,8 +701,7 @@ export function studyAgenda(data: StudyData, now = Date.now()) {
         : '先导入知识、字词、题目或课件，学习计划才有依据安排。',
       label: data.questions.length ? '查看下一步安排' : '导入学习内容',
       minutes: 0,
-      page: 'library',
-    });
+      page: 'library', localization:{title:(data.questions.length?{key:"planner:action.title.51",values:{}}:{key:"planner:action.title.52",values:{}}),reason:(data.questions.length?{key:"planner:action.reason.53",values:{}}:{key:"planner:action.reason.54",values:{}}),label:(data.questions.length?{key:"planner:action.label.55",values:{}}:{key:"planner:action.label.56",values:{}})}});
   const ranked = scoreStudyActions(safe, actions, states, now, exclusions);
   actions.splice(0, actions.length, ...ranked.actions);
   const advisor = cachedStudyAdvice(data, actions, now);
@@ -837,3 +820,4 @@ export function studyInsights(data: StudyData, now = Date.now()) {
     ],
   };
 }
+

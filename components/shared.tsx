@@ -1,4 +1,5 @@
 'use client';
+import {tr,formatDate} from '@/lib/i18n';
 import type { ReactNode } from 'react';
 import {
   Select,
@@ -54,12 +55,12 @@ export function SubjectChoice({
 }) {
   return (
     <Choice
-      label="选择学科"
+      label={tr("common:选择学科")}
       value={value}
       onChange={onChange}
       options={[
-        ...(all ? [{ value: 'all', label: '全部学科' }] : []),
-        ...SUBJECTS.map((s) => ({ value: s.id, label: s.name })),
+        ...(all ? [{ value: 'all', label: tr("common:全部学科") }] : []),
+        ...SUBJECTS.map((s) => ({ value: s.id, label: tr('subjects:'+s.name) })),
       ]}
     />
   );
@@ -87,7 +88,7 @@ export function Meter({
       <span
         title={
           label
-            ? '学习状态依据跨天、不同题目的证据判断。条形仅表示内部估计，不是答对概率。'
+            ? tr("common:学习状态依据跨天、不同题目的证据判断。条形仅表示内部估计，不是答对概率。")
             : undefined
         }
       >
@@ -139,7 +140,7 @@ export function Heading({
 export const dateLabel = (s: string | null) =>
   !s
     ? '尚未复习'
-    : new Date(s).toLocaleDateString('zh-CN', {
+    : formatDate(s, {
         month: 'short',
         day: 'numeric',
       });

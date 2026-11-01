@@ -27,12 +27,15 @@ export function parseImportText(text: string, subject?: Subject) {
 }
 export { IMPORT_EXAMPLE } from './learning-example';
 import { IMPORT_EXAMPLE } from './learning-example';
-export const LEARNING_IMPORT_SKILL = `# Reviewbox 学习包出题 Skill 2.0 · 2026-10-31 · schemaVersion 1
+export const LEARNING_IMPORT_SKILL = `# Reviewbox 学习包出题 Skill 2.1 · 2026-11-01 · schemaVersion 1
 
 根据我随后提供的学科、知识范围、难度、题量和题型，制作原创学习包。只输出一个合法 JSON 对象，可放在一个 json 代码块中。不要输出聊天说明，不要输出备份记录或个人掌握度。
 
 ## 必须遵守
-- 顶层为 {schemaVersion:1,manifest:{id,title,version,subject,description,changelog,compatibility},knowledge:[],questions:[]}。compatibility 写 Review 1.x。
+- 顶层为 {schemaVersion:1,manifest:{id,title,version,subject,description,changelog,compatibility},knowledge:[],questions:[]}。compatibility 写 Reviewbox 2.x。
+- 正式版不会预装知识框架。包内必须提供题目所需的真实 knowledge、skills 与章节信息；不要引用示例或假定用户已有节点。prerequisites 只填写真实必要前置，relatedNodes 只填写有依据的关联，不能为了知识地图好看编造连线。chapter/unit/course 使用实际教学组织名称。
+- 连线题的左右 ID 是稳定身份，不是显示位置。重新排列 right 数组不得改 ID 或改变 answer 映射；更新学习包也必须保留同一项目的 ID。示例：right 从 [R1,R2] 变成 [R2,R1] 后，答案仍是 L1→R1、L2→R2。不要把答案保存成索引、字母或连线绘制顺序。
+- 系统界面语言与学习内容语言独立。按用户指定语言生成题目、原文、答案和解析；不要翻译 ID、Schema 字段名和评分枚举。不要输出个人记录、GPA、掌握度或后端参考池凭证。
 - subject 仅可选 chinese / math / english / ce / physics / chemistry / biology / history。CE 包含 SAT、ACT、TOEFL、MAP、Duolingo 英语训练。各学科学习框架一致。
 - knowledge 每项字段必须与下面示例一致。节点 ID 唯一；skills 至少一个，包含 id/title/difficulty。importance 和 examWeight 在 0–1。difficulty 是 1–5 整数。
 - questions 必须包含示例中的必填字段，schemaVersion:1。每道题 nodeId 引用本包 knowledge 中的节点，subject 与该节点一致，skillId 必须属于该节点。id 在包内唯一。expectedSeconds 为 1–3600。

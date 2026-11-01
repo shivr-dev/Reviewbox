@@ -1,4 +1,5 @@
 'use client';
+import {tr} from '@/lib/i18n';
 import { useEffect, useRef, useState } from 'react';
 import type { Pack, Question } from '@/lib/model';
 import {
@@ -66,11 +67,9 @@ export function RuleEditor({
     });
   }
   return (
-    <section className="rule-editor" aria-label="评分标准编辑">
+    <section className="rule-editor" aria-label={tr("library:评分标准编辑")}>
       <div className="rule-editor-head">
-        <label>
-          评分方式
-          <select
+        <label>{tr("library:评分方式")}<select
             value={draft.mode}
             onChange={(e) => {
               const mode = e.target.value as GradingRule['mode'];
@@ -100,25 +99,20 @@ export function RuleEditor({
               ))}
           </select>
         </label>
-        <span>
-          满分 <b>{draft.maxScore}</b>
+        <span>{tr("library:满分")}<b>{draft.maxScore}</b>
         </span>
       </div>
       {draft.criteria.map((c, i) => (
         <fieldset className="rubric-criterion-editor" key={c.id}>
-          <legend>评分点 {i + 1}</legend>
+          <legend>{tr("library:评分点")}{i + 1}</legend>
           <div className="criterion-heading">
-            <label>
-              名称
-              <input
-                aria-label={`评分点 ${i + 1} 名称`}
+            <label>{tr("library:名称")}<input
+                aria-label={tr("common:评分点 {{v0}} 名称",{v0:(i + 1)})}
                 value={c.title}
                 onChange={(e) => changeCriterion(i, { title: e.target.value })}
               />
             </label>
-            <label>
-              分值
-              <input
+            <label>{tr("library:分值")}<input
                 type="number"
                 min="0.1"
                 max="100"
@@ -130,9 +124,7 @@ export function RuleEditor({
               />
             </label>
           </div>
-          <label>
-            得分依据
-            <textarea
+          <label>{tr("library:得分依据")}<textarea
               rows={2}
               value={c.fullCredit ?? c.description}
               onChange={(e) =>
@@ -144,10 +136,8 @@ export function RuleEditor({
             />
           </label>
           <details>
-            <summary>部分得分、等价答案与过程分</summary>
-            <label>
-              部分得分条件
-              <textarea
+            <summary>{tr("library:部分得分、等价答案与过程分")}</summary>
+            <label>{tr("library:部分得分条件")}<textarea
                 rows={2}
                 value={c.partialCredit ?? ''}
                 onChange={(e) =>
@@ -155,18 +145,14 @@ export function RuleEditor({
                 }
               />
             </label>
-            <label>
-              扣分条件
-              <input
+            <label>{tr("library:扣分条件")}<input
                 value={c.deductions ?? ''}
                 onChange={(e) =>
                   changeCriterion(i, { deductions: e.target.value })
                 }
               />
             </label>
-            <label>
-              等价答案（每行一个）
-              <textarea
+            <label>{tr("library:等价答案（每行一个）")}<textarea
                 rows={2}
                 value={(c.equivalentAnswers ?? []).join('\n')}
                 onChange={(e) =>
@@ -185,9 +171,7 @@ export function RuleEditor({
                 onChange={(e) =>
                   changeCriterion(i, { independentCredit: e.target.checked })
                 }
-              />
-              本步骤可独立得分
-            </label>
+              />{tr("library:本步骤可独立得分")}</label>
             <label className="inline-check">
               <input
                 type="checkbox"
@@ -195,10 +179,8 @@ export function RuleEditor({
                 onChange={(e) =>
                   changeCriterion(i, { carryForward: e.target.checked })
                 }
-              />
-              允许前一步计算错误的合理后续过程分
-            </label>
-            <p className="settings-caption">能力：{c.skillId}</p>
+              />{tr("library:允许前一步计算错误的合理后续过程分")}</label>
+            <p className="settings-caption">{tr("library:能力：")}{c.skillId}</p>
           </details>
           {draft.criteria.length > 1 && (
             <button
@@ -212,9 +194,7 @@ export function RuleEditor({
                   maxScore: criteria.reduce((n, c) => n + c.max, 0),
                 });
               }}
-            >
-              移除此评分点
-            </button>
+            >{tr("library:移除此评分点")}</button>
           )}
         </fieldset>
       ))}
@@ -239,13 +219,11 @@ export function RuleEditor({
               maxScore: criteria.reduce((n, c) => n + c.max, 0),
             });
           }}
-        >
-          添加评分点
-        </button>
+        >{tr("library:添加评分点")}</button>
       )}
       {draft.solo && (
         <fieldset>
-          <legend>本题的 SOLO 描述</legend>
+          <legend>{tr("library:本题的 SOLO 描述")}</legend>
           {draft.solo.levels.map((l, i) => (
             <label key={l.level}>
               {l.level} · {soloNames[l.level]}
@@ -266,9 +244,7 @@ export function RuleEditor({
               />
             </label>
           ))}
-          <label>
-            本题达到哪个等级即可满足满分要求？
-            <select
+          <label>{tr("library:本题达到哪个等级即可满足满分要求？")}<select
               value={draft.solo.fullCreditLevel}
               onChange={(e) =>
                 setDraft({
@@ -287,9 +263,7 @@ export function RuleEditor({
               ))}
             </select>
           </label>
-          <p className="settings-caption">
-            思维等级单独评价，不按字数判断，也不额外改变评分点总分。
-          </p>
+          <p className="settings-caption">{tr("library:思维等级单独评价，不按字数判断，也不额外改变评分点总分。")}</p>
         </fieldset>
       )}
       {error && (
@@ -298,9 +272,7 @@ export function RuleEditor({
         </p>
       )}
       <div className="button-row">
-        <button type="button" className="secondary" onClick={onCancel}>
-          取消编辑
-        </button>
+        <button type="button" className="secondary" onClick={onCancel}>{tr("library:取消编辑")}</button>
         <button
           type="button"
           className="primary"
@@ -313,15 +285,13 @@ export function RuleEditor({
               )
             ) {
               setError(
-                '请填写评分点名称、分值和得分依据；SOLO 模式还需要完整的五级描述。',
+                tr("library:请填写评分点名称、分值和得分依据；SOLO 模式还需要完整的五级描述。"),
               );
               return;
             }
             onSave({ ...result.data, version: crypto.randomUUID() });
           }}
-        >
-          确认评分标准
-        </button>
+        >{tr("library:确认评分标准")}</button>
       </div>
     </section>
   );
@@ -336,7 +306,7 @@ function diagramSuggestion(q: Question): SemanticDiagram | undefined {
   const apparatus: Extract<
     SemanticDiagram,
     { kind: 'experiment' }
-  >['apparatus'] = [{ id: 'dish', kind: 'evaporating_dish', label: '蒸发皿' }];
+  >['apparatus'] = [{ id: 'dish', kind: 'evaporating_dish', label: tr("common:蒸发皿") }];
   for (const [pattern, kind, name] of [
     [/玻璃棒|glass rod/i, 'glass_rod', '玻璃棒'],
     [/酒精灯|alcohol lamp/i, 'alcohol_lamp', '酒精灯'],
@@ -371,11 +341,11 @@ function DiagramReview({
     JSON.stringify(q.diagram) === JSON.stringify(draft);
   return (
     <div className="import-diagram-review">
-      <label className="diagram-phase-picker">作者预览阶段 <select value={stage} onChange={e=>setStage(e.target.value as typeof stage)}><option value="question">题目（作答前）</option><option value="hint">提示</option><option value="solution">解析</option></select></label>
+      <label className="diagram-phase-picker">{tr("library:作者预览阶段")}<select value={stage} onChange={e=>setStage(e.target.value as typeof stage)}><option value="question">{tr("library:题目（作答前）")}</option><option value="hint">{tr("library:提示")}</option><option value="solution">{tr("library:解析")}</option></select></label>
       <div className={'pack-compare' + (identical ? ' single-diagram' : '')}>
         {!identical && (
           <div>
-            <h4>原有插图</h4>
+            <h4>{tr("library:原有插图")}</h4>
             {images.length ? (
               images.map((m) => (
                 <img
@@ -388,18 +358,16 @@ function DiagramReview({
             ) : q.diagram ? (
               <Diagram spec={q.diagram} stage={stage}/>
             ) : (
-              <p className="settings-caption">无插图</p>
+              <p className="settings-caption">{tr("library:无插图")}</p>
             )}
           </div>
         )}
         <div>
-          <h4>{identical ? '结构化插图预览' : '专业重绘预览'}</h4>
+          <h4>{identical ? tr("library:结构化插图预览") : tr("library:专业重绘预览")}</h4>
           {draft ? (
             <Diagram spec={draft} stage={stage}/>
           ) : (
-            <p className="settings-caption">
-              没有足够的结构信息。保留原图；普通照片不会自动转换成精确图形。
-            </p>
+            <p className="settings-caption">{tr("library:没有足够的结构信息。保留原图；普通照片不会自动转换成精确图形。")}</p>
           )}
         </div>
       </div>
@@ -409,9 +377,7 @@ function DiagramReview({
             type="button"
             className={q.diagramChoice === 'original' ? 'primary' : 'secondary'}
             onClick={() => onChange({ ...q, diagramChoice: 'original' })}
-          >
-            保留原图
-          </button>
+          >{tr("library:保留原图")}</button>
         )}
         {draft && (
           <button
@@ -425,36 +391,27 @@ function DiagramReview({
               }
               onChange({ ...q, diagram: parsed.data, diagramChoice: 'redraw' });
             }}
-          >
-            使用专业重绘
-          </button>
+          >{tr("library:使用专业重绘")}</button>
         )}
         {draft && (
           <button
             type="button"
             className="secondary"
             onClick={() => setEditing(!editing)}
-          >
-            修改标注 / 重新绘制
-          </button>
+          >{tr("library:修改标注 / 重新绘制")}</button>
         )}
         <button
           type="button"
           className="text-button"
           onClick={() => onChange({ ...q, diagramChoice: 'skip' })}
-        >
-          跳过本题图形处理
-        </button>
+        >{tr("library:跳过本题图形处理")}</button>
       </div>
       {editing && draft && (
         <div className="diagram-label-editor">
-          <p className="settings-caption">
-            只调整标注。坐标、尺寸与物理条件须由原始结构数据确定。
-          </p>
+          <p className="settings-caption">{tr("library:只调整标注。坐标、尺寸与物理条件须由原始结构数据确定。")}</p>
           {draft.kind === 'experiment' ? (
             draft.apparatus.map((a, i) => (
-              <label key={a.id}>
-                器材 {i + 1}
+              <label key={a.id}>{tr("library:器材")}{i + 1}
                 <input
                   value={a.label ?? ''}
                   onChange={(e) =>
@@ -470,8 +427,7 @@ function DiagramReview({
             ))
           ) : draft.kind === 'geometry' ? (
             draft.points.map((p, i) => (
-              <label key={p.id}>
-                点 {p.id}
+              <label key={p.id}>{tr("library:点")}{p.id}
                 <input
                   value={p.label ?? p.id}
                   onChange={(e) =>
@@ -487,8 +443,7 @@ function DiagramReview({
             ))
           ) : draft.kind === 'forces' ? (
             draft.forces.map((f, i) => (
-              <label key={f.id}>
-                力 {i + 1}
+              <label key={f.id}>{tr("library:力")}{i + 1}
                 <input
                   value={f.label}
                   onChange={(e) =>
@@ -503,9 +458,7 @@ function DiagramReview({
               </label>
             ))
           ) : (
-            <label>
-              图注
-              <input
+            <label>{tr("library:图注")}<input
                 value={draft.caption ?? ''}
                 onChange={(e) =>
                   setDraft({ ...draft, caption: e.target.value })
@@ -526,9 +479,7 @@ function DiagramReview({
               setError('');
               setEditing(false);
             }}
-          >
-            重新绘制预览
-          </button>
+          >{tr("library:重新绘制预览")}</button>
         </div>
       )}
       {error && (
@@ -629,58 +580,50 @@ export default function PackContentReview({
     setEditor(false);
   }
   return (
-    <section className="pack-content-review" aria-label="智能导入内容检查">
+    <section className="pack-content-review" aria-label={tr("library:智能导入内容检查")}>
       <div className="import-check-summary">
         <span>
-          {pack.knowledge.length} 个知识点 · {pack.questions.length} 道题
-        </span>
+          {pack.knowledge.length}{tr("library:个知识点 ·")}{pack.questions.length}{tr("library:道题")}</span>
         <span
           className={
             report.blocked.length ? 'pack-status-update' : 'settings-caption'
           }
         >
           {report.blocked.length
-            ? `${report.blocked.length} 题待确认`
-            : '内容检查通过'}
+            ? tr("common:{{v0}} 题待确认",{v0:(report.blocked.length)})
+            : tr("library:内容检查通过")}
         </span>
       </div>
       {!!report.missingReferences.length && (
         <details className="import-reference-warning">
           <summary>
-            {report.missingReferences.length} 处关联知识未在当前资料库找到
-          </summary>
+            {report.missingReferences.length}{tr("library:处关联知识未在当前资料库找到")}</summary>
           {report.missingReferences.slice(0, 20).map((r, i) => (
             <p key={i}>
               {r.title} → {r.reference}
             </p>
           ))}
-          <p className="settings-caption">
-            请补充对应知识点；这些关联不会被编造成已掌握的内容。
-          </p>
+          <p className="settings-caption">{tr("library:请补充对应知识点；这些关联不会被编造成已掌握的内容。")}</p>
         </details>
       )}
-      <nav className="pack-subnav" aria-label="内容检查类型">
+      <nav className="pack-subnav" aria-label={tr("library:内容检查类型")}>
         <button
           type="button"
           aria-current={tab === 'scoring' ? 'page' : undefined}
           onClick={() => setTab('scoring')}
-        >
-          评分标准 · {subjective.length}
+        >{tr("library:评分标准 ·")}{subjective.length}
         </button>
         <button
           type="button"
           aria-current={tab === 'diagrams' ? 'page' : undefined}
           onClick={() => setTab('diagrams')}
-        >
-          插图与图形 · {illustrated.length}
+        >{tr("library:插图与图形 ·")}{illustrated.length}
         </button>
       </nav>
       {tab === 'scoring' ? (
         <>
           <div className="import-scoring-policy">
-            <label>
-              学习包评分方式
-              <select
+            <label>{tr("library:学习包评分方式")}<select
                 disabled={busy || outerBusy}
                 value={pack.manifest.scoringPolicy?.mode ?? 'auto'}
                 onChange={(e) =>
@@ -704,11 +647,9 @@ export default function PackContentReview({
                 ))}
               </select>
             </label>
-            <label>
-              评分偏好（可选）
-              <textarea
+            <label>{tr("library:评分偏好（可选）")}<textarea
                 rows={2}
-                placeholder="例如：阅读题重视文本证据；数学保留合理过程分。"
+                placeholder={tr("library:例如：阅读题重视文本证据；数学保留合理过程分。")}
                 value={pack.manifest.scoringPolicy?.preferences ?? ''}
                 onChange={(e) =>
                   onChange({
@@ -724,20 +665,14 @@ export default function PackContentReview({
                 }
               />
             </label>
-            <p className="settings-caption">
-              已有标准原样保留。偏好仅用于你主动生成或修订的标准。
-            </p>
+            <p className="settings-caption">{tr("library:已有标准原样保留。偏好仅用于你主动生成或修订的标准。")}</p>
           </div>
           {!subjective.length ? (
-            <p className="settings-caption">
-              本包为客观题，无需主观题评分标准。
-            </p>
+            <p className="settings-caption">{tr("library:本包为客观题，无需主观题评分标准。")}</p>
           ) : (
             <>
               <div className="import-scoring-toolbar">
-                <label>
-                  查看题目
-                  <select
+                <label>{tr("library:查看题目")}<select
                     value={selected}
                     disabled={busy}
                     onChange={(e) => {
@@ -750,9 +685,9 @@ export default function PackContentReview({
                         {i + 1}. {q.prompt.slice(0, 50)}
                         {report.questions.find((r) => r.id === q.id)?.scoring
                           .length
-                          ? ' · 待补充'
+                          ? tr("library: · 待补充")
                           : ''}
-                        {pending[q.id] ? ' · 待确认' : ''}
+                        {pending[q.id] ? tr("library: · 待确认") : ''}
                       </option>
                     ))}
                   </select>
@@ -775,19 +710,16 @@ export default function PackContentReview({
                     )
                   }
                 >
-                  {busy ? '正在生成评分建议…' : '补全缺失标准（每批最多 5 题）'}
+                  {busy ? tr("library:正在生成评分建议…") : tr("library:补全缺失标准（每批最多 5 题）")}
                 </button>
               </div>
               {!aiReady && (
-                <p className="settings-caption">
-                  连接智能服务后可补全，或手动填写评分标准。
-                </p>
+                <p className="settings-caption">{tr("library:连接智能服务后可补全，或手动填写评分标准。")}</p>
               )}
               {(Object.keys(pending).length > 0 ||
                 Object.keys(failures).length > 0) && (
-                <p role="status" className="settings-caption">
-                  已生成 {Object.keys(pending).length} · 待确认{' '}
-                  {Object.keys(pending).length} · 失败{' '}
+                <p role="status" className="settings-caption">{tr("library:已生成")}{Object.keys(pending).length}{tr("library:· 待确认")}{' '}
+                  {Object.keys(pending).length}{tr("library:· 失败")}{' '}
                   {Object.keys(failures).length}
                 </p>
               )}
@@ -795,7 +727,7 @@ export default function PackContentReview({
                 <article className="import-scoring-question">
                   <h4>{q.prompt}</h4>
                   <details>
-                    <summary>参考答案</summary>
+                    <summary>{tr("library:参考答案")}</summary>
                     <p>{q.answer}</p>
                   </details>
                   {failures[q.id] && (
@@ -827,17 +759,13 @@ export default function PackContentReview({
                           className="secondary"
                           disabled={busy}
                           onClick={() => setEditor(true)}
-                        >
-                          编辑评分标准
-                        </button>
+                        >{tr("library:编辑评分标准")}</button>
                         <button
                           type="button"
                           className="text-button"
                           disabled={busy || !aiReady}
                           onClick={() => void generate([q.id])}
-                        >
-                          请 AI 提议新标准
-                        </button>
+                        >{tr("library:请 AI 提议新标准")}</button>
                       </div>
                     </>
                   )}
@@ -848,9 +776,7 @@ export default function PackContentReview({
         </>
       ) : illustrated.length ? (
         <>
-          <label>
-            查看插图
-            <select
+          <label>{tr("library:查看插图")}<select
               value={dq?.id ?? ''}
               onChange={(e) => setDiagramId(e.target.value)}
             >
@@ -864,12 +790,10 @@ export default function PackContentReview({
           {dq && <DiagramReview key={dq.id} q={dq} onChange={update} />}
         </>
       ) : (
-        <p className="settings-caption">本包没有插图。</p>
+        <p className="settings-caption">{tr("library:本包没有插图。")}</p>
       )}
       {busy && (
-        <p role="status">
-          正在根据题目和参考答案准备建议；确认之前不会替换已有规则。
-        </p>
+        <p role="status">{tr("library:正在根据题目和参考答案准备建议；确认之前不会替换已有规则。")}</p>
       )}
     </section>
   );
@@ -879,30 +803,28 @@ export function RuleSummary({ question: q }: { question: Question }) {
   try {
     rule = ruleForQuestion(q);
   } catch {
-    return <p className="pack-status-update">尚缺评分标准</p>;
+    return <p className="pack-status-update">{tr("library:尚缺评分标准")}</p>;
   }
   return (
     <div className="rule-summary">
       <p>
-        <strong>{gradingModes.find(([id]) => id === rule.mode)?.[1]}</strong> ·
-        满分 {rule.maxScore}
+        <strong>{gradingModes.find(([id]) => id === rule.mode)?.[1]}</strong>{tr("library:· 满分")}{rule.maxScore}
       </p>
       <ol>
         {rule.criteria.map((c) => (
           <li key={c.id}>
             <b>
-              {c.title} · {c.max} 分
-            </b>
+              {c.title} · {c.max}{tr("library:分")}</b>
             <p>{c.fullCredit ?? c.description}</p>
             {c.partialCredit && (
-              <p className="settings-caption">部分得分：{c.partialCredit}</p>
+              <p className="settings-caption">{tr("library:部分得分：")}{c.partialCredit}</p>
             )}
           </li>
         ))}
       </ol>
       {rule.solo && (
         <details>
-          <summary>查看本题 SOLO 五级描述</summary>
+          <summary>{tr("library:查看本题 SOLO 五级描述")}</summary>
           {rule.solo.levels.map((l) => (
             <p key={l.level}>
               <b>
@@ -911,7 +833,7 @@ export function RuleSummary({ question: q }: { question: Question }) {
               ：{l.description}
             </p>
           ))}
-          <p>满分要求：{rule.solo.fullCreditLevel}</p>
+          <p>{tr("library:满分要求：")}{rule.solo.fullCreditLevel}</p>
         </details>
       )}
     </div>

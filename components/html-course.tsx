@@ -1,4 +1,5 @@
 'use client';
+import {tr} from '@/lib/i18n';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { buildCourseDocument, practiceEligibility } from '@/lib/course-html';
 import type { Question } from '@/lib/model';
@@ -74,7 +75,7 @@ export default function HtmlCourse(props: Props) {
         return;
       }
       if (m.method === 'error') {
-        setError('课件的一段互动未能运行，可以在课程答疑中请求修复。');
+        setError(tr("common:课件的一段互动未能运行，可以在课程答疑中请求修复。"));
         return;
       }
       if (typeof m.id !== 'string' || m.id.length > 100) return;

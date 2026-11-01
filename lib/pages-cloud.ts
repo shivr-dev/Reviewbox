@@ -258,8 +258,11 @@ export async function pagesApi(
             await import('./process-server')
           ).diagnoseProcess(body),
         });
-      if (body.action === 'generate')
-        return Response.json({ question: await generate(body) });
+      if (body.action === 'generate') {
+        const identity=await session().catch(()=>null);
+        const {generateWithReferences}=await import('./reference-generation');
+        return Response.json({question:await generateWithReferences(body,identity?(path,init)=>sb(path,init,identity.access_token):undefined)});
+      }
       if (body.action === 'grading-rule') return Response.json({rule:await createGradingRule(body)});
       const question = questionSchema.parse(body.question);
       if (body.action === 'solve')

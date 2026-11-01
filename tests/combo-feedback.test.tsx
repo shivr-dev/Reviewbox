@@ -56,7 +56,7 @@ test('Alpha combo enters and exits smoothly, survives ordinary reward updates, a
   t.mock.timers.enable({ apis: ['setTimeout'] });
   const root = createRoot(document.getElementById('root')!);
   const data = fixture();
-  data.settings.alphaPreview = true;
+
   const reward = (combo: number): RewardFeedback => ({
     id: 'attempt:' + combo,
     combo,
@@ -80,7 +80,7 @@ test('Alpha combo enters and exits smoothly, survives ordinary reward updates, a
     assert.equal(document.querySelector('.combo-screen'), null);
     assert.match(
       document.querySelector('.combo-progress')!.textContent!,
-      /下个里程碑 3/,
+      /下个里程碑\s*3/,
     );
     await render(reward(3));
     assert.ok(document.querySelector('.phase-enter'));

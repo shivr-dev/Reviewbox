@@ -1,4 +1,5 @@
 'use client';
+import {tr} from '@/lib/i18n';
 import { useState } from 'react';
 import { useReview } from './review-context';
 import {
@@ -25,10 +26,8 @@ export default function WrongNotebook() {
     <section className="panel">
       <div className="section-head">
         <div>
-          <h2>错题本</h2>
-          <p className="muted">
-            答错或不确定的题目自动收录，练会后自动移出待巩固列表。
-          </p>
+          <h2>{tr("common:错题本")}</h2>
+          <p className="muted">{tr("common:答错或不确定的题目自动收录，练会后自动移出待巩固列表。")}</p>
         </div>
         <button
           className="primary"
@@ -42,18 +41,17 @@ export default function WrongNotebook() {
               })),
             )
           }
-        >
-          只练这些错题 · {Math.min(20, questions.length)}
+        >{tr("common:只练这些错题 ·")}{Math.min(20, questions.length)}
         </button>
       </div>
       <div className="toolbar">
         <SubjectChoice all value={subject} onChange={setSubject} />
         <Choice
-          label="错题题型"
+          label={tr("common:错题题型")}
           value={type}
           onChange={setType}
           options={[
-            { value: 'all', label: '全部题型' },
+            { value: 'all', label: tr("common:全部题型") },
             ...QUESTION_TYPES.map((t) => ({ value: t.id, label: t.label })),
           ]}
         />
@@ -62,9 +60,7 @@ export default function WrongNotebook() {
             type="checkbox"
             checked={blind}
             onChange={(e) => setBlind(e.target.checked)}
-          />
-          自信却答错
-        </label>
+          />{tr("common:自信却答错")}</label>
       </div>
       {questions.slice(0, 40).map((q) => (
         <details className="notebook-item" key={q.id}>
@@ -74,7 +70,7 @@ export default function WrongNotebook() {
             </span>
             <small>
               {isPinyin(q)
-                ? '拼音写字'
+                ? tr("common:拼音写字")
                 : QUESTION_TYPES.find((t) => t.id === q.type)?.label}
             </small>
           </summary>
@@ -91,12 +87,10 @@ export default function WrongNotebook() {
             onClick={() =>
               start([{ question: q, reason: '错题专项', priority: 1 }])
             }
-          >
-            重练此题
-          </button>
+          >{tr("common:重练此题")}</button>
         </details>
       ))}
-      {!questions.length && <Empty title="这个范围暂时没有待巩固的错题" />}
+      {!questions.length && <Empty title={tr("common:这个范围暂时没有待巩固的错题")} />}
     </section>
   );
 }

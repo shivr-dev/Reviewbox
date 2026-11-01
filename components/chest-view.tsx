@@ -1,4 +1,5 @@
 'use client';
+import {tr} from '@/lib/i18n';
 import { useRef, useState } from 'react';
 import { Gem, Snowflake, ArrowRight, X } from 'lucide-react';
 import { useReview } from './review-context';
@@ -8,7 +9,7 @@ import { learningGame, type GameChest } from '@/lib/learning-game';
 import ChestIllustration from './chest-illustration';
 import { currentNamespace } from '@/lib/store';
 import { CHEST_TIERS } from '@/lib/home-catalog';
-import { ItemArt } from './home-art';
+import { ItemArt } from './home-item-art';
 export default function ChestView({ sessionId }: { sessionId: string }) {
   const { data, navigate, refresh } = useReview(),
     game = learningGame(data);
@@ -48,22 +49,21 @@ export default function ChestView({ sessionId }: { sessionId: string }) {
   }
   return (
     <section className={'treasure-page stage-' + stage}>
-      <button className="quiet treasure-exit" onClick={() => navigate('home')}>
-        回到学习路线 <X size={18} />
+      <button className="quiet treasure-exit" onClick={() => navigate('home')}>{tr("workshop:回到学习路线")}<X size={18} />
       </button>
       <div className="treasure-heading">
         <span>ADVENTURE REWARD</span>
-        <h1>{stage === 3 ? '一份努力，一份惊喜' : '你的练习宝箱已送达'}</h1>
+        <h1>{stage === 3 ? tr("workshop:一份努力，一份惊喜") : tr("workshop:你的练习宝箱已送达")}</h1>
         <p>
           {stage === 3
-            ? '奖励已保存到你的学习空间'
-            : '连续点击三次，打开这份冒险奖励。'}
+            ? tr("workshop:奖励已保存到你的学习空间")
+            : tr("workshop:连续点击三次，打开这份冒险奖励。")}
         </p>
         {tier && (
           <div className="chest-boost-badge">
             <ItemArt kind="ticket" tier={boost!} />
             {tier.name} ·{' '}
-            {stage === 0 ? '首次点击自动使用' : '已使用，奖励已锁定'}
+            {stage === 0 ? tr("workshop:首次点击自动使用") : tr("workshop:已使用，奖励已锁定")}
           </div>
         )}
       </div>
@@ -75,7 +75,7 @@ export default function ChestView({ sessionId }: { sessionId: string }) {
           onClick={() => void open()}
           disabled={busy || stage === 3}
           aria-label={
-            stage === 3 ? '宝箱已打开' : `开启宝箱，第 ${stage + 1} 次点击`
+            stage === 3 ? tr("workshop:宝箱已打开") : tr("common:开启宝箱，第 {{v0}} 次点击",{v0:(stage + 1)})
           }
         >
           <ChestIllustration stage={stage} boost={boost} />
@@ -87,7 +87,7 @@ export default function ChestView({ sessionId }: { sessionId: string }) {
           actionKey={String(stage)}
         />
       </div>
-      <div className="chest-taps" aria-label={`开箱进度 ${stage}/3`}>
+      <div className="chest-taps" aria-label={tr("common:开箱进度 {{v0}}/3",{v0:(stage)})}>
         {[1, 2, 3].map((v) => (
           <i className={stage >= v ? 'done' : ''} key={v} />
         ))}
@@ -98,43 +98,37 @@ export default function ChestView({ sessionId }: { sessionId: string }) {
             {chest!.reward.freezes ? (
               <>
                 <Snowflake />
-                <strong>连胜冻结 × 1</strong>
+                <strong>{tr("workshop:连胜冻结 × 1")}</strong>
               </>
             ) : (
               <>
                 <Gem />
-                <strong>+{chest!.reward.coins} 点数</strong>
+                <strong>+{chest!.reward.coins}{tr("workshop:点数")}</strong>
               </>
             )}
           </div>
-          <button className="primary" onClick={() => navigate('plan')}>
-            看看下一步 <ArrowRight size={18} />
+          <button className="primary" onClick={() => navigate('plan')}>{tr("workshop:看看下一步")}<ArrowRight size={18} />
           </button>
-          {data.settings.alphaPreview===true&&<button className="secondary" onClick={()=>navigate('equipment')}>查看装备战利品 <ArrowRight size={16}/></button>}
+          <button className="secondary" onClick={()=>navigate('equipment')}>{tr("workshop:查看装备战利品")}<ArrowRight size={16}/></button>
         </>
       ) : (
         <button className="primary" disabled={busy} onClick={() => void open()}>
           {busy
-            ? '宝箱正在响应…'
+            ? tr("workshop:宝箱正在响应…")
             : stage === 2
-              ? '最后一次，开启！'
-              : `点击开箱 · ${stage + 1} / 3`}
+              ? tr("common:最后一次，开启！")
+              : tr("common:点击开箱 · {{v0}} / 3",{v0:(stage + 1)})}
         </button>
       )}
       {error && (
         <div className="rewards-message error" role="alert">
           {error}
-          <button onClick={() => setError('')} aria-label="关闭开箱错误">
+          <button onClick={() => setError('')} aria-label={tr("workshop:关闭开箱错误")}>
             <X size={16} />
           </button>
         </div>
       )}
-      <small>
-        连胜冻结 × 1：10% · {tier ? `${tier.min}–${tier.max}` : '50–100'}{' '}
-        点数：90%
-        <br />
-        每段完成的练习仅可领取一次，刷新会保留进度。
-      </small>
+      <small>{tr("workshop:连胜冻结 × 1：10% ·")}{tier ? `${tier.min}–${tier.max}` : '50–100'}{' '}{tr("workshop:点数：90%")}<br />{tr("workshop:每段完成的练习仅可领取一次，刷新会保留进度。")}</small>
     </section>
   );
 }

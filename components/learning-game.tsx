@@ -1,4 +1,5 @@
 'use client';
+import {tr} from '@/lib/i18n';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
@@ -142,7 +143,7 @@ export function Penguin({
           role="img"
           aria-label={
             motion?.action === 'thinking'
-              ? '企鹅在认真思考'
+              ? tr("workshop:企鹅在认真思考")
               : (atlas?.label ??
                 (motion?.action === 'combo'
                   ? '企鹅展开双翅庆祝连对'
@@ -159,10 +160,10 @@ export function Penguin({
           src={assetPath(`learning-penguin${costume ? '-' + costume : ''}.png`)}
           alt={
             costume === 'explorer'
-              ? '探险家企鹅学习伙伴'
+              ? tr("workshop:探险家企鹅学习伙伴")
               : costume === 'graduate'
-                ? '毕业礼企鹅学习伙伴'
-                : '企鹅学习伙伴'
+                ? tr("common:毕业礼企鹅学习伙伴")
+                : tr("common:企鹅学习伙伴")
           }
           width={1280}
           height={1280}
@@ -178,7 +179,7 @@ export function GameStatus() {
     <button
       className="game-status"
       onClick={() => navigate('shop')}
-      aria-label={`等级 ${g.level}，连续学习 ${g.streak} 天，${g.coins} 点数，${g.hearts} 生命值。打开商店`}
+      aria-label={tr("common:等级 {{v0}}，连续学习 {{v1}} 天，{{v2}} 点数，{{v3}} 生命值。打开商店",{v0:(g.level),v1:(g.streak),v2:(g.coins),v3:(g.hearts)})}
     >
       <span className="game-fire">
         <Flame size={20} />
@@ -227,17 +228,17 @@ export function RewardFlash({ reward }: { reward: RewardFeedback | null }) {
         actionKey={visible.id}
       />
       <div>
-        <strong>{visible.xp ? `+${visible.xp} XP` : '记录已保存'}</strong>
+        <strong>{visible.xp ? `+${visible.xp} XP` : tr("workshop:记录已保存")}</strong>
         <span>
           {visible.levelUp
-            ? `升级至 LV ${visible.levelUp}`
+            ? tr("common:升级至 LV {{v0}}",{v0:(visible.levelUp)})
             : visible.goalDone
-              ? '每日目标达成！'
+              ? tr("common:每日目标达成！")
               : visible.combo > 1
-                ? `${visible.combo} 连对 · +${visible.coins} 点数`
+                ? tr("common:{{v0}} 连对 · +{{v1}} 点数",{v0:(visible.combo),v1:(visible.coins)})
                 : visible.correct
-                  ? '回忆成功！'
-                  : '认真复盘，也在进步'}
+                  ? tr("common:回忆成功！")
+                  : tr("common:认真复盘，也在进步")}
         </span>
       </div>
     </div>
@@ -248,88 +249,7 @@ export function ComboCelebration({
 }: {
   reward: RewardFeedback | null;
 }) {
-  const { data } = useReview();
-  return data.settings.alphaPreview === true ? (
-    <SoftComboCelebration reward={reward} />
-  ) : (
-    <LegacyComboCelebration reward={reward} />
-  );
-}
-function LegacyComboCelebration({ reward }: { reward: RewardFeedback | null }) {
-  const { data } = useReview(),
-    skin = learningGame(data).skin;
-  const [active, setActive] = useState<RewardFeedback | null>(null);
-  useEffect(() => {
-    if (!reward?.correct || !reward.counted || !comboMilestone(reward.combo))
-      return;
-    setActive(reward);
-  }, [reward?.id]);
-  useEffect(() => {
-    if (!active) return;
-    const reduced = window.matchMedia?.(
-      '(prefers-reduced-motion: reduce)',
-    ).matches;
-    const t = setTimeout(() => setActive(null), reduced ? 700 : 1700);
-    return () => clearTimeout(t);
-  }, [active?.id]);
-  useEffect(() => {
-    if (!active) return;
-    const esc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setActive(null);
-    };
-    window.addEventListener('keydown', esc);
-    return () => window.removeEventListener('keydown', esc);
-  }, [active]);
-  return active
-    ? createPortal(
-        <div
-          className="combo-screen"
-          key={active.id}
-          role="dialog"
-          aria-label={`${active.combo} 连对`}
-          aria-modal="true"
-          onClick={() => setActive(null)}
-        >
-          <button
-            className="combo-skip"
-            autoFocus
-            onClick={() => setActive(null)}
-          >
-            <X size={18} />
-            跳过
-          </button>
-          <div className="combo-orbit" aria-hidden="true">
-            {Array.from({ length: 16 }, (_, i) => (
-              <i
-                key={i}
-                style={
-                  {
-                    '--angle': `${i * 22.5}deg`,
-                    '--delay': `${(i % 4) * 30}ms`,
-                  } as React.CSSProperties
-                }
-              />
-            ))}
-          </div>
-          <div className="combo-stage">
-            <div className="combo-numeral">
-              {active.combo}
-              <span>连对</span>
-            </div>
-            <Penguin skin={skin} action="combo" actionKey={active.id} />
-            <h2>
-              {active.combo >= 10
-                ? '势不可挡！'
-                : active.combo >= 5
-                  ? '进入状态了！'
-                  : '漂亮的开始！'}
-            </h2>
-            <p>每次独立回忆，都让记忆更牢固</p>
-          </div>
-        </div>,
-        document.body,
-      )
-    : null;
+  return <SoftComboCelebration reward={reward} />;
 }
 function SoftComboCelebration({ reward }: { reward: RewardFeedback | null }) {
   const { data } = useReview(),
@@ -413,7 +333,7 @@ function SoftComboCelebration({ reward }: { reward: RewardFeedback | null }) {
           }
           role="dialog"
           aria-modal="true"
-          aria-label={`${active.combo} 连对，学习里程碑`}
+          aria-label={tr("common:{{v0}} 连对，学习里程碑",{v0:(active.combo)})}
           onClick={dismiss}
         >
           <button
@@ -424,8 +344,7 @@ function SoftComboCelebration({ reward }: { reward: RewardFeedback | null }) {
               dismiss();
             }}
           >
-            <X size={17} /> 继续学习
-          </button>
+            <X size={17} />{tr("workshop:继续学习")}</button>
           <div className="combo-orbit" aria-hidden="true">
             {Array.from({ length: 12 }, (_, i) => (
               <i
@@ -440,20 +359,20 @@ function SoftComboCelebration({ reward }: { reward: RewardFeedback | null }) {
             ))}
           </div>
           <div className="combo-stage">
-            <span className="combo-soft-kicker">一步一步，进入状态</span>
+            <span className="combo-soft-kicker">{tr("workshop:一步一步，进入状态")}</span>
             <div className="combo-numeral">
               {active.combo}
-              <span>连续答对</span>
+              <span>{tr("workshop:连续答对")}</span>
             </div>
             <Penguin skin={skin} action="combo" actionKey={active.id} />
             <h2>
               {active.combo >= 10
-                ? '这份专注，真不错。'
+                ? tr("workshop:这份专注，真不错。")
                 : active.combo >= 5
-                  ? '找到自己的节奏了。'
-                  : '漂亮的开始。'}
+                  ? tr("common:找到自己的节奏了。")
+                  : tr("common:漂亮的开始。")}
             </h2>
-            <p>先收下这份鼓励，再继续下一步。</p>
+            <p>{tr("workshop:先收下这份鼓励，再继续下一步。")}</p>
           </div>
         </div>,
         document.body,
@@ -465,11 +384,11 @@ export function ComboIndicator({ reward }: { reward: RewardFeedback | null }) {
     <span
       className="combo-progress"
       role="status"
-      title="重复作答、猜测和过快揭晓不累计连对；全屏庆祝在 3、5 及之后每 5 次连对时出现。"
+      title={tr("workshop:重复作答、猜测和过快揭晓不累计连对；全屏庆祝在 3、5 及之后每 5 次连对时出现。")}
     >
       <Flame size={15} />
-      <b>{reward.combo} 连对</b>
-      <small>下个里程碑 {nextComboMilestone(reward.combo)}</small>
+      <b>{reward.combo}{tr("workshop:连对")}</b>
+      <small>{tr("workshop:下个里程碑")}{nextComboMilestone(reward.combo)}</small>
     </span>
   ) : null;
 }
@@ -505,7 +424,7 @@ export function GameProfile({ shopOnly = false }: { shopOnly?: boolean } = {}) {
       await buyGameItem(id, ns);
       if (ns !== currentNamespace()) return;
       await refresh();
-      notify('兑换成功，已加入你的学习空间');
+      notify(tr("workshop:兑换成功，已加入你的学习空间"));
     } catch (e) {
       notify(e instanceof Error ? e.message : '兑换未完成');
     } finally {
@@ -520,12 +439,12 @@ export function GameProfile({ shopOnly = false }: { shopOnly?: boolean } = {}) {
       <div className="game-profile-header">
         <Penguin skin={g.skin} />
         <div className="grow">
-          <span className="game-level">LV {g.level} · 知识探险者</span>
+          <span className="game-level">LV {g.level}{tr("workshop:· 知识探险者")}</span>
           <h2>{data.settings.name}</h2>
           <div
             className="game-level-track"
             role="progressbar"
-            aria-label="等级进度"
+            aria-label={tr("workshop:等级进度")}
             aria-valuenow={g.levelXP}
             aria-valuemin={0}
             aria-valuemax={g.levelTarget}
@@ -533,24 +452,20 @@ export function GameProfile({ shopOnly = false }: { shopOnly?: boolean } = {}) {
             <i style={{ width: `${(g.levelXP / g.levelTarget) * 100}%` }} />
           </div>
           <small>
-            {g.levelXP} / {g.levelTarget} XP 距离下一级
-          </small>
+            {g.levelXP} / {g.levelTarget}{tr("workshop:XP 距离下一级")}</small>
         </div>
         <span className="game-gems">
           <Gem />
           {g.coins}
-          <small>点数</small>
+          <small>{tr("workshop:点数")}</small>
         </span>
       </div>
       {!shopOnly && (
-        <div className="game-tabs" role="group" aria-label="学习奖励">
+        <div className="game-tabs" role="group" aria-label={tr("workshop:学习奖励")}>
           <span className="game-tab-current">
-            <Trophy size={18} />
-            成就与目标
-          </span>
+            <Trophy size={18} />{tr("workshop:成就与目标")}</span>
           <button onClick={() => navigate('shop')}>
-            <ShoppingBag size={18} />
-            点数商店 <span>→</span>
+            <ShoppingBag size={18} />{tr("workshop:点数商店")}<span>→</span>
           </button>
         </div>
       )}
@@ -560,24 +475,22 @@ export function GameProfile({ shopOnly = false }: { shopOnly?: boolean } = {}) {
             <div>
               <Flame />
               <strong>{g.streak}</strong>
-              <span>连续学习天数</span>
+              <span>{tr("workshop:连续学习天数")}</span>
             </div>
             <div>
               <Zap />
               <strong>{g.totalXP}</strong>
-              <span>累计 XP</span>
+              <span>{tr("workshop:累计 XP")}</span>
             </div>
             <div>
               <Snowflake />
               <strong>{g.freezes}</strong>
-              <span>连胜冻结储备</span>
+              <span>{tr("workshop:连胜冻结储备")}</span>
             </div>
           </div>
           <div className="game-goal-settings">
-            <label>
-              每日题目目标
-              <select
-                aria-label="每日题目目标"
+            <label>{tr("workshop:每日题目目标")}<select
+                aria-label={tr("workshop:每日题目目标")}
                 value={g.goal}
                 onChange={(e) =>
                   void setting({ dailyQuestionGoal: Number(e.target.value) })
@@ -585,29 +498,24 @@ export function GameProfile({ shopOnly = false }: { shopOnly?: boolean } = {}) {
               >
                 {[5, 10, 15, 20, 30].map((v) => (
                   <option key={v} value={v}>
-                    {v} 题
-                  </option>
+                    {v}{tr("workshop:题")}</option>
                 ))}
               </select>
             </label>
             <label className="setting-switch">
               <span>
-                <Volume2 size={16} />
-                作答音效
-              </span>
+                <Volume2 size={16} />{tr("workshop:作答音效")}</span>
               <Switch
-                aria-label="作答音效"
+                aria-label={tr("workshop:作答音效")}
                 checked={data.settings.gameSound !== false}
                 onCheckedChange={(value) => void setting({ gameSound: value })}
               />
             </label>
             <label className="setting-switch">
               <span>
-                <Heart size={16} />
-                生命值挑战
-              </span>
+                <Heart size={16} />{tr("workshop:生命值挑战")}</span>
               <Switch
-                aria-label="生命值挑战"
+                aria-label={tr("workshop:生命值挑战")}
                 checked={data.settings.gameHearts !== false}
                 onCheckedChange={(value) => void setting({ gameHearts: value })}
               />
@@ -630,10 +538,8 @@ export function GameProfile({ shopOnly = false }: { shopOnly?: boolean } = {}) {
             ))}
           </div>
           <details className="game-week">
-            <summary>个人周榜 · 与自己的进步相比</summary>
-            <p className="muted">
-              仅使用你最近七天的真实记录。XP 代表投入，掌握度仍需间隔验证。
-            </p>
+            <summary>{tr("workshop:个人周榜 · 与自己的进步相比")}</summary>
+            <p className="muted">{tr("workshop:仅使用你最近七天的真实记录。XP 代表投入，掌握度仍需间隔验证。")}</p>
             {[...g.week]
               .sort((a, b) => b.xp - a.xp || b.day.localeCompare(a.day))
               .map((d, i) => (
@@ -641,20 +547,18 @@ export function GameProfile({ shopOnly = false }: { shopOnly?: boolean } = {}) {
                   <b>{i + 1}</b>
                   <span>
                     {d.day.slice(5)}
-                    {d.day === g.today ? ' · 今天' : ''}
-                    {d.frozen ? ' · 冻结保护' : ''}
+                    {d.day === g.today ? tr("workshop: · 今天") : ''}
+                    {d.frozen ? tr("workshop: · 冻结保护") : ''}
                   </span>
                   <strong>{d.xp} XP</strong>
-                  <small>{d.count} 题</small>
+                  <small>{d.count}{tr("workshop:题")}</small>
                 </div>
               ))}
           </details>
         </>
       ) : (
         <>
-          <p className="muted">
-            有效练习每题获得 3 点数，同一题当天仅奖励一次。无现金购买。
-          </p>
+          <p className="muted">{tr("workshop:有效练习每题获得 3 点数，同一题当天仅奖励一次。无现金购买。")}</p>
           <div className="game-shop">
             {GAME_SHOP.filter((item) =>
               ['skin', 'freeze', 'hearts'].includes(item.type),
@@ -683,14 +587,10 @@ export function GameProfile({ shopOnly = false }: { shopOnly?: boolean } = {}) {
                   <h3>{item.name}</h3>
                   {owned && (
                     <span className="shop-owned-label">
-                      <Check size={13} />
-                      已拥有
-                    </span>
+                      <Check size={13} />{tr("workshop:已拥有")}</span>
                   )}
                   {item.type === 'freeze' && (
-                    <span className="shop-inventory">
-                      当前拥有 {g.freezes} 枚
-                    </span>
+                    <span className="shop-inventory">{tr("workshop:当前拥有")}{g.freezes}{tr("workshop:枚")}</span>
                   )}
                   <p>{item.description}</p>
                   {item.type === 'skin' && (
@@ -702,10 +602,8 @@ export function GameProfile({ shopOnly = false }: { shopOnly?: boolean } = {}) {
                           [item.id]: (v[item.id] ?? 0) + 1,
                         }))
                       }
-                      aria-label={`预览${item.name}的动作`}
-                    >
-                      查看动作
-                    </button>
+                      aria-label={tr("common:预览{{v0}}的动作",{v0:(item.name)})}
+                    >{tr("workshop:查看动作")}</button>
                   )}
                   {owned ? (
                     <button
@@ -713,7 +611,7 @@ export function GameProfile({ shopOnly = false }: { shopOnly?: boolean } = {}) {
                       disabled={g.skin === item.id || !!busy}
                       onClick={() => void setting({ gameSkin: item.id })}
                     >
-                      {g.skin === item.id ? '正在使用' : '使用皮肤'}
+                      {g.skin === item.id ? tr("workshop:正在使用") : tr("workshop:使用皮肤")}
                     </button>
                   ) : (
                     <button
@@ -723,12 +621,12 @@ export function GameProfile({ shopOnly = false }: { shopOnly?: boolean } = {}) {
                     >
                       <Gem size={16} />
                       {busy === item.id
-                        ? '正在兑换'
+                        ? tr("workshop:正在兑换")
                         : full
                           ? item.type === 'hearts'
-                            ? '生命值已满'
-                            : '储备已满'
-                          : `${item.cost} 点数`}
+                            ? tr("common:生命值已满")
+                            : tr("common:储备已满")
+                          : tr("common:{{v0}} 点数",{v0:(item.cost)})}
                     </button>
                   )}
                 </article>
@@ -739,16 +637,11 @@ export function GameProfile({ shopOnly = false }: { shopOnly?: boolean } = {}) {
             <button
               className="secondary"
               onClick={() => void setting({ gameSkin: 'default' })}
-            >
-              使用原版企鹅
-            </button>
+            >{tr("workshop:使用原版企鹅")}</button>
           )}
           <details>
-            <summary>奖励规则</summary>
-            <p className="muted">
-              连胜冻结在漏学一天后自动使用。生命值每日恢复，也会每 30
-              分钟补回一颗；答错会消耗一颗，通过三道恢复练习可补回一颗。考试不消耗生命值。纠错撤销的学习记录，其奖励也会重新核算。
-            </p>
+            <summary>{tr("workshop:奖励规则")}</summary>
+            <p className="muted">{tr("workshop:连胜冻结在漏学一天后自动使用。生命值每日恢复，也会每 30 分钟补回一颗；答错会消耗一颗，通过三道恢复练习可补回一颗。考试不消耗生命值。纠错撤销的学习记录，其奖励也会重新核算。")}</p>
           </details>
         </>
       )}

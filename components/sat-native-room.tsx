@@ -1,4 +1,5 @@
 'use client';
+import {tr} from '@/lib/i18n';
 import { useEffect, useRef, useState } from 'react';
 import { useReview } from './review-context';
 import { put, currentNamespace } from '@/lib/store';
@@ -53,15 +54,15 @@ export default function SatExamRoom({run:initial,paper}:{run:ExamRun;paper:ExamP
       });
     }
     const probe=setInterval(()=>{if(!initialized)send('ping');},1000);
-    const timeout=setTimeout(()=>{if(!initialized){setLoading(false);setError('SAT 界面未能加载，请重新连接。已保存的答案会保留。');}},12000);
+    const timeout=setTimeout(()=>{if(!initialized){setLoading(false);setError(tr("common:SAT 界面未能加载，请重新连接。已保存的答案会保留。"));}},12000);
     function keyboard(e:KeyboardEvent){if(e.altKey&&e.key==='Escape'){e.preventDefault();send('pause');}}
     window.addEventListener('message',receive);window.addEventListener('keydown',keyboard);
     return()=>{active=false;clearInterval(probe);clearTimeout(timeout);window.removeEventListener('message',receive);window.removeEventListener('keydown',keyboard);};
   },[connection,paper.id]);
   return <main className="map-native-host sat-native-host">
-    <iframe key={connection} ref={frame} title="SAT 英语专项模拟" src={assetPath('sat-player/index.html')} sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups" allow="fullscreen" onLoad={()=>send('ping')} />
-    <button className="native-exam-exit" aria-label="保存并返回 CE" onClick={()=>send('request-exit')}>×</button>
-    {loading&&<div className="map-native-error" role="status">正在打开 SAT 界面…</div>}
-    {error&&<div className="map-native-error" role="alert">{error}<button aria-label="关闭错误提示" onClick={()=>setError('')}>×</button><button onClick={()=>{setError('');setConnection(c=>c+1);}}>重新连接</button><button onClick={()=>navigate('subjects','ce')}>返回 CE</button></div>}
+    <iframe key={connection} ref={frame} title={tr("common:SAT 英语专项模拟")} src={assetPath('sat-player/index.html')} sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups" allow="fullscreen" onLoad={()=>send('ping')} />
+    <button className="native-exam-exit" aria-label={tr("common:保存并返回 CE")} onClick={()=>send('request-exit')}>×</button>
+    {loading&&<div className="map-native-error" role="status">{tr("common:正在打开 SAT 界面…")}</div>}
+    {error&&<div className="map-native-error" role="alert">{error}<button aria-label={tr("common:关闭错误提示")} onClick={()=>setError('')}>×</button><button onClick={()=>{setError('');setConnection(c=>c+1);}}>{tr("common:重新连接")}</button><button onClick={()=>navigate('subjects','ce')}>{tr("common:返回 CE")}</button></div>}
   </main>;
 }

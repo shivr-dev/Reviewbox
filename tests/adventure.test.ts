@@ -4,14 +4,11 @@ import { learningGame } from '../lib/learning-game';
 import {
   newAdventure,
   applyAdventure,
-  validLayout,
-  homePath,
-  cells,
   type AdventureAction,
 } from '../lib/adventure';
-import { STARTER_LAYOUT, CHEST_TIERS } from '../lib/home-catalog';
+import { CHEST_TIERS } from '../lib/home-catalog';
 import { buyGameItem, advanceChest, chestPrize } from '../lib/game-client';
-import { homeCommand, saveHome } from '../lib/home-client';
+import { homeCommand } from '../lib/home-client';
 import { put, loadData, switchAccount, database } from '../lib/store';
 import { localDay, type StudyData, type AnswerEvent } from '../lib/model';
 const at = Date.parse('2026-10-07T04:00:00Z'),
@@ -237,133 +234,4 @@ test('all chest tiers retain 10% freeze odds and exact displayed point boundarie
       CHEST_TIERS[tier].max,
     );
   }
-});
-test('room validates footprint, rotation, collisions and door; walking path routes around occupied furniture', () => {
-  const levels = newAdventure().levels;
-  assert.ok(validLayout(STARTER_LAYOUT, levels));
-  assert.equal(
-    validLayout(
-      [
-        ...STARTER_LAYOUT,
-        { id: 'clone', item: 'furniture-chair', x: 0, y: 0, rotation: 0 },
-      ],
-      levels,
-    ),
-    false,
-  );
-  assert.equal(
-    validLayout(
-      STARTER_LAYOUT.map((p) =>
-        p.item === 'furniture-chair' ? { ...p, x: 6, y: 6 } : p,
-      ),
-      levels,
-    ),
-    false,
-  );
-  assert.equal(
-    validLayout(
-      STARTER_LAYOUT.map((p) =>
-        p.item === 'furniture-chair' ? { ...p, x: 1, y: 1 } : p,
-      ),
-      levels,
-    ),
-    false,
-  );
-  const rotated = { ...STARTER_LAYOUT[0], rotation: 1 as const };
-  assert.deepEqual(cells(rotated), [
-    { x: 1, y: 1 },
-    { x: 1, y: 2 },
-  ]);
-  const path = homePath({ x: 6, y: 5 }, STARTER_LAYOUT[0], STARTER_LAYOUT);
-  assert.ok(path.length > 1);
-  for (const p of path)
-    assert.ok(
-      !STARTER_LAYOUT.flatMap(cells).some((c) => c.x === p.x && c.y === p.y),
-    );
-  const blocked = Array.from({ length: 7 }, (_, i) => ({
-    id: 'wall' + i,
-    item: 'furniture-chair',
-    x: 4,
-    y: i,
-    rotation: 0 as const,
-  }));
-  assert.deepEqual(
-    homePath({ x: 6, y: 5 }, STARTER_LAYOUT[0], [
-      ...STARTER_LAYOUT,
-      ...blocked,
-    ]),
-    [],
-  );
-});
-test('atomic home operations: concurrent enchants, boosted chest reservation and replay, gift idempotency, layout sync and account isolation', async () => {
-  await switchAccount('adventure-db');
-  const now = Date.now() - 1000;
-  await put('job', grant(now, 2000, 1));
-  await buyGameItem('chest-ticket');
-  await buyGameItem('chest-ticket');
-  const both = await Promise.allSettled([
-    homeCommand({ action: 'enchant-freeze', tier: 0 }),
-    homeCommand({ action: 'enchant-freeze', tier: 0 }),
-  ]);
-  assert.equal(both.filter((r) => r.status === 'fulfilled').length, 1);
-  await homeCommand({ action: 'enchant-ticket', tier: 0 });
-  await homeCommand({ action: 'enchant-ticket', tier: 1 });
-  await put('event', event(now));
-  await put(
-    'job',
-    {
-      id: 'chest-adventure',
-      kind: 'session',
-      status: 'complete',
-      mode: 'review',
-    },
-    'active-session',
-  );
-  const first = await advanceChest('chest-adventure');
-  assert.equal(first.boostTier, 2);
-  assert.deepEqual(learningGame(await loadData()).adventure.tickets, [1, 0, 0]);
-  const second = await advanceChest('chest-adventure');
-  assert.equal(second.openedAt, first.openedAt);
-  assert.deepEqual(second.reward, first.reward);
-  const third = await advanceChest('chest-adventure');
-  const saved = await loadData();
-  assert.deepEqual(
-    learningGame({ ...saved, jobs: [...saved.jobs!, third, third] }).adventure
-      .tickets,
-    [1, 0, 0],
-  );
-  await buyGameItem('gift-paper');
-  const wrapped = await homeCommand({
-    action: 'wrap',
-    gift: { resource: 'ticket', amount: 1, tier: 0 },
-    unlockAt: new Date(Date.now() + 1000).toISOString(),
-  });
-  assert.equal(learningGame(await loadData()).adventure.tickets[0], 0);
-  await assert.rejects(
-    () => homeCommand({ action: 'open-gift', target: wrapped.id }),
-    /尚未/,
-  );
-  // Move only the fixture's unlock date into the past; no wall-clock sleep or real account data.
-  // Retain the purchase-before-wrap ordering.
-  await put('job', {
-    ...wrapped,
-    unlockAt: new Date(Date.parse(wrapped.at) + 1).toISOString(),
-  });
-  await homeCommand({ action: 'open-gift', target: wrapped.id });
-  await homeCommand({ action: 'open-gift', target: wrapped.id });
-  assert.equal(learningGame(await loadData()).adventure.tickets[0], 1);
-  await saveHome(STARTER_LAYOUT);
-  const db = await database();
-  assert.ok(
-    (await db.getAll('queue')).some(
-      (r) => r.id === 'home-layout' && r.namespace === 'adventure-db',
-    ),
-  );
-  await switchAccount('adventure-other');
-  await assert.rejects(
-    () => saveHome(STARTER_LAYOUT, 'adventure-db'),
-    /账户|家具/,
-  );
-  assert.equal(learningGame(await loadData()).coins, 0);
-  assert.equal(learningGame(await loadData()).adventure.tickets[0], 0);
 });

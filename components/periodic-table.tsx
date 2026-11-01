@@ -1,4 +1,5 @@
 'use client';
+import {tr} from '@/lib/i18n';
 import { useState } from 'react';
 import { ELEMENTS } from '@/lib/elements';
 export default function PeriodicTable() {
@@ -10,12 +11,12 @@ export default function PeriodicTable() {
       <p className="eyebrow">PERIODIC TABLE</p>
       <div className="section-head">
         <div>
-          <h2>元素周期表</h2>
-          <p className="muted">118 种元素 · 点击查看名称、原子序数及周期与族</p>
+          <h2>{tr("common:元素周期表")}</h2>
+          <p className="muted">{tr("common:118 种元素 · 点击查看名称、原子序数及周期与族")}</p>
         </div>
         <input
-          aria-label="搜索元素"
-          placeholder="名称、符号或原子序数"
+          aria-label={tr("common:搜索元素")}
+          placeholder={tr("common:名称、符号或原子序数")}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -63,17 +64,13 @@ export default function PeriodicTable() {
             style={{ gridRow: 7, gridColumn: 3 }}
           >
             57–71
-            <br />
-            镧系
-          </span>
+            <br />{tr("common:镧系")}</span>
           <span
             className="element-placeholder"
             style={{ gridRow: 8, gridColumn: 3 }}
           >
             89–103
-            <br />
-            锕系
-          </span>
+            <br />{tr("common:锕系")}</span>
         </div>
       </div>
       <div className="element-detail" aria-live="polite">
@@ -82,13 +79,10 @@ export default function PeriodicTable() {
           <h3>
             {selected.name} · {selected.english}
           </h3>
-          <p>
-            原子序数 {selected.number} · 第 {selected.period} 周期
-            {selected.group ? ' · 第 ' + selected.group + ' 族' : ''} ·{' '}
+          <p>{tr("common:原子序数")}{selected.number}{tr("common:· 第")}{selected.period}{tr("common:周期")}{selected.group ? ' · 第 ' + selected.group + ' 族' : ''} ·{' '}
             {selected.category}
           </p>
-          <p className="muted">
-            原子序数等于原子核中的质子数；中性原子的电子数为 {selected.number}。
+          <p className="muted">{tr("common:原子序数等于原子核中的质子数；中性原子的电子数为")}{selected.number}。
           </p>
         </div>
       </div>
@@ -100,16 +94,11 @@ export default function PeriodicTable() {
           </span>
         ))}
       </div>
-      <p className="muted">
-        按 18
-        族排列，镧系与锕系单独展示。分类用于学习参考；部分超重元素的化学性质仍在研究中。
-        <a
+      <p className="muted">{tr("common:按 18 族排列，镧系与锕系单独展示。分类用于学习参考；部分超重元素的化学性质仍在研究中。")}<a
           href="https://iupac.org/what-we-do/periodic-table-of-elements/"
           target="_blank"
           rel="noreferrer"
-        >
-          IUPAC 元素资料
-        </a>
+        >{tr("common:IUPAC 元素资料")}</a>
       </p>
     </section>
   );

@@ -1,4 +1,5 @@
 'use client';
+import {tr} from '@/lib/i18n';
 import { useRef, useState, useEffect } from 'react';
 import {
   ArrowRight,
@@ -49,7 +50,7 @@ export default function CourseHub({ subject }: { subject: Subject }) {
     video.current.srcObject = cameraStream.current;
     void video.current
       .play()
-      .catch(() => setError('摄像头预览未能启动，请检查浏览器权限。'));
+      .catch(() => setError(tr("common:摄像头预览未能启动，请检查浏览器权限。")));
   }, [cameraOpen]);
   const courses =
     data.jobs
@@ -66,7 +67,7 @@ export default function CourseHub({ subject }: { subject: Subject }) {
   async function openCamera() {
     setError('');
     if (!navigator.mediaDevices?.getUserMedia) {
-      setError('此浏览器不支持直接拍摄，请使用“导入学习资料”选择已有照片。');
+      setError(tr("common:此浏览器不支持直接拍摄，请使用“导入学习资料”选择已有照片。"));
       return;
     }
     try {
@@ -77,7 +78,7 @@ export default function CourseHub({ subject }: { subject: Subject }) {
       setCameraOpen(true);
     } catch {
       setError(
-        '摄像头未能开启。请允许摄像头权限，或使用“导入学习资料”选择已有照片。',
+        tr("common:摄像头未能开启。请允许摄像头权限，或使用“导入学习资料”选择已有照片。"),
       );
     }
   }
@@ -127,7 +128,7 @@ export default function CourseHub({ subject }: { subject: Subject }) {
       setSource(text);
       setFiles(names);
       setEditing(true);
-      notify('识别完成，请核对教材文字、公式和图表说明');
+      notify(tr("common:识别完成，请核对教材文字、公式和图表说明"));
     } catch (e) {
       if (currentNamespace() !== ns) return;
       const message = courseErrorMessage(e);
@@ -153,7 +154,7 @@ export default function CourseHub({ subject }: { subject: Subject }) {
       setLive(found.course);
       await refresh();
       if (found.course.status === 'ready') {
-        notify('已打开相同资料的现有课程，无需重新生成');
+        notify(tr("common:已打开相同资料的现有课程，无需重新生成"));
         navigate('course', found.course.id);
         return;
       }
@@ -198,21 +199,19 @@ export default function CourseHub({ subject }: { subject: Subject }) {
             className="camera-capture-dialog"
             role="dialog"
             aria-modal="true"
-            aria-label="拍摄教材或笔记"
+            aria-label={tr("common:拍摄教材或笔记")}
             onMouseDown={(event) => event.stopPropagation()}
           >
             <div className="camera-capture-head">
               <div>
-                <strong>拍摄教材或笔记</strong>
-                <p>请将文字置于画面中央，拍摄后在本机识别并校对。</p>
+                <strong>{tr("common:拍摄教材或笔记")}</strong>
+                <p>{tr("common:请将文字置于画面中央，拍摄后在本机识别并校对。")}</p>
               </div>
               <button
                 className="quiet"
                 onClick={closeCamera}
-                aria-label="关闭摄像头"
-              >
-                关闭
-              </button>
+                aria-label={tr("common:关闭摄像头")}
+              >{tr("common:关闭")}</button>
             </div>
             <video
               ref={video}
@@ -222,16 +221,13 @@ export default function CourseHub({ subject }: { subject: Subject }) {
               onLoadedMetadata={() => setCameraReady(true)}
             />
             <div className="camera-capture-actions">
-              <button className="secondary" onClick={closeCamera}>
-                取消
-              </button>
+              <button className="secondary" onClick={closeCamera}>{tr("common:取消")}</button>
               <button
                 className="primary"
                 disabled={!cameraReady}
                 onClick={() => void takePhoto()}
               >
-                <Camera size={16} /> 拍照并识别
-              </button>
+                <Camera size={16} />{tr("common:拍照并识别")}</button>
             </div>
           </section>
         </div>
@@ -239,44 +235,40 @@ export default function CourseHub({ subject }: { subject: Subject }) {
       <section className="course-intro">
         <div>
           <p className="eyebrow">COURSE REVIEW</p>
-          <h2>课程复习</h2>
-          <p>
-            以教材与笔记为依据，依次完成概念讲解、例题分析、理解检验和巩固练习。
-          </p>
+          <h2>{tr("common:课程复习")}</h2>
+          <p>{tr("common:以教材与笔记为依据，依次完成概念讲解、例题分析、理解检验和巩固练习。")}</p>
         </div>
         <button
           className={courses.length ? 'secondary' : 'primary'}
           onClick={() => setEditing(!editing)}
         >
-          <Plus size={16} />
-          建立课程
-        </button>
+          <Plus size={16} />{tr("common:建立课程")}</button>
       </section>
       {error && (
         <div className="course-error" role="alert">
           <div>
-            <strong>操作未完成</strong>
+            <strong>{tr("common:操作未完成")}</strong>
             <p>{error}</p>
-            <p>请按提示重试；已保存的资料和课程不会因此删除。</p>
+            <p>{tr("common:请按提示重试；已保存的资料和课程不会因此删除。")}</p>
           </div>
         </div>
       )}
       {(editing || !courses.length) && (
         <section className="panel course-create">
           <div className="section-head">
-            <h3>添加学习资料</h3>
-            <span className="muted">相同资料自动复用</span>
+            <h3>{tr("common:添加学习资料")}</h3>
+            <span className="muted">{tr("common:相同资料自动复用")}</span>
           </div>
           <div className="course-input-actions">
             <button onClick={() => void openCamera()} disabled={!!working}>
               <Camera size={18} />
-              <b>拍摄教材或笔记</b>
-              <span>识别后校对文字</span>
+              <b>{tr("common:拍摄教材或笔记")}</b>
+              <span>{tr("common:识别后校对文字")}</span>
             </button>
             <button onClick={() => input.current?.click()} disabled={!!working}>
               <Upload size={18} />
-              <b>导入学习资料</b>
-              <span>图片、PDF、Word、文本</span>
+              <b>{tr("common:导入学习资料")}</b>
+              <span>{tr("common:图片、PDF、Word、文本")}</span>
             </button>
           </div>
           <input
@@ -291,9 +283,7 @@ export default function CourseHub({ subject }: { subject: Subject }) {
             }}
           />
           {materials.length > 0 && (
-            <label>
-              从资料库选择
-              <select
+            <label>{tr("common:从资料库选择")}<select
                 value={selected}
                 onChange={(e) => {
                   setSelected(e.target.value);
@@ -305,7 +295,7 @@ export default function CourseHub({ subject }: { subject: Subject }) {
                   }
                 }}
               >
-                <option value="">选择已保存资料</option>
+                <option value="">{tr("common:选择已保存资料")}</option>
                 {materials.map((m) => (
                   <option key={m.id} value={m.id}>
                     {m.name}
@@ -314,39 +304,33 @@ export default function CourseHub({ subject }: { subject: Subject }) {
               </select>
             </label>
           )}
-          <label>
-            课程名称
-            <input
+          <label>{tr("common:课程名称")}<input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               maxLength={160}
-              placeholder="例如：细胞结构与生命活动"
+              placeholder={tr("common:例如：细胞结构与生命活动")}
             />
           </label>
-          <label>
-            教材内容、笔记或知识点
-            <textarea
-              aria-label="课程学习资料"
+          <label>{tr("common:教材内容、笔记或知识点")}<textarea
+              aria-label={tr("common:课程学习资料")}
               rows={9}
               value={source}
               onChange={(e) => setSource(e.target.value)}
               maxLength={60000}
-              placeholder="粘贴教材原文、课堂笔记，或输入需要系统学习的知识点。图片中的图表、公式和手写内容请在识别后核对、补充。"
+              placeholder={tr("common:粘贴教材原文、课堂笔记，或输入需要系统学习的知识点。图片中的图表、公式和手写内容请在识别后核对、补充。")}
             />
           </label>
           <div className="course-source-meta">
-            <span>{source.length.toLocaleString()} / 60,000 字</span>
+            <span>{source.length.toLocaleString()}{tr("common:/ 60,000 字")}</span>
             <span>
               {files.length
                 ? files.length + ' 份资料已识别'
-                : '支持直接输入知识点'}
+                : tr("common:支持直接输入知识点")}
             </span>
           </div>
           <details className="course-source-help">
-            <summary>资料识别与课程编制说明</summary>
-            <p>
-              图片文字在本机识别。生成课程时，校对后的文字将用于课程编制；图片中未被识别的示意图、公式和标注需要补充说明。课程按资料顺序分节，原文保留以供核对；每节包含完整讲解、例题、对比、过程分析和检验题。
-            </p>
+            <summary>{tr("common:资料识别与课程编制说明")}</summary>
+            <p>{tr("common:图片文字在本机识别。生成课程时，校对后的文字将用于课程编制；图片中未被识别的示意图、公式和标注需要补充说明。课程按资料顺序分节，原文保留以供核对；每节包含完整讲解、例题、对比、过程分析和检验题。")}</p>
           </details>
           <div className="button-row">
             <button
@@ -365,15 +349,11 @@ export default function CourseHub({ subject }: { subject: Subject }) {
                   setWorking('当前小节保存后暂停');
                 }}
               >
-                <Pause size={16} />
-                暂停
-              </button>
+                <Pause size={16} />{tr("common:暂停")}</button>
             )}
           </div>
           {!aiReady && (
-            <p className="muted">
-              课程生成服务暂不可用，已保存的课程可继续学习。
-            </p>
+            <p className="muted">{tr("common:课程生成服务暂不可用，已保存的课程可继续学习。")}</p>
           )}
         </section>
       )}
@@ -383,8 +363,7 @@ export default function CourseHub({ subject }: { subject: Subject }) {
             <h3>{shown.title}</h3>
             <span>
               {shown.sections.filter((s) => s.content).length} /{' '}
-              {shown.sections.length} 节已保存
-            </span>
+              {shown.sections.length}{tr("common:节已保存")}</span>
           </div>
           <progress
             value={shown.sections.filter((s) => s.content).length}
@@ -402,9 +381,7 @@ export default function CourseHub({ subject }: { subject: Subject }) {
               className="secondary"
               disabled={!aiReady}
               onClick={() => void prepare(shown)}
-            >
-              继续编制
-            </button>
+            >{tr("common:继续编制")}</button>
           )}
         </section>
       )}
@@ -426,24 +403,20 @@ export default function CourseHub({ subject }: { subject: Subject }) {
               </span>
               <div>
                 <h3>{j.title}</h3>
-                <p>{j.groups.length} 组能力 · 讲解、巩固与隔天验证</p>
+                <p>{j.groups.length}{tr("common:组能力 · 讲解、巩固与隔天验证")}</p>
               </div>
               <button
                 className="secondary"
                 onClick={() => navigate('remedy', j.id)}
-              >
-                继续补救课程
-              </button>
+              >{tr("common:继续补救课程")}</button>
             </article>
           ))}
         {courses.length > 0 && (
-          <label className="course-search">
-            查找课程
-            <input
+          <label className="course-search">{tr("common:查找课程")}<input
               type="search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="搜索课程名称、教材内容或学习备忘"
+              placeholder={tr("common:搜索课程名称、教材内容或学习备忘")}
             />
           </label>
         )}
@@ -470,10 +443,10 @@ export default function CourseHub({ subject }: { subject: Subject }) {
                 <div>
                   <h3>{course.title}</h3>
                   <p>
-                    {course.sections.length} 节 · {completed} 节已完成 ·{' '}
+                    {course.sections.length}{tr("common:节 ·")}{completed}{tr("common:节已完成 ·")}{' '}
                     {course.sourceNames.length
                       ? course.sourceNames.join('、')
-                      : '自建学习资料'}
+                      : tr("common:自建学习资料")}
                   </p>
                   <div className="course-mini-progress">
                     <span
@@ -501,9 +474,9 @@ export default function CourseHub({ subject }: { subject: Subject }) {
                 >
                   {course.status === 'ready'
                     ? completed === course.sections.length
-                      ? '回顾课程'
-                      : '继续学习'
-                    : '查看进度'}
+                      ? tr("common:回顾课程")
+                      : tr("common:继续学习")
+                    : tr("common:查看进度")}
                   <ArrowRight size={15} />
                 </button>
               </article>
@@ -519,7 +492,7 @@ export default function CourseHub({ subject }: { subject: Subject }) {
               .join('\n')
               .toLocaleLowerCase()
               .includes(query.trim().toLocaleLowerCase()),
-          ) && <p className="muted">没有匹配的课程，请尝试其他关键词。</p>}
+          ) && <p className="muted">{tr("common:没有匹配的课程，请尝试其他关键词。")}</p>}
       </div>
     </div>
   );

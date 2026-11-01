@@ -1,4 +1,5 @@
 'use client';
+import {tr} from '@/lib/i18n';
 import { useEffect, useState } from 'react';
 import {
   Gem,
@@ -16,7 +17,7 @@ import { homeCommand } from '@/lib/home-client';
 import { buyGameItem } from '@/lib/game-client';
 import { currentNamespace } from '@/lib/store';
 import type { GiftContent } from '@/lib/adventure';
-import { FurniturePreview, ItemArt } from './home-art';
+import { ItemArt } from './home-item-art';
 
 export function AdventureShop() {
   const { data, refresh, notify, navigate } = useReview(),
@@ -31,7 +32,7 @@ export function AdventureShop() {
       await buyGameItem(id, ns);
       if (ns === currentNamespace()) {
         await refresh();
-        notify('已放入你的家园库存');
+        notify(tr("workshop:已放入道具库存"));
       }
     } catch (e) {
       notify(e instanceof Error ? e.message : '兑换未完成');
@@ -44,18 +45,16 @@ export function AdventureShop() {
       <div className="home-section-heading">
         <div>
           <span className="home-eyebrow">LITTLE THINGS, BIG JOY</span>
-          <h2>小屋好物与冒险道具</h2>
+          <h2>{tr("workshop:冒险道具")}</h2>
         </div>
-        <button className="secondary" onClick={() => navigate('habitat')}>
-          回到家园 <ArrowRight size={16} />
-        </button>
+
       </div>
-      <div className="home-tabs" role="tablist" aria-label="家园商品分类">
+      <div className="home-tabs" role="tablist" aria-label={tr("workshop:道具分类")}>
         {[
-          ['all', '全部'],
-          ['furniture', '家具'],
-          ['tools', '消耗道具'],
-          ['record', '唱片'],
+          ['all', tr("workshop:全部")],
+
+          ['tools', tr("workshop:消耗道具")],
+
         ].map(([id, label]) => (
           <button
             key={id}
@@ -71,7 +70,7 @@ export function AdventureShop() {
       <div className="home-product-grid">
         {HOME_SHOP.filter(
           (p) =>
-            p.type !== 'souvenir' &&
+            ['ticket','paper'].includes(p.type) &&
             (filter === 'all' ||
               p.type === filter ||
               (filter === 'tools' &&
@@ -94,9 +93,7 @@ export function AdventureShop() {
           return (
             <article className="home-product" key={item.id}>
               <div className={'home-product-art ' + item.type}>
-                {item.type === 'furniture' ? (
-                  <FurniturePreview item={item.id} />
-                ) : (
+                {(
                   <ItemArt
                     kind={item.type === 'record' ? item.id : item.type}
                   />
@@ -105,7 +102,7 @@ export function AdventureShop() {
               <div className="home-product-copy">
                 <h3>{item.name}</h3>
                 <p>{item.description}</p>
-                {count !== null && <small>库存 {count}</small>}
+                {count !== null && <small>{tr("workshop:库存")}{count}</small>}
               </div>
               <button
                 className={owned ? 'secondary' : 'primary'}
@@ -114,13 +111,11 @@ export function AdventureShop() {
               >
                 {owned ? (
                   <>
-                    <Check size={16} />
-                    已拥有
-                  </>
+                    <Check size={16} />{tr("workshop:已拥有")}</>
                 ) : (
                   <>
                     <Gem size={15} />
-                    {busy === item.id ? '兑换中' : item.cost}
+                    {busy === item.id ? tr("workshop:兑换中") : item.cost}
                   </>
                 )}
               </button>
@@ -147,7 +142,7 @@ export function WorkshopPanel() {
       await homeCommand({ action, tier }, ns);
       if (ns === currentNamespace()) {
         await refresh();
-        notify('附魔成功，升级后的道具已进入库存');
+        notify(tr("workshop:附魔成功，升级后的道具已进入库存"));
       }
     } catch (e) {
       notify(e instanceof Error ? e.message : '附魔未完成');
@@ -160,21 +155,21 @@ export function WorkshopPanel() {
       <div className="home-section-heading">
         <div>
           <span className="home-eyebrow">ENCHANTMENT WORKSHOP</span>
-          <h2>实质升级，每次都成功</h2>
-          <p>附魔消耗原道具和点数，保留在本账户库存。</p>
+          <h2>{tr("workshop:实质升级，每次都成功")}</h2>
+          <p>{tr("workshop:附魔消耗原道具和点数，保留在本账户库存。")}</p>
         </div>
         <Sparkles size={30} />
       </div>
       {[
         {
-          title: '连胜冻结',
+          title: tr("common:连胜冻结"),
           tiers: FREEZE_TIERS,
           pool: game.adventure.freezeTiers,
           kind: 'freeze',
           action: 'enchant-freeze' as const,
         },
         {
-          title: '宝箱升级券',
+          title: tr("common:宝箱升级券"),
           tiers: CHEST_TIERS,
           pool: game.adventure.tickets,
           kind: 'ticket',
@@ -188,19 +183,19 @@ export function WorkshopPanel() {
               <article className={'enchantment-card tier-' + i} key={i}>
                 <ItemArt kind={group.kind} tier={i} />
                 <span className="item-tier">
-                  {i === 0 ? '基础' : `附魔 ${i} 级`}
+                  {i === 0 ? tr("workshop:基础") : tr("common:附魔 {{v0}} 级",{v0:(i)})}
                 </span>
                 <h4>{tier.name}</h4>
                 <p>
                   {'days' in tier
-                    ? `保护连续漏学 ${tier.days} 天`
-                    : `点数 ${tier.min}–${tier.max}（90%）`}
+                    ? tr("common:保护连续漏学 {{v0}} 天",{v0:(tier.days)})
+                    : tr("common:点数 {{v0}}–{{v1}}（90%）",{v0:(tier.min),v1:(tier.max)})}
                   <br />
                   {group.kind === 'ticket'
-                    ? '连胜冻结 ×1（10%）'
-                    : '恢复学习后，本次保护结束'}
+                    ? tr("workshop:连胜冻结 ×1（10%）")
+                    : tr("workshop:恢复学习后，本次保护结束")}
                 </p>
-                <strong>拥有 {group.pool[i]} 枚</strong>
+                <strong>{tr("workshop:拥有")}{group.pool[i]}{tr("workshop:枚")}</strong>
                 {i < 2 && (
                   <button
                     className="primary"
@@ -211,18 +206,14 @@ export function WorkshopPanel() {
                     }
                     onClick={() => void enchant(group.action, i)}
                   >
-                    <ArrowUp size={16} />
-                    附魔 · {group.tiers[i + 1].cost} 点数
-                  </button>
+                    <ArrowUp size={16} />{tr("workshop:附魔 ·")}{group.tiers[i + 1].cost}{tr("workshop:点数")}</button>
                 )}
               </article>
             ))}
           </div>
         </section>
       ))}
-      <p className="home-rule-note">
-        冻结优先使用普通库存，再使用附魔库存。宝箱优先使用最高等级升级券，首次点击消耗；概率不因附魔改变。包装中的道具暂时不能使用。
-      </p>
+      <p className="home-rule-note">{tr("workshop:冻结优先使用普通库存，再使用附魔库存。宝箱优先使用最高等级升级券，首次点击消耗；概率不因附魔改变。包装中的道具暂时不能使用。")}</p>
     </div>
   );
 }
@@ -295,8 +286,8 @@ export function GiftsPanel({ now = Date.now() }: { now?: number }) {
       <div className="home-section-heading">
         <div>
           <span className="home-eyebrow">A PRESENT FOR FUTURE YOU</span>
-          <h2>给未来的自己，一份期待</h2>
-          <p>封存的是你已经拥有的奖励，不额外生成点数。</p>
+          <h2>{tr("workshop:给未来的自己，一份期待")}</h2>
+          <p>{tr("workshop:封存的是你已经拥有的奖励，不额外生成点数。")}</p>
         </div>
         <Gift size={32} />
       </div>
@@ -311,9 +302,7 @@ export function GiftsPanel({ now = Date.now() }: { now?: number }) {
           <ItemArt kind="paper" />
         </div>
         <div className="gift-wrap-fields">
-          <label>
-            礼物名称
-            <input
+          <label>{tr("workshop:礼物名称")}<input
               maxLength={40}
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -321,9 +310,7 @@ export function GiftsPanel({ now = Date.now() }: { now?: number }) {
             />
           </label>
           <div className="gift-form-row">
-            <label>
-              封存奖励
-              <select
+            <label>{tr("workshop:封存奖励")}<select
                 value={resource}
                 onChange={(e) => setResource(e.target.value)}
               >
@@ -335,41 +322,34 @@ export function GiftsPanel({ now = Date.now() }: { now?: number }) {
               </select>
             </label>
             {resource === 'coins' && (
-              <label>
-                点数
-                <select
+              <label>{tr("workshop:点数")}<select
                   value={amount}
                   onChange={(e) => setAmount(Number(e.target.value))}
                 >
                   {[50, 100, 200].map((n) => (
                     <option key={n} value={n}>
-                      {n} 点数
-                    </option>
+                      {n}{tr("workshop:点数")}</option>
                   ))}
                 </select>
               </label>
             )}
           </div>
-          <label>
-            可以拆开的时间（本地时间）
-            <input
+          <label>{tr("workshop:可以拆开的时间（本地时间）")}<input
               type="datetime-local"
               value={date}
               onChange={(e) => setDate(e.target.value)}
               required
             />
           </label>
-          <button className="primary" disabled={busy || !game.adventure.papers || !availableResource || (resource==='coins'&&game.coins<amount)}>
-            包装礼物 · 消耗包装纸 ×1
-          </button>
-          <small>包装纸库存 {game.adventure.papers} · 最长可封存 90 天</small>
+          <button className="primary" disabled={busy || !game.adventure.papers || !availableResource || (resource==='coins'&&game.coins<amount)}>{tr("workshop:包装礼物 · 消耗包装纸 ×1")}</button>
+          <small>{tr("workshop:包装纸库存")}{game.adventure.papers}{tr("workshop:· 最长可封存 90 天")}</small>
         </div>
       </form>
       <div className="gift-shelf">
         {game.adventure.gifts.length === 0 ? (
           <div className="home-gift-empty">
             <Gift />
-            <p>第一份礼物，留给未来某个值得期待的日子。</p>
+            <p>{tr("workshop:第一份礼物，留给未来某个值得期待的日子。")}</p>
           </div>
         ) : (
           game.adventure.gifts.map((g) => {
@@ -384,7 +364,7 @@ export function GiftsPanel({ now = Date.now() }: { now?: number }) {
                   <h3>{g.title}</h3>
                   <p>
                     {g.gift.resource === 'coins'
-                      ? `${g.gift.amount} 点数`
+                      ? tr("common:{{v0}} 点数",{v0:(g.gift.amount)})
                       : g.gift.resource === 'freeze'
                         ? FREEZE_TIERS[g.gift.tier].name
                         : CHEST_TIERS[g.gift.tier].name}
@@ -399,7 +379,7 @@ export function GiftsPanel({ now = Date.now() }: { now?: number }) {
                   disabled={busy || !ready || g.opened}
                   onClick={() => void submit(g.id)}
                 >
-                  {g.opened ? '已取回' : ready ? '拆开礼物' : '等待开启'}
+                  {g.opened ? tr("workshop:已取回") : ready ? tr("common:拆开礼物") : tr("common:等待开启")}
                 </button>
               </article>
             );

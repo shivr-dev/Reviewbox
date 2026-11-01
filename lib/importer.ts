@@ -137,6 +137,7 @@ export const questionSchema = z.object({
     })
     .optional(),
   transferFrom: z.string().max(160).optional(),
+  referenceProvenance: z.object({kind:z.literal('generated-variant'),generatedAt:z.string().datetime(),model:z.string().max(100),trainingGoal:z.string().max(1000),changes:z.string().max(2000),sources:z.array(z.object({id:z.string().max(100),source:z.enum(['k12','eduqs','cjeval']),url:z.string().url().max(500),revision:z.string().max(80),sourceId:z.string().max(200),license:z.string().max(200),rights:z.string().max(50)})).max(60)}).optional(),
   collectionId: z.string().max(160).optional(),
   collectionTitle: z.string().max(200).optional(),
   passage: z.string().max(30000).optional(),

@@ -3,7 +3,6 @@ import {
   HOME_SHOP,
   CHEST_TIERS,
   FREEZE_TIERS,
-  type HomePlacement,
 } from './home-catalog';
 export type GiftContent = {
   resource: 'coins' | 'freeze' | 'ticket';
@@ -161,103 +160,4 @@ export function applyAdventure(
   } else return null;
   state.accepted.add(a.id);
   return delta;
-}
-export function cells(p: HomePlacement) {
-  const f = FURNITURE[p.item];
-  if (!f) return [];
-  const w = p.rotation ? f.d : f.w,
-    d = p.rotation ? f.w : f.d;
-  return Array.from({ length: w * d }, (_, i) => ({
-    x: p.x + (i % w),
-    y: p.y + Math.floor(i / w),
-  }));
-}
-export function validLayout(
-  placements: HomePlacement[],
-  levels: Record<string, number>,
-) {
-  const occupied = new Set<string>(),
-    items = new Set<string>(),
-    ids = new Set<string>();
-  if (placements.length > 20) return false;
-  for (const p of placements) {
-    if (
-      !FURNITURE[p.item] ||
-      !levels[p.item] ||
-      items.has(p.item) ||
-      ids.has(p.id) ||
-      !p.id ||
-      ![0, 1].includes(p.rotation) ||
-      !Number.isInteger(p.x) ||
-      !Number.isInteger(p.y)
-    )
-      return false;
-    ids.add(p.id);
-    items.add(p.item);
-    for (const c of cells(p)) {
-      if (c.x < 0 || c.y < 0 || c.x >= 7 || c.y >= 7) return false;
-      if (p.item === 'furniture-rug') continue;
-      const key = c.x + ',' + c.y;
-      if (occupied.has(key)) return false;
-      occupied.add(key);
-    }
-  }
-  // Keep the front door and the first walking square free.
-  return !occupied.has('6,6') && !occupied.has('6,5');
-}
-export function homePath(
-  from: { x: number; y: number },
-  target: HomePlacement,
-  layout: HomePlacement[],
-) {
-  const blocked = new Set(
-    layout
-      .filter((p) => p.item !== 'furniture-rug')
-      .flatMap((p) => cells(p).map((c) => c.x + ',' + c.y)),
-  );
-  const targets = new Set(
-    cells(target)
-      .flatMap((c) => [
-        { x: c.x - 1, y: c.y },
-        { x: c.x + 1, y: c.y },
-        { x: c.x, y: c.y - 1 },
-        { x: c.x, y: c.y + 1 },
-      ])
-      .filter(
-        (c) =>
-          c.x >= 0 &&
-          c.y >= 0 &&
-          c.x < 7 &&
-          c.y < 7 &&
-          !blocked.has(c.x + ',' + c.y),
-      )
-      .map((c) => c.x + ',' + c.y),
-  );
-  const queue = [{ point: from, path: [from] }],
-    seen = new Set([from.x + ',' + from.y]);
-  while (queue.length) {
-    const step = queue.shift()!;
-    if (targets.has(step.point.x + ',' + step.point.y)) return step.path;
-    for (const d of [
-      { x: 1, y: 0 },
-      { x: -1, y: 0 },
-      { x: 0, y: 1 },
-      { x: 0, y: -1 },
-    ]) {
-      const point = { x: step.point.x + d.x, y: step.point.y + d.y },
-        key = point.x + ',' + point.y;
-      if (
-        point.x < 0 ||
-        point.y < 0 ||
-        point.x >= 7 ||
-        point.y >= 7 ||
-        blocked.has(key) ||
-        seen.has(key)
-      )
-        continue;
-      seen.add(key);
-      queue.push({ point, path: [...step.path, point] });
-    }
-  }
-  return [];
 }

@@ -319,7 +319,7 @@
   column-gap: 80px;
   margin-top: 20px;
 }
-.matching-board > div {
+.matching-board > .matching-column {
   display: grid;
   grid-auto-rows: 64px;
   position: relative;
@@ -352,7 +352,7 @@
 .matching-board small {
   color: #7b8981;
 }
-.matching-board svg {
+.matching-board > svg.matching-lines {
   position: absolute;
   width: 80px;
   left: calc(50% - 40px);
@@ -1333,7 +1333,7 @@
   .matching-board {
     column-gap: 44px;
   }
-  .matching-board svg {
+  .matching-board > svg.matching-lines {
     width: 44px;
     left: calc(50% - 22px);
   }
@@ -1570,3 +1570,4 @@
     display: none;
   }
 }
+

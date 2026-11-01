@@ -1,4 +1,4 @@
-import { sameOrigin, readBody, requireSiteUser, fail } from '@/lib/server';
+import { sameOrigin, readBody, requireSiteUser, fail, authenticatedSession, sb } from '@/lib/server';
 import { generate, solve, judge, grade, createGradingRule } from '@/lib/ai-server';
 import { questionSchema } from '@/lib/importer';
 import { GenerationFormatError } from '@/lib/generation-format';
@@ -29,8 +29,11 @@ export async function POST(req: Request) {
     }
     if (b.action === 'diagnose-process')
       return Response.json({ diagnosis: await diagnoseProcess(b) });
-    if (b.action === 'generate')
-      return Response.json({ question: await generate(b) });
+    if (b.action === 'generate') {
+      let identity; try { identity=await authenticatedSession(); } catch { /* Local-only authoring remains available. */ }
+      const {generateWithReferences}=await import('@/lib/reference-generation');
+      return Response.json({question:await generateWithReferences(b,identity?(path,init)=>sb(path,init,identity.access_token):undefined)});
+    }
     if (b.action === 'grading-rule') return Response.json({rule:await createGradingRule(b)});
     const q = questionSchema.parse(b.question);
     if (b.action === 'solve') {

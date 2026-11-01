@@ -12,7 +12,6 @@ import ExamResults from '../components/exam-results';
 import { loadData, put, switchAccount } from '../lib/store';
 import { parseImportText } from '../lib/import-skill';
 import { learningTemplate } from '../lib/import-templates';
-import { furnitureCenter, iso } from '../lib/home-catalog';
 const { JSDOM } = createRequire(import.meta.url)('jsdom');
 test('onboarding saves weights, imports first diagnostic without generation; weekly card and plan launch real tasks', async () => {
   const dom = new JSDOM('<html><body><div id="root"></div></body></html>', {
@@ -279,20 +278,4 @@ test('onboarding saves weights, imports first diagnostic without generation; wee
       else delete (globalThis as any)[key];
     }
   }
-});
-test('furniture rotates around its full footprint centre rather than the first tile', () => {
-  const p = {
-    id: 'desk',
-    item: 'furniture-desk',
-    x: 1,
-    y: 2,
-    rotation: 0 as const,
-  };
-  assert.deepEqual(furnitureCenter(p), { x: 2, y: 2.5, depth: 4.5 });
-  assert.deepEqual(furnitureCenter({ ...p, rotation: 1 }), {
-    x: 1.5,
-    y: 3,
-    depth: 4.5,
-  });
-  assert.equal(iso(2, 2.5).y, iso(1.5, 3).y);
 });

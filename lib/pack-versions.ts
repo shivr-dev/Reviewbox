@@ -15,7 +15,7 @@ export function stable(value:any):string {
 }
 export function content(value:any) {
   if(!value)return value;
-  const {verified,verification,reviewStatus,version,source,...rest}=value;return rest;
+  const {verified,verification,reviewStatus,version,source,_packRestore,...rest}=value;return rest;
 }
 export async function packHash(value:any) {
   return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(stable(value))))).map(n=>n.toString(16).padStart(2,'0')).join('');
@@ -78,8 +78,11 @@ export function planPack(preview:PackPreview,records:LocalRecord[],choices:PackC
   const nodes=new Map(records.filter(r=>!r.deleted&&r.kind==='node').map(r=>[r.id,r.payload]));
   writes.filter(r=>r.kind==='node').forEach(r=>nodes.set(r.id,r.payload));
   for(const qid of membership.question){const q=writes.find(r=>r.id===qid)?.payload??current.get(qid)?.payload;const n=nodes.get(q?.nodeId);if(!n||n.subject!==q.subject||!n.skills.some((s:any)=>s.id===q.skillId))throw new Error('保留的知识点与新版题目不兼容，请调整冲突选择');}
-  const manifest={...preview.pack.manifest,nodeIds:membership.node,questionIds:membership.question,contentHash:effectiveHash,sourceContentHash:preview.hash,installationId:id,installedAt:now};
+  const removal=records.find(r=>r.kind==='job'&&!r.deleted&&r.payload.kind==='pack-removal'&&r.payload.packId===preview.pack.manifest.id&&r.payload.status==='removed')?.payload;
+  if(removal)for(const r of writes)if(!r.deleted)r.payload={...r.payload,_packRestore:{packId:removal.packId,operationId:removal.operationId}};
+  const manifest={...preview.pack.manifest,nodeIds:membership.node,questionIds:membership.question,contentHash:effectiveHash,sourceContentHash:preview.hash,installationId:id,installedAt:now,...(removal?{restoredFromRemoval:removal.operationId}:{})};
   write('pack','pack:'+manifest.id,manifest);
+  for(const guard of records.filter(r=>r.kind==='job'&&!r.deleted&&r.payload.kind==='pack-removal'&&r.payload.packId===manifest.id&&r.payload.status==='removed'))write('job',guard.id,{...guard.payload,status:'restored'});
   for(const legacy of records.filter(r=>r.kind==='pack'&&!r.deleted&&r.payload.id===manifest.id&&r.id!=='pack:'+manifest.id))write('pack',legacy.id,legacy.payload,true);
   const after=writes.map(r=>({...r}));
   const snapshot=JSON.stringify({source:preview.pack,before,after}),partIds:string[]=[];

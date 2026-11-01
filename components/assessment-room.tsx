@@ -1,4 +1,5 @@
 'use client';
+import {tr} from '@/lib/i18n';
 import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Flag, Check, Minus, X } from 'lucide-react';
 import {
@@ -55,7 +56,7 @@ export default function AssessmentRoom({
         await put('job', d, d.id, false, ns.current);
         setError('');
       })
-      .catch(() => setError('进度未能保存，请检查设备存储后重试。'));
+      .catch(() => setError(tr("study:进度未能保存，请检查设备存储后重试。")));
   }
   function capture() {
     const d = ref.current;
@@ -103,7 +104,7 @@ export default function AssessmentRoom({
       await put('job', ref.current, ref.current.id, false, ns.current);
       setError('');
     } catch {
-      setError('保存未完成，请保留页面并重试。');
+      setError(tr("study:保存未完成，请保留页面并重试。"));
       throw new Error('保存未完成');
     }
   }
@@ -164,14 +165,11 @@ export default function AssessmentRoom({
     return (
       <div className="assessment-result">
         <button className="quiet" onClick={() => void exit()}>
-          <ArrowLeft size={16} />
-          返回工作台
-        </button>
+          <ArrowLeft size={16} />{tr("study:返回工作台")}</button>
         <p className="eyebrow">ASSESSMENT REVIEW</p>
-        <h1>{pending.length ? '测试已交卷，完成最后的检查' : '测试已完成'}</h1>
+        <h1>{pending.length ? tr("study:测试已交卷，完成最后的检查") : tr("study:测试已完成")}</h1>
         <p className="muted">
-          {session.title} · {events.length}/{session.items.length} 题已评分
-        </p>
+          {session.title} · {events.length}/{session.items.length}{tr("study:题已评分")}</p>
         <div className="summary-stats">
           <div>
             <strong>
@@ -183,11 +181,11 @@ export default function AssessmentRoom({
                 : '—'}
               %
             </strong>
-            <span>{pending.length ? '已评分题目得分率' : '本次得分率'}</span>
+            <span>{pending.length ? tr("study:已评分题目得分率") : tr("study:本次得分率")}</span>
           </div>
           <div>
             <strong>{session.items.length}</strong>
-            <span>题目</span>
+            <span>{tr("study:题目")}</span>
           </div>
         </div>
         {error && (
@@ -201,7 +199,7 @@ export default function AssessmentRoom({
             disabled={busy}
             onClick={() => void grade()}
           >
-            {busy ? '正在按评分标准批改…' : '继续批改'}
+            {busy ? tr("study:正在按评分标准批改…") : tr("study:继续批改")}
           </button>
         )}
         {!pending.length && (
@@ -224,13 +222,13 @@ export default function AssessmentRoom({
                 <b>
                   {e
                     ? e.outcome === 'correct'
-                      ? '答对'
+                      ? tr("common:答对")
                       : e.outcome === 'unsure'
-                        ? '不确定'
-                        : '答错'
+                        ? tr("common:不确定")
+                        : tr("common:答错")
                     : isPinyin(q)
-                      ? '等待手动检查'
-                      : '等待评分'}
+                      ? tr("common:等待手动检查")
+                      : tr("common:等待评分")}
                 </b>
               </summary>
               {q.passage && (
@@ -239,22 +237,17 @@ export default function AssessmentRoom({
                 </blockquote>
               )}
               {!isPinyin(q) && (
-                <p>
-                  你的答案：
-                  <MathText>{draft.answers[q.id] || '未作答'}</MathText>
+                <p>{tr("study:你的答案：")}<MathText>{draft.answers[q.id] || '未作答'}</MathText>
                 </p>
               )}
               {e?.voidedBy && (
-                <p className="muted">
-                  旧题证据已撤销：{e.voidedBy.reason}
-                  。原作答与分数保留用于追溯。
-                </p>
+                <p className="muted">{tr("study:旧题证据已撤销：")}{e.voidedBy.reason}{tr("study:。原作答与分数保留用于追溯。")}</p>
               )}
               <QuestionReviewButton question={q} />
-              <p className="answer-label">参考答案</p>
+              <p className="answer-label">{tr("study:参考答案")}</p>
               <h3>
                 <MathText>
-                  {q.type === 'matching' ? '配对结果见解析' : q.answer}
+                  {q.type === 'matching' ? tr("study:配对结果见解析") : q.answer}
                 </MathText>
               </h3>
               <p>
@@ -267,9 +260,7 @@ export default function AssessmentRoom({
               ))}
               {isPinyin(q) && !e && (
                 <>
-                  <p className="muted">
-                    对照自己刚才回忆或纸上写下的答案，手动判断。
-                  </p>
+                  <p className="muted">{tr("study:对照自己刚才回忆或纸上写下的答案，手动判断。")}</p>
                   <div className="rating-actions">
                     <button
                       disabled={busy}
@@ -278,9 +269,7 @@ export default function AssessmentRoom({
                         void grade({ questionId: q.id, outcome: 'wrong' })
                       }
                     >
-                      <X size={16} />
-                      答错
-                    </button>
+                      <X size={16} />{tr("study:答错")}</button>
                     <button
                       disabled={busy}
                       className="unsure"
@@ -288,9 +277,7 @@ export default function AssessmentRoom({
                         void grade({ questionId: q.id, outcome: 'unsure' })
                       }
                     >
-                      <Minus size={16} />
-                      不确定
-                    </button>
+                      <Minus size={16} />{tr("study:不确定")}</button>
                     <button
                       disabled={busy}
                       className="correct"
@@ -298,9 +285,7 @@ export default function AssessmentRoom({
                         void grade({ questionId: q.id, outcome: 'correct' })
                       }
                     >
-                      <Check size={16} />
-                      答对
-                    </button>
+                      <Check size={16} />{tr("study:答对")}</button>
                   </div>
                 </>
               )}
@@ -334,9 +319,7 @@ export default function AssessmentRoom({
     <div className="assessment-room">
       <header>
         <button onClick={() => void exit()}>
-          <ArrowLeft size={16} />
-          保存并退出
-        </button>
+          <ArrowLeft size={16} />{tr("study:保存并退出")}</button>
         <div>
           <p>ASSESSMENT</p>
           <h1>{session.title}</h1>
@@ -348,11 +331,11 @@ export default function AssessmentRoom({
       {error && (
         <p role="alert">
           {error}
-          <button onClick={() => save(ref.current)}>重试保存</button>
+          <button onClick={() => save(ref.current)}>{tr("study:重试保存")}</button>
         </p>
       )}
       <div className="assessment-layout">
-        <nav aria-label="测试题目导航">
+        <nav aria-label={tr("study:测试题目导航")}>
           {session.items.map(({ question: q }, i) => (
             <button
               key={q.id}
@@ -381,8 +364,8 @@ export default function AssessmentRoom({
           <QuestionVisual question={q}/>{' '}
           {isPinyin(q) ? (
             <div className="pinyin-test-note">
-              <p>在心里回忆，或在纸上写下答案。</p>
-              <p className="muted">交卷后显示标准答案，由你手动检查。</p>
+              <p>{tr("study:在心里回忆，或在纸上写下答案。")}</p>
+              <p className="muted">{tr("study:交卷后显示标准答案，由你手动检查。")}</p>
               <button
                 className={
                   draft.completedQuestions.includes(q.id)
@@ -401,8 +384,8 @@ export default function AssessmentRoom({
                 }}
               >
                 {draft.completedQuestions.includes(q.id)
-                  ? '已完成回忆'
-                  : '完成回忆，下一题'}
+                  ? tr("study:已完成回忆")
+                  : tr("study:完成回忆，下一题")}
                 <ArrowRight size={16} />
               </button>
             </div>
@@ -422,15 +405,15 @@ export default function AssessmentRoom({
             </div>
           ) : (
             <textarea
-              aria-label="测试答案"
+              aria-label={tr("study:测试答案")}
               rows={q.type === 'subjective' ? 9 : 3}
               value={answer}
               onChange={(e) => change(e.target.value)}
               maxLength={16000}
               placeholder={
                 q.type === 'subjective'
-                  ? '组织你的回答，交卷后按评分标准批改。'
-                  : '输入答案'
+                  ? tr("study:组织你的回答，交卷后按评分标准批改。")
+                  : tr("study:输入答案")
               }
             />
           )}
@@ -439,35 +422,23 @@ export default function AssessmentRoom({
               className="secondary"
               disabled={draft.index === 0}
               onClick={() => move(draft.index - 1)}
-            >
-              上一题
-            </button>
+            >{tr("study:上一题")}</button>
             {draft.index < session.items.length - 1 ? (
-              <button className="primary" onClick={() => move(draft.index + 1)}>
-                下一题
-                <ArrowRight size={16} />
+              <button className="primary" onClick={() => move(draft.index + 1)}>{tr("study:下一题")}<ArrowRight size={16} />
               </button>
             ) : (
-              <button className="primary" onClick={() => setConfirm(true)}>
-                交卷并查看解析
-              </button>
+              <button className="primary" onClick={() => setConfirm(true)}>{tr("study:交卷并查看解析")}</button>
             )}
           </footer>
         </article>
       </div>
       <Dialog open={confirm} onOpenChange={setConfirm}>
         <DialogContent>
-          <DialogTitle>交卷并开始检查？</DialogTitle>
-          <DialogDescription>
-            交卷后不能修改原作答。拼音写字题将在交卷后对照标准答案手动检查。
-          </DialogDescription>
+          <DialogTitle>{tr("study:交卷并开始检查？")}</DialogTitle>
+          <DialogDescription>{tr("study:交卷后不能修改原作答。拼音写字题将在交卷后对照标准答案手动检查。")}</DialogDescription>
           <div className="button-row">
-            <button className="secondary" onClick={() => setConfirm(false)}>
-              继续作答
-            </button>
-            <button className="primary" onClick={() => void submit()}>
-              确认交卷
-            </button>
+            <button className="secondary" onClick={() => setConfirm(false)}>{tr("study:继续作答")}</button>
+            <button className="primary" onClick={() => void submit()}>{tr("study:确认交卷")}</button>
           </div>
         </DialogContent>
       </Dialog>

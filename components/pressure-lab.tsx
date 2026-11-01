@@ -1,4 +1,5 @@
 'use client';
+import {tr} from '@/lib/i18n';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useReview } from './review-context';
@@ -206,7 +207,7 @@ export default function PressureLab({
       };
       const test = {
         id: 'test:' + current.id,
-        title: '考前压力测试',
+        title: tr("common:考前压力测试"),
         subject: subject ?? 'all',
         sessionId: current.id,
         eventIds: events.map((e) => e.id),
@@ -280,7 +281,7 @@ export default function PressureLab({
             if (!gate.current)
               await put('job', next, pressureKey, false, origin.current);
           })
-          .catch(() => notify('自动保存未完成，请保留当前页面'));
+          .catch(() => notify(tr("study:自动保存未完成，请保留当前页面")));
       }
     }, 300);
     return () => window.clearTimeout(id);
@@ -301,7 +302,7 @@ export default function PressureLab({
           if (!gate.current)
             await put('job', next, pressureKey, false, origin.current);
         })
-        .catch(() => notify('自动保存未完成，请保留当前页面'));
+        .catch(() => notify(tr("study:自动保存未完成，请保留当前页面")));
     };
     const interval = window.setInterval(checkpoint, 10000);
     window.addEventListener('pagehide', checkpoint);
@@ -341,26 +342,20 @@ export default function PressureLab({
       {!autoStart && (
         <div className="intelligence-action-row">
           <div>
-            <h3>考前压力测试</h3>
-            <p className="muted">
-              限时连续作答，交卷后对照同能力、近难度的日常表现。
-              {exam ? `范围：${exam.title}` : '优先选择薄弱能力'}
-              。退出后计时继续。
-            </p>
+            <h3>{tr("study:考前压力测试")}</h3>
+            <p className="muted">{tr("study:限时连续作答，交卷后对照同能力、近难度的日常表现。")}{exam ? tr("common:范围：{{v0}}",{v0:(exam.title)}) : tr("study:优先选择薄弱能力")}{tr("study:。退出后计时继续。")}</p>
           </div>
           <button
             className="secondary"
             disabled={busy || (!saved && !available.length)}
             onClick={launch}
           >
-            {saved ? '恢复测试' : '开始压力测试'}
+            {saved ? tr("study:恢复测试") : tr("study:开始压力测试")}
           </button>
         </div>
       )}
       {!available.length && !saved && (
-        <p className="muted">
-          导入选择、填空或连线题后可开始。拼音题保持手动核对。
-        </p>
+        <p className="muted">{tr("study:导入选择、填空或连线题后可开始。拼音题保持手动核对。")}</p>
       )}
       {open &&
         run &&
@@ -369,58 +364,52 @@ export default function PressureLab({
             className="pressure-overlay"
             role="dialog"
             aria-modal="true"
-            aria-label="考前压力测试"
+            aria-label={tr("study:考前压力测试")}
           >
             <header className="pressure-head">
-              <b>考前压力测试</b>
+              <b>{tr("study:考前压力测试")}</b>
               <span>
                 {run.status === 'active'
                   ? `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, '0')} · ${run.index + 1} / ${run.questions.length}`
-                  : '测试报告'}
+                  : tr("study:测试报告")}
               </span>
               <button onClick={close}>
-                {run.status === 'active' ? '保存并退出' : '关闭报告'}
+                {run.status === 'active' ? tr("study:保存并退出") : tr("study:关闭报告")}
               </button>
             </header>
             <main className="pressure-content">
               {run.status === 'complete' ? (
                 <>
-                  <h1>压力下的能力表现</h1>
-                  <p className="muted">
-                    单次结果用于识别信号，不能证明压力造成失分。缺少跨天的可比日常记录时，不作归因。
-                  </p>
+                  <h1>{tr("study:压力下的能力表现")}</h1>
+                  <p className="muted">{tr("study:单次结果用于识别信号，不能证明压力造成失分。缺少跨天的可比日常记录时，不作归因。")}</p>
                   {report.map((r) => (
                     <article className="pressure-result" key={r.key}>
                       <h3>
                         {r.title} · {r.skill}
                       </h3>
                       <b>{r.status}</b>
-                      <p>
-                        本次 {Math.round(r.pressured * 100)}% · 日常{' '}
+                      <p>{tr("study:本次")}{Math.round(r.pressured * 100)}{tr("study:% · 日常")}{' '}
                         {r.normalCount
-                          ? `${Math.round(r.ordinary * 100)}%（${r.normalCount} 次）`
-                          : '暂无可比记录'}
-                        {r.timedOut ? ' · 包含超时未答题' : ''}
+                          ? tr("common:{{v0}}%（{{v1}} 次）",{v0:(Math.round(r.ordinary * 100)),v1:(r.normalCount)})
+                          : tr("study:暂无可比记录")}
+                        {r.timedOut ? tr("study: · 包含超时未答题") : ''}
                       </p>
                     </article>
                   ))}
-                  <h2>逐题对照</h2>
+                  <h2>{tr("study:逐题对照")}</h2>
                   <RemediationLauncher
                     sessionId={run.id}
-                    title="考前压力测试"
+                    title={tr("study:考前压力测试")}
                   />
                   {run.questions.map((question) => (
                     <details key={question.id}>
                       <summary>{question.prompt.slice(0, 100)}</summary>
                       <QuestionReviewButton question={question} />
-                      <p>
-                        本次作答：
-                        <MathText>
+                      <p>{tr("study:本次作答：")}<MathText>
                           {run.answers[question.id] || '未作答'}
                         </MathText>
                       </p>
-                      <p>
-                        参考答案：<MathText>{question.answer}</MathText>
+                      <p>{tr("study:参考答案：")}<MathText>{question.answer}</MathText>
                       </p>
                       <MathText>{question.explanation}</MathText>
                     </details>
@@ -429,7 +418,7 @@ export default function PressureLab({
               ) : (
                 q && (
                   <>
-                    <p className="eyebrow">连续作答 · 答案在交卷后公开</p>
+                    <p className="eyebrow">{tr("study:连续作答 · 答案在交卷后公开")}</p>
                     <h2>
                       <MathText>{q.prompt}</MathText>
                     </h2>
@@ -454,9 +443,7 @@ export default function PressureLab({
                       ))}
                     </div>
                     {q.type === 'blank' && (
-                      <label>
-                        输入答案
-                        <input
+                      <label>{tr("study:输入答案")}<input
                           disabled={busy}
                           value={run.answers[q.id] ?? ''}
                           onChange={(e) => updateAnswer(q.id, e.target.value)}
@@ -476,9 +463,7 @@ export default function PressureLab({
                         disabled={busy}
                         className="secondary"
                         onClick={submit}
-                      >
-                        提前交卷
-                      </button>
+                      >{tr("study:提前交卷")}</button>
                       <button
                         disabled={busy}
                         className="primary"
@@ -500,10 +485,10 @@ export default function PressureLab({
                         }}
                       >
                         {run.index + 1 >= run.questions.length
-                          ? '交卷'
+                          ? tr("study:交卷")
                           : run.answers[q.id]
-                            ? '下一题'
-                            : '跳过此题'}
+                            ? tr("common:下一题")
+                            : tr("common:跳过此题")}
                       </button>
                     </footer>
                   </>

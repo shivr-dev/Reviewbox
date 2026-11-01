@@ -1,4 +1,5 @@
 'use client';
+import {tr} from '@/lib/i18n';
 import { useEffect, useRef, useState } from 'react';
 import { useReview } from './review-context';
 import { currentNamespace, put, saveRecords } from '@/lib/store';
@@ -64,7 +65,7 @@ export default function NativeExamRoom({
           !message.snapshot ||
           JSON.stringify(message.snapshot).length > 1500000
         ) {
-          setError('考试记录过大，暂未保存。');
+          setError(tr("results:考试记录过大，暂未保存。"));
           return;
         }
         const next = applyNativeAnswers(
@@ -151,8 +152,8 @@ export default function NativeExamRoom({
       {error && (
         <div className="native-exam-error" role="alert">
           <span>{error}</span>
-          <button onClick={() => setError('')} aria-label="关闭错误提示">关闭</button>
-          <button onClick={() => navigate('subjects', 'ce')}>返回 CE</button>
+          <button onClick={() => setError('')} aria-label={tr("results:关闭错误提示")}>{tr("results:关闭")}</button>
+          <button onClick={() => navigate('subjects', 'ce')}>{tr("results:返回 CE")}</button>
         </div>
       )}
       <iframe
@@ -169,9 +170,7 @@ export default function NativeExamRoom({
             location.origin,
           )
         }
-      >
-        保存并返回
-      </button>
+      >{tr("results:保存并返回")}</button>
     </main>
   );
 }

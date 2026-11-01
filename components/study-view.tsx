@@ -1,6 +1,9 @@
 'use client';
+import {subjectLabel as subjectName} from '@/lib/presentation';
+import {tr} from '@/lib/i18n';
 import MathText from './math-text';
 import MatchingInput from './matching-input';
+import {matchingSignature} from '@/lib/matching';
 import MathAnswerComposer from './math-answer-input';
 import {supportsMathInput,type MathAnswerFormat} from '@/lib/math-input-format';
 import {verifyMathAnswer,type MathVerification} from '@/lib/math-verification';
@@ -30,15 +33,7 @@ import {
   objective,
   verificationCandidate,
 } from '@/lib/learning-intelligence';
-import {
-  type QueueItem,
-  type AnswerEvent,
-  type Grade,
-  uid,
-  localDay,
-  subjectName,
-  SUBJECTS,
-} from '@/lib/model';
+import {type QueueItem,type AnswerEvent,type Grade,uid,localDay,SUBJECTS} from '@/lib/model';
 import {
   put,
   saveRecords,
@@ -178,7 +173,7 @@ export default function StudyView({
     const draft = data.jobs?.find(
       (j) => j.id === 'draft:' + session?.id + ':' + q?.id,
     );
-    if (draft) {
+    if (draft&&(q?.type!=='matching'||!draft.matchingSignature||draft.matchingSignature===matchingSignature(q))) {
       setAnswer(draft.answer ?? '');
       setAnswerFormat(draft.answerFormat??'text');
       if (draft.grade) {
@@ -195,7 +190,7 @@ export default function StudyView({
     if(!q||!session||currentNamespace()!==originNamespace.current)return;
     if(draftWrite.current)clearTimeout(draftWrite.current.timer);
     const id='draft:'+session.id+':'+q.id,ns=originNamespace.current;
-    const save=()=>{void put('job',{id,status:'draft',questionId:q.id,answer:value,answerFormat:format},id,false,ns).catch(()=>notify('答案草稿暂未保存，请保留当前页面'));};
+    const save=()=>{void put('job',{id,status:'draft',questionId:q.id,answer:value,answerFormat:format,...(q.type==='matching'?{matchingSignature:matchingSignature(q)}:{})},id,false,ns).catch(()=>notify(tr("study:答案草稿暂未保存，请保留当前页面")));};
     draftWrite.current={save,timer:setTimeout(()=>{save();draftWrite.current=null;},350)};
   }
   const mathematicalBlank=q?.type==='blank'&&['math','physics'].includes(q.subject);
@@ -304,6 +299,7 @@ export default function StudyView({
         source: g ? 'rubric' : session.mode === 'test' ? 'test' : 'self',
         grade: g,
         answer: answer || undefined,
+        matchingSnapshot:q.type==='matching'?{matching:q.matching!,reference:q.answer,questionVersion:q.version}:undefined,
         answerFormat,
         occurredAt: new Date().toISOString(),
         displayedAt: t.displayed,
@@ -677,19 +673,18 @@ export default function StudyView({
       <>
         <Heading
           eyebrow="STUDY SESSION"
-          title="给回忆，一点专注。"
-          description="想一想，揭晓答案，再如实判断自己的掌握情况。"
+          title={tr("study:给回忆，一点专注。")}
+          description={tr("study:想一想，揭晓答案，再如实判断自己的掌握情况。")}
           action={
             <span className="muted">
               {selectedSubjects.length
-                ? `已选 ${selectedSubjects.length} 门学科`
-                : '全部学科'}
+                ? tr("common:已选 {{v0}} 门学科",{v0:(selectedSubjects.length)})
+                : tr("study:全部学科")}
             </span>
           }
         />
         <details className="study-subject-filter">
-          <summary>
-            选择本次练习学科{' '}
+          <summary>{tr("study:选择本次练习学科")}{' '}
             <span>
               {selectedSubjects.length
                 ? SUBJECTS.filter((subject) =>
@@ -697,16 +692,14 @@ export default function StudyView({
                   )
                     .map((subject) => subject.name)
                     .join('、')
-                : '全部学科'}
+                : tr("study:全部学科")}
             </span>
           </summary>
           <div className="study-subject-options">
             <button
               className={!selectedSubjects.length ? 'selected' : ''}
               onClick={() => setSelectedSubjects([])}
-            >
-              全部
-            </button>
+            >{tr("study:全部")}</button>
             {SUBJECTS.map((subject) => (
               <button
                 key={subject.id}
@@ -729,13 +722,12 @@ export default function StudyView({
         </details>
         <section className="panel">
           <div className="section-head">
-            <h2>今日复习队列</h2>
+            <h2>{tr("study:今日复习队列")}</h2>
             <button
               className="primary"
               disabled={!queue.length}
               onClick={() => start(queue)}
-            >
-              开始复习 <ArrowRight size={15} />
+            >{tr("study:开始复习")}<ArrowRight size={15} />
             </button>
           </div>
           {queue.length ? (
@@ -762,13 +754,11 @@ export default function StudyView({
                   </p>
                 </div>
                 <span className="reason-pill">{item.reason}</span>
-                <span className="muted">
-                  约 {item.question.expectedSeconds} 秒
-                </span>
+                <span className="muted">{tr("study:约")}{item.question.expectedSeconds}{tr("study:秒")}</span>
               </div>
             ))
           ) : (
-            <Empty title="暂无到期复习">你可以到学科中心进行专项练习。</Empty>
+            <Empty title={tr("study:暂无到期复习")}>{tr("study:你可以到学科中心进行专项练习。")}</Empty>
           )}
         </section>
       </>
@@ -797,8 +787,8 @@ export default function StudyView({
               XP{' '}
               <span>
                 {game.goalDone
-                  ? '每日目标达成！'
-                  : `${game.daily.count} / ${game.goal} 每日目标`}
+                  ? tr("study:每日目标达成！")
+                  : tr("common:{{v0}} / {{v1}} 每日目标",{v0:(game.daily.count),v1:(game.goal)})}
               </span>
             </div>
           </>
@@ -808,18 +798,18 @@ export default function StudyView({
         </span>
         <p className="eyebrow">SESSION COMPLETE</p>
         <h1>
-          {session.mode === 'test' ? '测试已完成' : '今天，又学扎实了一点。'}
+          {session.mode === 'test' ? tr("study:测试已完成") : tr("study:今天，又学扎实了一点。")}
         </h1>
-        <p className="muted">学习记录已保存，下一次复习安排已更新。</p>
+        <p className="muted">{tr("study:学习记录已保存，下一次复习安排已更新。")}</p>
         <div className="summary-stats">
           <div>
             <strong>{results.length}</strong>
-            <span>完成题目</span>
+            <span>{tr("study:完成题目")}</span>
           </div>
           <div>
             <strong>{score}%</strong>
             <span>
-              {session.mode === 'test' ? '本次得分率' : '本次自评得分率'}
+              {session.mode === 'test' ? tr("study:本次得分率") : tr("study:本次自评得分率")}
             </span>
           </div>
           <div>
@@ -831,7 +821,7 @@ export default function StudyView({
                 ),
               )}
             </strong>
-            <span>分钟思考</span>
+            <span>{tr("study:分钟思考")}</span>
           </div>
         </div>
         <div className="summary-items">
@@ -843,10 +833,10 @@ export default function StudyView({
                   {e.grade
                     ? `${e.grade.score} / ${e.grade.maxScore}`
                     : e.outcome === 'correct'
-                      ? '答对'
+                      ? tr("common:答对")
                       : e.outcome === 'unsure'
-                        ? '不确定'
-                        : '答错'}
+                        ? tr("common:不确定")
+                        : tr("common:答错")}
                 </span>
               </summary>
               <p className="muted">
@@ -855,21 +845,15 @@ export default function StudyView({
                 </MathText>
               </p>
               {e.learningEvidence?.suspect && (
-                <p className="muted">
-                  本次正确结果的掌握证据权重已降低，等待不同题目的交叉验证。
-                </p>
+                <p className="muted">{tr("study:本次正确结果的掌握证据权重已降低，等待不同题目的交叉验证。")}</p>
               )}
               {e.learningEvidence?.verificationOf && (
-                <p className="muted">
-                  交叉验证：
-                  {e.score >= 0.85 && e.predictedConfidence !== 'guess'
-                    ? '本次变式已答对，长期掌握仍需间隔验证。'
-                    : '仍需巩固理解，下一次复习已根据表现调整。'}
+                <p className="muted">{tr("study:交叉验证：")}{e.score >= 0.85 && e.predictedConfidence !== 'guess'
+                    ? tr("study:本次变式已答对，长期掌握仍需间隔验证。")
+                    : tr("study:仍需巩固理解，下一次复习已根据表现调整。")}
                 </p>
               )}
-              <p>
-                参考答案：
-                <MathText>
+              <p>{tr("study:参考答案：")}<MathText>
                   {data.questions.find((q) => q.id === e.questionId)?.answer}
                 </MathText>
               </p>
@@ -903,9 +887,7 @@ export default function StudyView({
                 sessionItems.find((x) => x.remediationId)!.remediationId,
               )
             }
-          >
-            返回补救课程
-          </button>
+          >{tr("study:返回补救课程")}</button>
         )}
         <button
           className="primary"
@@ -914,7 +896,7 @@ export default function StudyView({
             if (session.mode !== 'test') navigate(chest.eligible?'chest':'plan',chest.eligible?session.id:undefined);
           }}
         >
-          {session.mode === 'test' ? '回到学习工作台' : chest.eligible?'打开练习宝箱':'返回学习安排'}
+          {session.mode === 'test' ? tr("study:回到学习工作台") : chest.eligible?tr("common:打开练习宝箱"):tr("common:返回学习安排")}
           <ArrowRight size={16} />
         </button>
         {session.mode!=='test'&&!chest.eligible&&<p className="muted" role="status">{chest.reason}</p>}
@@ -933,12 +915,10 @@ export default function StudyView({
       <div
         className="game-recovery-screen"
         role="region"
-        aria-label="恢复生命值"
+        aria-label={tr("study:恢复生命值")}
       >
         <button className="quiet recovery-back" onClick={finish}>
-          <ArrowLeft size={18} />
-          保存并退出
-        </button>
+          <ArrowLeft size={18} />{tr("study:保存并退出")}</button>
         <RewardFlash reward={reward} />
         <div className="recovery-content">
           <div className="recovery-heart">
@@ -946,33 +926,21 @@ export default function StudyView({
             <span>0 / {game.maxHearts}</span>
           </div>
           <Penguin skin={game.skin} action="thinking" actionKey="recovery" />
-          <h1>稍作巩固，再次出发</h1>
-          <p>
-            通过三道恢复练习补回一颗生命值。
-            <br />
-            你的原练习与作答进度已经保留。
-          </p>
+          <h1>{tr("study:稍作巩固，再次出发")}</h1>
+          <p>{tr("study:通过三道恢复练习补回一颗生命值。")}<br />{tr("study:你的原练习与作答进度已经保留。")}</p>
           <button
             className="primary"
             disabled={busy}
             onClick={() => void restoreHearts()}
-          >
-            开始恢复练习 <Heart size={18} />
+          >{tr("study:开始恢复练习")}<Heart size={18} />
           </button>
-          <button className="secondary" onClick={() => navigate('shop')}>
-            打开点数商店
-          </button>
-          <button className="quiet" onClick={() => navigate('you')}>
-            调整生命值挑战
-          </button>
-          <small>
-            约{' '}
+          <button className="secondary" onClick={() => navigate('shop')}>{tr("study:打开点数商店")}</button>
+          <button className="quiet" onClick={() => navigate('you')}>{tr("study:调整生命值挑战")}</button>
+          <small>{tr("study:约")}{' '}
             {Math.max(
               1,
               Math.ceil(((game.nextHeartAt ?? gameNow) - gameNow) / 60000),
-            )}{' '}
-            分钟后自动恢复一颗
-          </small>
+            )}{' '}{tr("study:分钟后自动恢复一颗")}</small>
         </div>
       </div>
     );
@@ -988,9 +956,7 @@ export default function StudyView({
       <ComboCelebration reward={reward} />
       <div className="session-top">
         <button className="quiet" onClick={finish}>
-          <ArrowLeft size={16} />
-          保存并退出
-        </button>
+          <ArrowLeft size={16} />{tr("study:保存并退出")}</button>
         <span>
           {isTest
             ? session.title
@@ -1007,14 +973,13 @@ export default function StudyView({
               onClick={() => setScratchOpen((v) => !v)}
               aria-expanded={scratchOpen}
             >
-              <PencilLine size={15} /> 草稿纸
-            </button>
+              <PencilLine size={15} />{tr("study:草稿纸")}</button>
             <button
               className="quiet"
               onClick={toggleFocus}
               aria-pressed={focusMode}
             >
-              {focusMode ? '退出沉浸' : '沉浸模式'}
+              {focusMode ? tr("study:退出沉浸") : tr("study:沉浸模式")}
             </button>
           </div>
         )}
@@ -1035,14 +1000,12 @@ export default function StudyView({
           </span>
           <span>
             {item.gameRecovery
-              ? `恢复练习 · 已完成 ${game.recovery} / 3`
-              : `每日目标 ${game.daily.count} / ${game.goal}`}
+              ? tr("common:恢复练习 · 已完成 {{v0}} / 3",{v0:(game.recovery)})
+              : tr("common:每日目标 {{v0}} / {{v1}}",{v0:(game.daily.count),v1:(game.goal)})}
           </span>
-          {data.settings.alphaPreview === true && (
-            <ComboIndicator reward={reward} />
-          )}
+          <ComboIndicator reward={reward} />
           {data.settings.gameHearts !== false && (
-            <span className="game-heart" aria-label={`${game.hearts} 颗生命值`}>
+            <span className="game-heart" aria-label={tr("common:{{v0}} 颗生命值",{v0:(game.hearts)})}>
               {Array.from({ length: game.maxHearts }, (_, i) => (
                 <Heart
                   key={i}
@@ -1056,7 +1019,7 @@ export default function StudyView({
           <button
             className="quiet"
             aria-label={
-              data.settings.gameSound === false ? '开启音效' : '关闭音效'
+              data.settings.gameSound === false ? tr("study:开启音效") : tr("study:关闭音效")
             }
             onClick={() => void toggleSound()}
           >
@@ -1071,31 +1034,29 @@ export default function StudyView({
       <div className="question-meta">
         {data.questions.find((x) => x.id === q.id)?.reviewStatus ===
           'paused' && (
-          <span role="alert">这道题已暂停，请保存退出后重新安排练习。</span>
+          <span role="alert">{tr("study:这道题已暂停，请保存退出后重新安排练习。")}</span>
         )}
-        {item?.verificationOf && <span>交叉验证 · 用另一道题确认理解</span>}
-        {item?.reason === '跨语境迁移' && <span>跨语境迁移</span>}
+        {item?.verificationOf && <span>{tr("study:交叉验证 · 用另一道题确认理解")}</span>}
+        {item?.reason === '跨语境迁移' && <span>{tr("study:跨语境迁移")}</span>}
         <span>{node?.skills.find((s) => s.id === q.skillId)?.title}</span>
-        <span>难度 {'·'.repeat(q.difficulty)}</span>
+        <span>{tr("study:难度")}{'·'.repeat(q.difficulty)}</span>
         {q.verified && (
           <span className="verified">
-            <CheckCheck size={13} />
-            解答已核验
-          </span>
+            <CheckCheck size={13} />{tr("study:解答已核验")}</span>
         )}
       </div>
       {item?.scaffold && !isTest && (
         <aside className="scaffold">
           <BookOpen size={17} />
           <div>
-            <b>先找回基础</b>
+            <b>{tr("study:先找回基础")}</b>
             <p>{item.scaffold}</p>
           </div>
         </aside>
       )}
       {!isTest && !isPinyin(q) && !revealed && (
         <details className="graded-hints">
-          <summary>需要一点帮助？</summary>
+          <summary>{tr("study:需要一点帮助？")}</summary>
           <div className="hint-levels">
             {(['light', 'method', 'step', 'answer'] as const).map(
               (level, i) => (
@@ -1113,7 +1074,7 @@ export default function StudyView({
                     )
                   }
                 >
-                  {['轻提示', '方法提示', '关键步骤', '接近答案'][i]}
+                  {['轻提示', tr("study:方法提示"), tr("study:关键步骤"), tr("study:接近答案")][i]}
                 </button>
               ),
             )}
@@ -1121,15 +1082,15 @@ export default function StudyView({
           {hintLevel && (
             <MathText>
               {hintLevel === 'light'
-                ? '先用自己的话复述题意，确认需要回答的问题。'
+                ? tr("study:先用自己的话复述题意，确认需要回答的问题。")
                 : hintLevel === 'method'
-                  ? '列出已知与未知，回想相关概念，再独立选择方法。'
+                  ? tr("common:列出已知与未知，回想相关概念，再独立选择方法。")
                   : hintLevel === 'step'
                     ? (q.solution?.[0] ?? '暂无步骤提示')
                     : q.answer}
             </MathText>
           )}
-          <small>提示深度会记录；之后的无提示验证才用于确认独立掌握。</small>
+          <small>{tr("study:提示深度会记录；之后的无提示验证才用于确认独立掌握。")}</small>
         </details>
       )}
       <article className="question-card" key={q.id}>
@@ -1150,7 +1111,7 @@ export default function StudyView({
             <button
               key={option}
               disabled={revealed}
-              onClick={() => setAnswer(option)}
+              onClick={() => changeAnswer(option,'text')}
               className={answer === option ? 'chosen' : ''}
             >
               <MathText>{option}</MathText>
@@ -1161,7 +1122,7 @@ export default function StudyView({
           <MatchingInput
             question={q}
             value={answer}
-            onChange={setAnswer}
+            onChange={value=>changeAnswer(value,'text')}
             disabled={revealed}
           />
         )}
@@ -1170,7 +1131,7 @@ export default function StudyView({
           (isTest && !q.options && q.type !== 'matching')) &&
           !grade && (
             <div className="answer-input-label">
-              {q.type === 'subjective' ? '写下你的回答' : '输入答案'}
+              {q.type === 'subjective' ? tr("study:写下你的回答") : tr("study:输入答案")}
               {supportsMathInput(q.subject,q.type)?<MathAnswerComposer key={q.id} value={answer} format={answerFormat} onChange={changeAnswer} onFormatChange={format=>changeAnswer(answer,format)} disabled={revealed||busy} defaultMixed={q.type==='subjective'}/>:<textarea
                 disabled={revealed || busy}
                 value={answer}
@@ -1178,8 +1139,8 @@ export default function StudyView({
                 maxLength={16000}
                 placeholder={
                   q.type === 'subjective'
-                    ? '用自己的语言组织答案，尽量给出具体依据。'
-                    : '输入你的答案'
+                    ? tr("study:用自己的语言组织答案，尽量给出具体依据。")
+                    : tr("study:输入你的答案")
                 }
                 rows={q.type === 'subjective' ? 6 : 2}
               />}
@@ -1189,19 +1150,18 @@ export default function StudyView({
           <div className="rubric-preview">
             {q.rubric?.map((r) => (
               <span key={r.id}>
-                {r.title} · {r.max} 分
-              </span>
+                {r.title} · {r.max}{tr("study:分")}</span>
             ))}
           </div>
         )}
         {!revealed && !isTest && (
           <div className="confidence-picker">
-            <span>作答前，你有多确定？</span>
+            <span>{tr("study:作答前，你有多确定？")}</span>
             {(
               [
-                ['sure', '有把握'],
-                ['unsure', '犹豫'],
-                ['guess', '猜测'],
+                ['sure', tr("study:有把握")],
+                ['unsure', tr("study:犹豫")],
+                ['guess', tr("study:猜测")],
               ] as const
             ).map(([id, label]) => (
               <button
@@ -1217,11 +1177,8 @@ export default function StudyView({
         {!revealed && !isTest && q.type !== 'subjective' && (
           <div className="reveal-area">
             <button className="primary" onClick={reveal}>
-              <Eye size={17} />
-              显示答案
-            </button>
-            <span>
-              先独立思考，再揭晓答案 <kbd>Space</kbd>
+              <Eye size={17} />{tr("study:显示答案")}</button>
+            <span>{tr("study:先独立思考，再揭晓答案")}<kbd>Space</kbd>
             </span>
           </div>
         )}
@@ -1232,20 +1189,18 @@ export default function StudyView({
               disabled={busy || !answer.trim() || !aiReady}
               onClick={submitSubjective}
             >
-              {busy ? '正在按评分点批改…' : '提交批改'}
+              {busy ? tr("study:正在按评分点批改…") : tr("study:提交批改")}
               <ArrowRight size={16} />
             </button>
             {!aiReady && (
-              <p className="muted">批改连接待配置；你仍可对照参考答案自评。</p>
+              <p className="muted">{tr("study:批改连接待配置；你仍可对照参考答案自评。")}</p>
             )}
             <button
               className="quiet"
               hidden={isTest}
               disabled={busy}
               onClick={reveal}
-            >
-              对照参考答案自评
-            </button>
+            >{tr("study:对照参考答案自评")}</button>
           </div>
         )}
         {isTest && !revealed && q.type !== 'subjective' && (
@@ -1255,7 +1210,7 @@ export default function StudyView({
               disabled={!answer.trim() || busy}
               onClick={async () => {
                 const checked=mathematicalBlank?await checkMath():null;
-                if(checked?.status==='undetermined'){notify('暂不能自动核验，答案草稿已保留。请保存退出后人工复核，不会自动判错。');return;}
+                if(checked?.status==='undetermined'){notify(tr("study:暂不能自动核验，答案草稿已保留。请保存退出后人工复核，不会自动判错。"));return;}
                 const right = checked?checked.status==='equivalent':objectiveScore(q, answer) >= 0.999;
                 void record(
                   right ? 'correct' : 'wrong',
@@ -1263,13 +1218,9 @@ export default function StudyView({
                   right ? 1 : 0,
                 );
               }}
-            >
-              提交，下一题
-              <ArrowRight size={16} />
+            >{tr("study:提交，下一题")}<ArrowRight size={16} />
             </button>
-            <p className="muted">
-              简答自动比对需要与标准答案一致；复杂表达建议选择主观题批改。
-            </p>
+            <p className="muted">{tr("study:简答自动比对需要与标准答案一致；复杂表达建议选择主观题批改。")}</p>
           </div>
         )}
         {revealed && !answerPanelOpen && !isTest && (
@@ -1278,8 +1229,7 @@ export default function StudyView({
               className="primary"
               onClick={() => setAnswerPanelOpen(true)}
             >
-              <Eye size={17} /> 查看参考答案
-            </button>
+              <Eye size={17} />{tr("study:查看参考答案")}</button>
           </div>
         )}
         {revealed &&
@@ -1293,21 +1243,19 @@ export default function StudyView({
                 className="answer-modal"
                 role="dialog"
                 aria-modal="true"
-                aria-label="参考答案与核对"
+                aria-label={tr("study:参考答案与核对")}
                 onMouseDown={(event) => event.stopPropagation()}
               >
                 <header className="answer-modal-head">
                   <div>
-                    <span>核对答案</span>
-                    <small>
-                      第 {index + 1} / {sessionItems.length} 题
-                    </small>
+                    <span>{tr("study:核对答案")}</span>
+                    <small>{tr("study:第")}{index + 1} / {sessionItems.length}{tr("study:题")}</small>
                   </div>
                   <button
                     ref={answerCloseRef}
                     className="quiet"
                     onClick={() => setAnswerPanelOpen(false)}
-                    aria-label="关闭参考答案弹窗"
+                    aria-label={tr("study:关闭参考答案弹窗")}
                   >
                     <X size={18} />
                   </button>
@@ -1334,7 +1282,7 @@ export default function StudyView({
                       </div>
                       <p>{grade.feedback}</p>
                       {grade.solo&&<p><b>SOLO {grade.solo.level}</b> · {grade.solo.reason}</p>}
-                      <details className="grading-details"><summary>评分点与改进建议（{grade.criteria.length} 项）</summary>
+                      <details className="grading-details"><summary>{tr("study:评分点与改进建议（")}{grade.criteria.length}{tr("study:项）")}</summary>
                       {grade.criteria.map((c) => (
                         <div className="criterion" key={c.id}>
                           <div>
@@ -1345,16 +1293,16 @@ export default function StudyView({
                             </span>
                           </div>
                           {c.evidence && (
-                            <p className="evidence">命中：{c.evidence}</p>
+                            <p className="evidence">{tr("study:命中：")}{c.evidence}</p>
                           )}
-                          {c.missing && <p>遗漏：{c.missing}</p>}
+                          {c.missing && <p>{tr("study:遗漏：")}{c.missing}</p>}
                           <p className="muted">{c.suggestion}</p>
                         </div>
                       ))}
-                      {grade.ruleVersion&&<p className="muted">评分规则版本：{grade.ruleVersion}</p>}
+                      {grade.ruleVersion&&<p className="muted">{tr("study:评分规则版本：")}{grade.ruleVersion}</p>}
                       </details>
                       <details>
-                        <summary>查看示例答案</summary>
+                        <summary>{tr("study:查看示例答案")}</summary>
                         <p>{grade.exampleAnswer}</p>
                       </details>
                       <button
@@ -1370,18 +1318,16 @@ export default function StudyView({
                             grade,
                           )
                         }
-                      >
-                        保存反馈，下一题
-                        <ArrowRight size={16} />
+                      >{tr("study:保存反馈，下一题")}<ArrowRight size={16} />
                       </button>
                     </>
                   ) : (
                     <>
-                      <p className="answer-label">参考答案</p>
+                      <p className="answer-label">{tr("study:参考答案")}</p>
                       <QuestionReviewButton question={q} />
                       <h3>
                         <MathText>
-                          {q.type === 'matching' ? '配对结果' : q.answer}
+                          {q.type === 'matching' ? tr("study:配对结果") : q.answer}
                         </MathText>
                       </h3>
                       {q.type === 'matching' &&
@@ -1402,23 +1348,21 @@ export default function StudyView({
                         </p>
                       )}
                       {answer && q.type!=='subjective' && !mathematicalBlank && (
-                        <p className="answer-check">
-                          本次作答：
-                          {objectiveScore(q, answer) === 1
-                            ? '正确'
+                        <p className="answer-check">{tr("study:本次作答：")}{objectiveScore(q, answer) === 1
+                            ? tr("study:正确")
                             : objectiveScore(q, answer) > 0
-                              ? '部分正确'
-                              : '需要订正'}
+                              ? tr("common:部分正确")
+                              : tr("common:需要订正")}
                           {confidence === 'sure' &&
                           objectiveScore(q, answer) < 0.6
-                            ? ' · 已发现一个值得校准的信心盲点'
+                            ? tr("study: · 已发现一个值得校准的信心盲点")
                             : ''}
                         </p>
                       )}
-                      {mathematicalBlank&&answer&&<p className="answer-check" role="status">{mathChecking?'正在核验数学表达式…':mathCheck?.status==='equivalent'?'数学核验：等价':mathCheck?.status==='not-equivalent'?'数学核验：不等价':'数学核验：需要人工复核'}{mathCheck?.status==='undetermined'&&<small> · {mathCheck.reason}。请对照参考答案手动检查。</small>}</p>}
+                      {mathematicalBlank&&answer&&<p className="answer-check" role="status">{mathChecking?tr("study:正在核验数学表达式…"):mathCheck?.status==='equivalent'?tr("common:数学核验：等价"):mathCheck?.status==='not-equivalent'?tr("common:数学核验：不等价"):tr("common:数学核验：需要人工复核")}{mathCheck?.status==='undetermined'&&<small> · {mathCheck.reason}{tr("study:。请对照参考答案手动检查。")}</small>}</p>}
                       {q.transferFrom && (
                         <details>
-                          <summary>迁移挑战 · 对照原题</summary>
+                          <summary>{tr("study:迁移挑战 · 对照原题")}</summary>
                           <p>
                             <MathText>
                               {
@@ -1428,9 +1372,7 @@ export default function StudyView({
                               }
                             </MathText>
                           </p>
-                          <p className="muted">
-                            同一种能力，换了情境。比较两题共同的方法。
-                          </p>
+                          <p className="muted">{tr("study:同一种能力，换了情境。比较两题共同的方法。")}</p>
                         </details>
                       )}
                       {q.solution?.length && (
@@ -1439,9 +1381,7 @@ export default function StudyView({
                             className="quiet solution-toggle"
                             onClick={() => setSolution(!solution)}
                           >
-                            <ChevronDown size={15} />
-                            查看解题过程
-                          </button>
+                            <ChevronDown size={15} />{tr("study:查看解题过程")}</button>
                           {solution && (
                             <ol className="solution-steps">
                               {q.solution.map((step, i) => (
@@ -1460,24 +1400,21 @@ export default function StudyView({
                           disabled={busy}
                           onClick={() => record('wrong')}
                         >
-                          <X size={17} />
-                          答错<kbd>1</kbd>
+                          <X size={17} />{tr("study:答错")}<kbd>1</kbd>
                         </button>
                         <button
                           className="unsure"
                           disabled={busy}
                           onClick={() => record('unsure')}
                         >
-                          <Minus size={17} />
-                          不确定<kbd>2</kbd>
+                          <Minus size={17} />{tr("study:不确定")}<kbd>2</kbd>
                         </button>
                         <button
                           className="correct"
                           disabled={busy}
                           onClick={() => record('correct')}
                         >
-                          <Check size={17} />
-                          答对<kbd>3</kbd>
+                          <Check size={17} />{tr("study:答对")}<kbd>3</kbd>
                         </button>
                       </div>
                     </>
@@ -1504,9 +1441,7 @@ export default function StudyView({
           <Scratchpad key={q.id} onClose={() => setScratchOpen(false)} />
         ))}
       <div className="gentle-note">
-        <Clock3 size={14} />
-        只和自己的昨天相比。
-      </div>
+        <Clock3 size={14} />{tr("study:只和自己的昨天相比。")}</div>
     </div>
   );
 }
@@ -1560,19 +1495,17 @@ function Scratchpad({ onClose }: { onClose: () => void }) {
     return { x: event.clientX - rect.left, y: event.clientY - rect.top };
   };
   return (
-    <aside className="study-scratchpad" aria-label="草稿纸">
+    <aside className="study-scratchpad" aria-label={tr("study:草稿纸")}>
       <div className="scratchpad-head">
-        <span>草稿纸</span>
+        <span>{tr("study:草稿纸")}</span>
         <div>
-          <button onClick={() => setClearCount((n) => n + 1)}>清空</button>
-          <button onClick={onClose} aria-label="关闭草稿纸">
-            关闭
-          </button>
+          <button onClick={() => setClearCount((n) => n + 1)}>{tr("study:清空")}</button>
+          <button onClick={onClose} aria-label={tr("study:关闭草稿纸")}>{tr("study:关闭")}</button>
         </div>
       </div>
       <canvas
         ref={canvas}
-        aria-label="可用鼠标或触控笔书写的草稿纸"
+        aria-label={tr("study:可用鼠标或触控笔书写的草稿纸")}
         onPointerDown={(event) => {
           drawing.current = true;
           event.currentTarget.setPointerCapture(event.pointerId);
@@ -1600,7 +1533,7 @@ function Scratchpad({ onClose }: { onClose: () => void }) {
           drawing.current = false;
         }}
       />
-      <p>仅作当前题的思考草稿，不计入评分。</p>
+      <p>{tr("study:仅作当前题的思考草稿，不计入评分。")}</p>
     </aside>
   );
 }

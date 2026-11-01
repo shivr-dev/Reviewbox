@@ -1,5 +1,6 @@
 import type { Question, StudyData } from './model';
 import { mapScore } from './map-model';
+import {matchingAnswer} from './matching';
 export const QUESTION_TYPES = [
   { id: 'recall', label: '回忆卡' },
   { id: 'choice', label: '选择题' },
@@ -95,16 +96,9 @@ export function objectiveScore(q: Question, answer: string): number {
     }
   }
   if (q.type === 'matching') {
-    try {
-      const a = JSON.parse(answer),
-        b = JSON.parse(q.answer);
-      const keys = Object.keys(b);
-      return keys.length
-        ? keys.filter((k) => a[k] === b[k]).length / keys.length
-        : 0;
-    } catch {
-      return 0;
-    }
+    const a=matchingAnswer(q,answer),b=matchingAnswer(q,q.answer,true);
+    if(!a||!b)return 0;
+    return q.matching!.left.filter(l=>a[l.id]===b[l.id]).length/q.matching!.left.length;
   }
   const choices = [q.answer, ...(q.acceptedAnswers ?? [])];
   return choices.some((b) => {

@@ -1,4 +1,5 @@
 'use client';
+import {tr} from '@/lib/i18n';
 import { useEffect, useRef, useState } from 'react';
 import {
   ArrowLeft,
@@ -306,10 +307,8 @@ function LegacyExamRoom({ runId }: { runId: string }) {
   if (!run || !paper || paper.format !== EXAM_FORMAT)
     return (
       <div className="exam-empty">
-        <h1>未找到这场考试</h1>
-        <button className="primary" onClick={() => navigate('subjects', 'ce')}>
-          返回 CE
-        </button>
+        <h1>{tr("results:未找到这场考试")}</h1>
+        <button className="primary" onClick={() => navigate('subjects', 'ce')}>{tr("results:返回 CE")}</button>
       </div>
     );
   const isSAT = paper.exam === 'SAT';
@@ -332,13 +331,11 @@ function LegacyExamRoom({ runId }: { runId: string }) {
     return (
       <main className="exam-report">
         <button className="quiet" onClick={() => void exit()}>
-          <ArrowLeft size={16} />
-          返回 CE
-        </button>
+          <ArrowLeft size={16} />{tr("results:返回 CE")}</button>
         <p className="eyebrow">TEST COMPLETE</p>
-        <h1>{paper.exam} 英语专项模拟报告</h1>
+        <h1>{paper.exam}{tr("results:英语专项模拟报告")}</h1>
         <p className="muted">
-          {events.length}/{all.length} 题已整理 ·{' '}
+          {events.length}/{all.length}{tr("results:题已整理 ·")}{' '}
           {new Date(run.completedAt ?? '').toLocaleString()}
         </p>
         <div className="report-score">
@@ -346,9 +343,7 @@ function LegacyExamRoom({ runId }: { runId: string }) {
             {events.length ? Math.round((correct / all.length) * 100) : '—'}
             <small>%</small>
           </strong>
-          <div>
-            本卷得分率
-            <p className="muted">本地模拟试卷，不换算官方量表分数。</p>
+          <div>{tr("results:本卷得分率")}<p className="muted">{tr("results:本地模拟试卷，不换算官方量表分数。")}</p>
           </div>
         </div>
         <RemediationLauncher
@@ -359,17 +354,13 @@ function LegacyExamRoom({ runId }: { runId: string }) {
           <div className="paper-progress" role="status">
             {grading || gradeError}
             {!grading && (
-              <button className="secondary" onClick={() => void grade()}>
-                继续整理成绩
-              </button>
+              <button className="secondary" onClick={() => void grade()}>{tr("results:继续整理成绩")}</button>
             )}
           </div>
         )}
         <div className="exam-domain-results">
           {events.some((e) => e.voidedBy) && (
-            <p className="muted">
-              存在已撤销的旧题证据；原卷分数保留用于追溯，掌握度与认知分析已排除这些记录。
-            </p>
+            <p className="muted">{tr("results:存在已撤销的旧题证据；原卷分数保留用于追溯，掌握度与认知分析已排除这些记录。")}</p>
           )}
           {q && <QuestionReviewButton question={q} />}
           {stages.map((s, stageIndex) => {
@@ -388,25 +379,23 @@ function LegacyExamRoom({ runId }: { runId: string }) {
                           s.count) *
                           100,
                       ) + '%'
-                    : '待整理'}
+                    : tr("results:待整理")}
                 </span>
                 <small>
-                  {s.count} 题 · 用时{' '}
+                  {s.count}{tr("results:题 · 用时")}{' '}
                   {Math.round(
                     stageSlots(paper, run, stageIndex).reduce(
                       (n, x) => n + (run.times[x.id] ?? 0),
                       0,
                     ) / 60000,
-                  )}{' '}
-                  分钟
-                </small>
+                  )}{' '}{tr("results:分钟")}</small>
               </div>
             );
           })}
         </div>
         <section className="exam-review panel">
           <div className="section-head">
-            <h2>逐题解析</h2>
+            <h2>{tr("results:逐题解析")}</h2>
             <span>
               {reviewIndex + 1} / {all.length}
             </span>
@@ -475,9 +464,7 @@ function LegacyExamRoom({ runId }: { runId: string }) {
                     {i + 1}. {choice}
                   </p>
                 ))}
-              <p>
-                你的回答：
-                <MathText>
+              <p>{tr("results:你的回答：")}<MathText>
                   {q.examTask?.map
                     ? mapAnswerText(q, run.answers[qSlot.id] || '未作答')
                     : run.answers[qSlot.id] || '未作答'}
@@ -504,7 +491,7 @@ function LegacyExamRoom({ runId }: { runId: string }) {
                         ]
                       }
                     />
-                    <span>对照参考答案自评（有录音时先回听）：</span>
+                    <span>{tr("results:对照参考答案自评（有录音时先回听）：")}</span>
                     {[
                       ['答错', 0],
                       ['不确定', 0.5],
@@ -539,7 +526,7 @@ function LegacyExamRoom({ runId }: { runId: string }) {
                     ))}
                   </span>
                 )}
-                <b>参考答案：</b>
+                <b>{tr("results:参考答案：")}</b>
                 <MathText>
                   {q.examTask?.map ? mapAnswerText(q) : q.answer}
                 </MathText>
@@ -555,8 +542,7 @@ function LegacyExamRoom({ runId }: { runId: string }) {
               ))}
               {event?.grade && (
                 <div>
-                  <h3>
-                    写作反馈 · {event.grade.score}/{event.grade.maxScore}
+                  <h3>{tr("results:写作反馈 ·")}{event.grade.score}/{event.grade.maxScore}
                   </h3>
                   {event.grade.criteria.map((c) => (
                     <p key={c.id}>
@@ -575,7 +561,7 @@ function LegacyExamRoom({ runId }: { runId: string }) {
           )}
         </section>
         <section className="panel">
-          <h2>下一步优先练什么</h2>
+          <h2>{tr("results:下一步优先练什么")}</h2>
           {[...new Set(all.map((s) => s.domain))].map((domain) => {
             const ds = all.filter((s) => s.domain === domain);
             const es = events.filter((e) =>
@@ -590,9 +576,7 @@ function LegacyExamRoom({ runId }: { runId: string }) {
               </div>
             );
           })}
-          <p className="muted">
-            作答已反馈到对应知识点与能力，错题也已加入错题本。
-          </p>
+          <p className="muted">{tr("results:作答已反馈到对应知识点与能力，错题也已加入错题本。")}</p>
         </section>
       </main>
     );
@@ -604,18 +588,16 @@ function LegacyExamRoom({ runId }: { runId: string }) {
         <h1>Take a break</h1>
         <strong>{timerText(remaining)}</strong>
         <p>The next section will begin automatically when the break ends.</p>
-        <p className="muted">上一部分已锁定。休息结束后自动进入下一部分。</p>
-        <button className="quiet" onClick={() => void exit()}>
-          离开考场（计时继续）
-        </button>
+        <p className="muted">{tr("results:上一部分已锁定。休息结束后自动进入下一部分。")}</p>
+        <button className="quiet" onClick={() => void exit()}>{tr("results:离开考场（计时继续）")}</button>
       </main>
     );
   if (!question || !slot)
     return (
       <main className="exam-empty">
-        <h1>正在读取本地试题</h1>
-        <p>同步完整试卷后再继续。计时按照已保存的考场时间计算。</p>
-        <button onClick={() => void exit()}>返回 CE</button>
+        <h1>{tr("results:正在读取本地试题")}</h1>
+        <p>{tr("results:同步完整试卷后再继续。计时按照已保存的考场时间计算。")}</p>
+        <button onClick={() => void exit()}>{tr("results:返回 CE")}</button>
       </main>
     );
   const answer = run.answers[slot.id] ?? '';
@@ -727,7 +709,7 @@ function LegacyExamRoom({ runId }: { runId: string }) {
       {saveError && (
         <div className="exam-storage-error" role="alert">
           {saveError}
-          <button onClick={() => persist(ref.current!)}>重试保存</button>
+          <button onClick={() => persist(ref.current!)}>{tr("results:重试保存")}</button>
         </div>
       )}
       <div
@@ -923,9 +905,7 @@ function LegacyExamRoom({ runId }: { runId: string }) {
             {run.stage === stages.length - 1 ? 'Submit Test' : 'End Module'}
           </button>
           {!isSAT && (
-            <p className="muted">
-              ACT 部分结束前可检查答案；时间到后自动进入下一部分。
-            </p>
+            <p className="muted">{tr("results:ACT 部分结束前可检查答案；时间到后自动进入下一部分。")}</p>
           )}
         </DialogContent>
       </Dialog>
@@ -1051,9 +1031,7 @@ function LegacyExamRoom({ runId }: { runId: string }) {
                 />
                 Line reader
               </label>
-              <button className="secondary" onClick={() => void exit()}>
-                离开考场（计时继续）
-              </button>
+              <button className="secondary" onClick={() => void exit()}>{tr("results:离开考场（计时继续）")}</button>
             </>
           )}
         </DialogContent>

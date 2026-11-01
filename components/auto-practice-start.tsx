@@ -1,4 +1,5 @@
 'use client';
+import {tr} from '@/lib/i18n';
 import { useEffect, useRef, useState } from 'react';
 import { useReview } from './review-context';
 import { currentNamespace } from '@/lib/store';
@@ -84,62 +85,47 @@ export default function AutoPracticeStart({
   )
     return null;
   return (
-    <section className="auto-start-notice" aria-label="自动开始规则">
+    <section className="auto-start-notice" aria-label={tr("planner:自动开始规则")}>
       {!pref?.acknowledgedAt && !skipped ? (
         <>
-          <h2>由你决定是否自动开始</h2>
-          <p>
-            开启后，进入学习计划时会先倒数 5
-            秒，再开始推荐的普通练习。考试、测评和成绩录入不会因此自动启动。
-          </p>
+          <h2>{tr("planner:由你决定是否自动开始")}</h2>
+          <p>{tr("planner:开启后，进入学习计划时会先倒数 5 秒，再开始推荐的普通练习。考试、测评和成绩录入不会因此自动启动。")}</p>
           <div>
             <button
               className="secondary"
               disabled={saving}
               onClick={() => void preference(true)}
-            >
-              开启自动开始
-            </button>
+            >{tr("planner:开启自动开始")}</button>
             <button
               className="quiet"
               disabled={saving}
               onClick={() => void preference(false)}
-            >
-              只看安排，手动开始
-            </button>
+            >{tr("planner:只看安排，手动开始")}</button>
             <button
               className="quiet"
               disabled={saving}
               onClick={() => setSkipped(true)}
-            >
-              本次不自动开始
-            </button>
+            >{tr("planner:本次不自动开始")}</button>
           </div>
         </>
       ) : seconds !== null && seconds > 0 ? (
         <div className="auto-start-countdown">
           <p role="status">
-            {seconds} 秒后开始：{action.title}
+            {seconds}{tr("planner:秒后开始：")}{action.title}
           </p>
-          <button className="secondary" onClick={() => setSkipped(true)}>
-            本次不自动开始
-          </button>
+          <button className="secondary" onClick={() => setSkipped(true)}>{tr("planner:本次不自动开始")}</button>
         </div>
       ) : null}
       <label>
         <input
           type="checkbox"
-          aria-label="进入学习计划时自动开始推荐练习"
+          aria-label={tr("planner:进入学习计划时自动开始推荐练习")}
           checked={pref?.enabled === true}
           disabled={saving}
           onChange={(e) => void preference(e.target.checked)}
-        />
-        进入学习计划时自动开始推荐练习
-      </label>
+        />{tr("planner:进入学习计划时自动开始推荐练习")}</label>
       {pref?.acknowledgedAt && (
-        <small>
-          开始前保留 5 秒取消时间。
-          {skipped ? '本次已暂停自动开始，仍可手动选择学习。' : ''}
+        <small>{tr("planner:开始前保留 5 秒取消时间。")}{skipped ? tr("planner:本次已暂停自动开始，仍可手动选择学习。") : ''}
         </small>
       )}
       {error && <p role="alert">{error}</p>}

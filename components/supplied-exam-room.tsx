@@ -1,4 +1,5 @@
 'use client';
+import {tr} from '@/lib/i18n';
 import {useEffect,useRef,useState} from 'react';
 import {useReview} from './review-context';
 import {put,saveRecords,currentNamespace} from '@/lib/store';
@@ -41,8 +42,8 @@ export default function SuppliedExamRoom({run:initial,paper}:{run:ExamRun;paper:
     }catch(e){send('recording-saved',{id:m.id,error:e instanceof Error?e.message:'录音未能保存。'});throw e;}
    });
   }
-  const probe=setInterval(()=>{if(!initialized)send('ping');},1000),timeout=setTimeout(()=>{if(!initialized){setLoading(false);setError('考试界面未能加载，请重新连接。已保存的作答会保留。');}},12000);
+  const probe=setInterval(()=>{if(!initialized)send('ping');},1000),timeout=setTimeout(()=>{if(!initialized){setLoading(false);setError(tr("results:考试界面未能加载，请重新连接。已保存的作答会保留。"));}},12000);
   window.addEventListener('message',receive);return()=>{active=false;clearInterval(probe);clearTimeout(timeout);window.removeEventListener('message',receive);};
  },[paper.id,connection]);
- return <main className="map-native-host"><iframe key={connection} ref={frame} src={assetPath((det?'det-player':'act-player')+'/')+'?v=20261006'} title={det?'Duolingo English Test 个人模拟':'ACT 英语专项模拟'} sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups" allow="microphone; camera; autoplay; fullscreen" onLoad={()=>send('ping')}/><button className="native-exam-exit" aria-label="保存并返回 CE" onClick={()=>send('request-exit')}>×</button>{loading&&<div className="map-native-error" role="status">正在打开考试界面…</div>}{error&&<div className="map-native-error" role="alert">{error}<button onClick={()=>setError('')}>关闭</button><button onClick={()=>{setError('');setConnection(c=>c+1);}}>重新连接</button><button onClick={()=>navigate('subjects','ce')}>返回 CE</button></div>}</main>;
+ return <main className="map-native-host"><iframe key={connection} ref={frame} src={assetPath((det?'det-player':'act-player')+'/')+'?v=20261006'} title={det?tr("results:Duolingo English Test 个人模拟"):tr("results:ACT 英语专项模拟")} sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups" allow="microphone; camera; autoplay; fullscreen" onLoad={()=>send('ping')}/><button className="native-exam-exit" aria-label={tr("results:保存并返回 CE")} onClick={()=>send('request-exit')}>×</button>{loading&&<div className="map-native-error" role="status">{tr("results:正在打开考试界面…")}</div>}{error&&<div className="map-native-error" role="alert">{error}<button onClick={()=>setError('')}>{tr("results:关闭")}</button><button onClick={()=>{setError('');setConnection(c=>c+1);}}>{tr("results:重新连接")}</button><button onClick={()=>navigate('subjects','ce')}>{tr("results:返回 CE")}</button></div>}</main>;
 }

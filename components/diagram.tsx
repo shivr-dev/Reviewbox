@@ -1,4 +1,5 @@
 'use client';
+import {tr} from '@/lib/i18n';
 import { lazy, Suspense, useId } from 'react';
 import type { Diagram as Spec } from '@/lib/model';
 import SubjectDiagram from './subject-diagram';
@@ -7,7 +8,7 @@ import {semanticDiagramSchema} from '@/lib/diagram-spec';
 import type {DiagramStage} from '@/lib/shaded-regions';
 const MathDiagram=lazy(()=>import('./math-diagram'));
 const OpticsDiagram=lazy(()=>import('./optics-diagram'));
-const DiagramLoading=()=> <figure className="diagram publication-diagram diagram-pending" aria-busy="true"><div className="diagram-loading" role="status" aria-live="polite"><span className="diagram-spinner" aria-hidden="true"/><span>题图加载中…</span></div></figure>;
+const DiagramLoading=()=> <figure className="diagram publication-diagram diagram-pending" aria-busy="true"><div className="diagram-loading" role="status" aria-live="polite"><span className="diagram-spinner" aria-hidden="true"/><span>{tr("common:题图加载中…")}</span></div></figure>;
 export { evaluateExpression } from '@/lib/diagram-expression';
 const num = (x: unknown, fallback = 0) =>
   typeof x === 'number' && Number.isFinite(x) && Math.abs(x) <= 10000
@@ -17,7 +18,7 @@ export default function Diagram({ spec,stage='question' }: { spec: Spec;stage?:D
   const id = useId().replace(/:/g, '');
   if(spec.type==='semantic'){
     const parsed=semanticDiagramSchema.safeParse(spec);
-    if(!parsed.success)return <p className="diagram-error" role="alert">图形条件需要确认，未显示不可靠的示意图。</p>;
+    if(!parsed.success)return <p className="diagram-error" role="alert">{tr("common:图形条件需要确认，未显示不可靠的示意图。")}</p>;
     const safe=parsed.data;
     if(safe.kind==='geometry'||safe.kind==='function')return <Suspense fallback={<DiagramLoading/>}><MathDiagram spec={safe} stage={stage}/></Suspense>;
     if(safe.kind==='optics')return <Suspense fallback={<DiagramLoading/>}><OpticsDiagram spec={safe} stage={stage}/></Suspense>;
@@ -43,7 +44,7 @@ export default function Diagram({ spec,stage='question' }: { spec: Spec;stage?:D
       const [xmin, xmax] = xr.map((x) => num(x));
       const [ymin, ymax] = yr.map((x) => num(x));
       if (xmax <= xmin || ymax <= ymin)
-        return <p className="muted">图形范围无效</p>;
+        return <p className="muted">{tr("common:图形范围无效")}</p>;
       const px = (x: number) => 35 + ((x - xmin) / (xmax - xmin)) * (w - 60),
         py = (y: number) => h - 30 - ((y - ymin) / (ymax - ymin)) * (h - 60);
       const lines = [];
@@ -79,7 +80,7 @@ export default function Diagram({ spec,stage='question' }: { spec: Spec;stage?:D
         );
       return (
         <figure className="diagram">
-          <svg viewBox={`0 0 ${w} ${h}`} role="img" aria-label="函数图像">
+          <svg viewBox={`0 0 ${w} ${h}`} role="img" aria-label={tr("common:函数图像")}>
             <defs>
               <clipPath id={'clip' + id}>
                 <rect x="35" y="30" width={w - 60} height={h - 60} />
@@ -133,7 +134,7 @@ export default function Diagram({ spec,stage='question' }: { spec: Spec;stage?:D
         <svg
           viewBox={`0 0 ${w} ${h}`}
           role="img"
-          aria-label={spec.type === 'physics' ? '物理示意图' : '几何示意图'}
+          aria-label={spec.type === 'physics' ? tr("common:物理示意图") : tr("common:几何示意图")}
         >
           <defs>
             <marker
@@ -259,10 +260,10 @@ export default function Diagram({ spec,stage='question' }: { spec: Spec;stage?:D
             </text>
           ))}
         </svg>
-        <figcaption>示意图由数据绘制，长度以题目条件为准。</figcaption>
+        <figcaption>{tr("common:示意图由数据绘制，长度以题目条件为准。")}</figcaption>
       </figure>
     );
   } catch {
-    return <p className="muted">图形描述未通过检查，请以题干条件为准。</p>;
+    return <p className="muted">{tr("common:图形描述未通过检查，请以题干条件为准。")}</p>;
   }
 }

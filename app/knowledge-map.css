@@ -1,0 +1,34 @@
+/* Deliberately namespaced: MAP exam's .map-toolbar has fixed icon-button sizes. */
+.knowledge-map { min-width:0; width:100%; }
+.knowledge-map header { margin:22px 0 18px; }
+.knowledge-map header h1 { font-size:26px; line-height:1.3; margin:0 0 9px; }
+.knowledge-map header p { color:#657682; font-size:14px; line-height:1.65; margin:0; }
+.knowledge-map .knowledge-toolbar { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin:0 0 16px; }
+.knowledge-map .knowledge-toolbar input[type=search] { flex:1 1 240px; min-width:120px; width:auto; height:42px; padding:9px 12px; border:1px solid #d6e0e8; border-radius:10px; background:#fff; font:inherit; font-size:14px; }
+.knowledge-map .knowledge-toolbar select { flex:0 0 auto; max-width:100%; height:42px; padding:8px 30px 8px 12px; border:1px solid #d6e0e8; border-radius:10px; background:#fff; font:inherit; font-size:14px; }
+.knowledge-map .knowledge-toolbar label { display:inline-flex; align-items:center; gap:6px; font-size:13px; white-space:nowrap; padding:8px 0; }
+.knowledge-map .knowledge-toolbar label input { width:16px; height:16px; margin:0; flex:none; }
+.knowledge-map .knowledge-toolbar button { flex:0 0 auto; width:auto; min-width:42px; height:42px; min-height:42px; padding:8px 14px; line-height:1.25; font:inherit; font-size:13px; white-space:nowrap; border:1px solid #d6e0e8; border-radius:10px; background:#fff; color:#246a98; box-shadow:0 2px 0 #e5edf2; }
+.knowledge-map .knowledge-toolbar button:hover { background:#f0f8ff; }
+.knowledge-map .knowledge-toolbar button:focus-visible,.knowledge-map input:focus-visible,.knowledge-map select:focus-visible { outline:3px solid #96d3fb; outline-offset:3px; }
+.knowledge-map .knowledge-layout { display:grid; grid-template-columns:minmax(0,1fr) 250px; gap:18px; align-items:start; }
+.knowledge-map .knowledge-canvas-wrap { position:relative; min-width:0; height:clamp(420px,65vh,680px); border:1px solid #dce7ef; border-radius:16px; background:#fbfdff; overflow:hidden; }
+.knowledge-map .knowledge-canvas { position:absolute; inset:0; width:100%; height:100%; min-height:420px; }
+.knowledge-map .knowledge-status { position:absolute; inset:0; display:flex; justify-content:center; align-items:center; padding:24px; background:#fbfdff; text-align:center; color:#617583; margin:0; pointer-events:none; }
+.knowledge-map .knowledge-detail { min-width:0; padding:20px; border:1px solid #e2e8ed; border-radius:14px; background:white; }
+.knowledge-map .knowledge-detail h2 { font-size:18px; line-height:1.5; margin:10px 0; overflow-wrap:anywhere; }
+.knowledge-map .knowledge-detail h3 { font-size:13px; margin:22px 0 10px; }
+.knowledge-map .knowledge-detail p,.knowledge-map .knowledge-detail small { font-size:13px; line-height:1.7; color:#647583; overflow-wrap:anywhere; }
+.knowledge-map .knowledge-detail .primary { width:100%; min-width:0; padding:11px 12px; font-size:13px; }
+.knowledge-map .knowledge-detail .text-button { display:block; text-align:left; font-size:13px; white-space:normal; padding:7px 0; }
+.knowledge-map .knowledge-node-list { margin-top:14px; color:#627583; font-size:13px; }
+.knowledge-map .knowledge-node-list select { width:100%; max-width:400px; padding:9px; margin-top:8px; border:1px solid #d6e0e8; border-radius:9px; }
+.settings-language { display:flex; align-items:center; justify-content:space-between; gap:16px; padding:12px 0 20px; }
+.settings-language select { max-width:250px; padding:9px 12px; border:1px solid #d6e0e8; border-radius:9px; background:white; }
+.booklet-dialog label { display:grid; gap:7px; margin:13px 0; font-size:14px; }
+.booklet-dialog input,.booklet-dialog select { width:100%; padding:10px 12px; border:1px solid #d6e0e8; border-radius:9px; min-width:0; }
+.pack-removal-counts { display:grid; grid-template-columns:1fr auto; gap:8px 16px; font-size:14px; margin:20px 0; }
+.pack-removal-counts dd { margin:0; font-variant-numeric:tabular-nums; }
+.pack-removal-result { padding:12px 0; color:#456754; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+@media(max-width:960px) { .knowledge-map .knowledge-layout { grid-template-columns:minmax(0,1fr); } .knowledge-map .knowledge-detail { max-width:none; } }
+@media(max-width:540px) { .knowledge-map header h1 { font-size:23px; } .knowledge-map .knowledge-toolbar { gap:8px; } .knowledge-map .knowledge-toolbar input[type=search] { flex-basis:100%; } .knowledge-map .knowledge-canvas-wrap { height:440px; min-height:440px; border-radius:12px; } .knowledge-map .knowledge-toolbar button { padding:8px 12px; } }

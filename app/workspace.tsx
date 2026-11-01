@@ -1,4 +1,6 @@
 'use client';
+import {useTranslation} from 'react-i18next';
+import {ProductLocale} from '@/components/product-locale';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   BookOpen,
@@ -14,15 +16,6 @@ import {
   ShoppingBag,
   Armchair,
 } from 'lucide-react';
-import {
-  SidebarProvider,
-  Sidebar,
-  SidebarHeader,
-  SidebarContent,
-  SidebarFooter,
-  SidebarTrigger,
-  useSidebar,
-} from '@/components/ui/sidebar';
 import { ReviewContext } from '@/components/review-context';
 import AssessmentRoom from '@/components/assessment-room';
 import ExamRoom from '@/components/exam-room';
@@ -30,20 +23,15 @@ import CourseRoom from '@/components/course-room';
 import RemediationCourse from '@/components/remediation-course';
 import HomeView from '@/components/home-view';
 import StudyView from '@/components/study-view';
-import SubjectsView from '@/components/subjects-view';
-import LibraryView from '@/components/library-view';
 import YouView from '@/components/you-view';
 import WatchDevices from '@/components/watch-devices';
-import ShopView from '@/components/shop-view';
-import HabitatView from '@/components/habitat-view';
-import AlphaExperience from '@/components/alpha-experience';
-import AlphaShell, { AlphaHome } from '@/components/alpha-shell';
+import WorkshopExperience from '@/components/workshop-experience';
+import ProductShell, { ProductHome } from '@/components/product-shell';
 import {
-  AlphaSubjects,
-  AlphaResults,
-  AlphaShop,
-} from '@/components/alpha-workspaces';
-import { AlphaPreviewAccess } from '@/components/alpha-preview-card';
+  ProductSubjects,
+  ProductResults,
+  ProductShop,
+} from '@/components/product-workspaces';
 import OnboardingView from '@/components/onboarding-view';
 import StudyPlanView from '@/components/study-plan-view';
 import RewardsView, {
@@ -54,11 +42,8 @@ import ChestView from '@/components/chest-view';
 import { assetPath } from '@/lib/runtime';
 import { parseWorkspaceRoute, workspaceHash } from '@/lib/workspace-route';
 import { sessionForView } from '@/lib/session-view';
-import AnalyticsView from '@/components/analytics-view';
-import SubjectIcon from '@/components/subject-icon';
-import { GameStatus } from '@/components/learning-game';
 import { SUBJECTS, uid, type StudyData, type QueueItem } from '@/lib/model';
-import { seedNodes, seedQuestions } from '@/lib/seed';
+
 import { generateVerified } from '@/lib/ai-client';
 import { flowDifficulty } from '@/lib/learning-intelligence';
 import { computeMastery, buildQueue, priority, initial } from '@/lib/engine';
@@ -73,7 +58,7 @@ import {
   currentNamespace,
 } from '@/lib/store';
 const base: StudyData = {
-  nodes: seedNodes,
+  nodes: [],
   questions: [],
   events: [],
   exams: [],
@@ -83,27 +68,8 @@ const base: StudyData = {
   packs: [],
   settings: { dailyMinutes: 20, name: '我的学习空间', surprise: true },
 };
-const navigation = [
-  { id: 'home', label: '今天', Icon: Home },
-  { id: 'plan', label: '学习计划', Icon: BookOpen },
-  { id: 'subjects', label: '学科', Icon: Layers3 },
-  { id: 'library', label: '资料库', Icon: Library },
-  { id: 'shop', label: '商店', Icon: ShoppingBag },
-  { id: 'habitat', label: '家园', Icon: Armchair },
-  { id: 'you', label: '我的', Icon: UserRound },
-];
-function CloseMobileNavigation({
-  page,
-  subject,
-}: {
-  page: string;
-  subject: string;
-}) {
-  const { setOpenMobile } = useSidebar();
-  useEffect(() => setOpenMobile(false), [page, subject, setOpenMobile]);
-  return null;
-}
 export default function Workspace() {
+  useTranslation();
   useEffect(() => {
     if (!localStorage.getItem('review-playful-intro-v1')) {
       localStorage.setItem('review-visual-theme', 'playful');
@@ -507,9 +473,9 @@ export default function Workspace() {
         preparing,
       }}
     >
+      <ProductLocale locale={data.settings.locale} ready={ready}/>
       {ready && <RewardsBridge />}
       {ready &&
-      data.settings.alphaPreview === true &&
       [
         'home',
         'devices',
@@ -520,7 +486,6 @@ export default function Workspace() {
         'analytics',
         'workshop',
         'forge',
-        'brand-studio',
         'enchant',
         'equipment',
         'shop',
@@ -531,9 +496,9 @@ export default function Workspace() {
         'study',
         'chest',
       ].includes(page) ? (
-        <AlphaShell key={currentNamespace()} page={page}>
+        <ProductShell key={currentNamespace()} page={page}>
           {page === 'home' ? (
-            <AlphaHome />
+            <ProductHome />
           ) : page === 'plan' ? (
             <StudyPlanView key={currentNamespace()} />
           ) : page === 'study' ? (
@@ -577,12 +542,12 @@ export default function Workspace() {
           ) : page === 'chest' ? (
             <ChestView key={subject + currentNamespace()} sessionId={subject} />
           ) : page === 'subjects' || page === 'library' ? (
-            <AlphaSubjects
+            <ProductSubjects
               key={page + subject}
               initialView={page === 'library' ? 'materials' : 'subjects'}
             />
           ) : page === 'results' || page === 'analytics' ? (
-            <AlphaResults
+            <ProductResults
               initialView={page === 'analytics' ? 'analysis' : 'scores'}
             />
           ) : page === 'devices' ? (
@@ -610,7 +575,7 @@ export default function Workspace() {
                 ))}
               </nav>
               {page === 'shop' ? (
-                <AlphaShop />
+                <ProductShop />
               ) : (
                 <RewardsView
                   key={page + currentNamespace()}
@@ -619,257 +584,10 @@ export default function Workspace() {
               )}
             </div>
           ) : (
-            <AlphaExperience page={page} selection={subject} />
+            <WorkshopExperience page={page} selection={subject} />
           )}
-        </AlphaShell>
-      ) : [
-          'forge',
-          'brand-studio',
-          'enchant',
-          'equipment',
-          'results',
-          'workshop',
-        ].includes(page) ? (
-        <AlphaPreviewAccess ready={ready}>
-          <AlphaExperience
-            key={currentNamespace()}
-            page={page}
-            selection={subject}
-          />
-        </AlphaPreviewAccess>
-      ) : data.settings.alphaPreview === true && ready && page === 'course' ? (
-        <CourseRoom key={subject + currentNamespace()} courseId={subject} />
-      ) : data.settings.alphaPreview === true && ready && page === 'remedy' ? (
-        <RemediationCourse key={currentNamespace()} courseId={subject} />
-      ) : page === 'onboarding' && ready ? (
-        <OnboardingView key={currentNamespace()} />
-      ) : page === 'plan' && ready ? (
-        <StudyPlanView key={currentNamespace()} />
-      ) : page === 'exam' && ready ? (
-        <ExamRoom key={subject + currentNamespace()} runId={subject} />
-      ) : (
-        <SidebarProvider
-          style={{ '--sidebar-width': '228px' } as React.CSSProperties}
-        >
-          <CloseMobileNavigation page={page} subject={subject} />
-          <Sidebar>
-            <SidebarHeader>
-              <button
-                className="brand"
-                onClick={() => navigate('home')}
-                aria-label="Review 首页"
-              >
-                <span className="brand-mark">
-                  <Layers3 size={21} />
-                </span>
-                review<span className="brand-dot">.</span>
-              </button>
-            </SidebarHeader>
-            <SidebarContent>
-              <p className="nav-label">学习工作台</p>
-              <nav>
-                {navigation.map(({ id, label, Icon }) => (
-                  <button
-                    key={id}
-                    className={'nav-item ' + (page === id ? 'selected' : '')}
-                    onClick={() => navigate(id)}
-                  >
-                    <Icon size={18} />
-                    {label}
-                    {id === 'home' && page !== 'home' && queue.length > 0 && (
-                      <span className="nav-count">{queue.length}</span>
-                    )}
-                  </button>
-                ))}
-              </nav>
-              <p className="nav-label">我的学科</p>
-              {SUBJECTS.map((s, i) => (
-                <button
-                  className={
-                    'subject-nav ' +
-                    (subject === s.id && page === 'subjects' ? 'active' : '')
-                  }
-                  key={s.id}
-                  onClick={() => navigate('subjects', s.id)}
-                >
-                  <span className={'nav-subject-icon s' + i}>
-                    <SubjectIcon subject={s.id} size={20} />
-                  </span>
-                  {s.name}
-                </button>
-              ))}
-              <div className="sidebar-spacer" />
-              <button
-                className={
-                  'nav-item ' + (page === 'analytics' ? 'selected' : '')
-                }
-                onClick={() => navigate('analytics')}
-              >
-                <BarChart3 size={18} />
-                学习分析
-              </button>
-            </SidebarContent>
-            <SidebarFooter>
-              <div className="local-indicator">
-                <span />
-                {!online
-                  ? '离线学习，自动保存'
-                  : syncing
-                    ? '正在同步学习记录'
-                    : cloudUser
-                      ? pending
-                        ? '有记录等待同步'
-                        : '已同步到云端'
-                      : '学习数据保存在本地'}
-              </div>
-              <button className="profile" onClick={() => navigate('you')}>
-                <span className="avatar">{data.settings.name.slice(0, 1)}</span>
-                <div>
-                  {data.settings.name}
-                  <small>个人学习档案</small>
-                </div>
-              </button>
-            </SidebarFooter>
-          </Sidebar>
-          <main className="workspace">
-            <header className="topbar">
-              <div>
-                <SidebarTrigger
-                  aria-label="收起或展开侧边栏"
-                  title="收起 / 展开侧边栏"
-                />
-                <b>
-                  {page === 'analytics'
-                    ? '学习分析'
-                    : ((
-                        {
-                          admin: '兑换码管理',
-                          redeem: '商店 / 兑换码',
-                          super: 'SuperReview',
-                          chest: '练习奖励',
-                        } as Record<string, string>
-                      )[page] ?? navigation.find((n) => n.id === page)?.label)}
-                </b>
-                {page === 'subjects' && subject !== 'all' && (
-                  <>
-                    <span className="slash">/</span>
-                    <b>{SUBJECTS.find((s) => s.id === subject)?.name}</b>
-                  </>
-                )}
-              </div>
-              {page !== 'home' && <GameStatus />}
-            </header>
-            <div
-              className={
-                'page ' + (page === 'study' && session ? 'study-page' : '')
-              }
-            >
-              {!ready && (
-                <div className="storage-loading">正在读取本地学习数据…</div>
-              )}
-              {ready &&
-                !['home', 'study', 'assess', 'chest'].includes(page) && (
-                  <SuperPromo />
-                )}
-              {page === 'home' && <HomeView />}
-              {page === 'remedy' && ready && (
-                <RemediationCourse
-                  key={cloudUser?.id ?? 'local'}
-                  courseId={subject}
-                />
-              )}
-              {page === 'course' && ready && (
-                <CourseRoom
-                  key={subject + currentNamespace()}
-                  courseId={subject}
-                />
-              )}
-              {page === 'assessment' &&
-                ready &&
-                (() => {
-                  const draft = data.jobs?.find(
-                    (j) => j.id === subject && j.kind === 'assessment',
-                  );
-                  return draft?.session ? (
-                    <AssessmentRoom
-                      key={subject + currentNamespace()}
-                      session={draft.session}
-                      finish={() =>
-                        navigate(
-                          'subjects',
-                          draft.session.items[0]?.question.subject ?? 'all',
-                        )
-                      }
-                    />
-                  ) : (
-                    <div className="panel">
-                      <h2>此测试尚未同步完整</h2>
-                      <button className="secondary" onClick={() => void sync()}>
-                        同步后重试
-                      </button>
-                    </div>
-                  );
-                })()}
-              {page === 'study' && session?.mode === 'test' && (
-                <AssessmentRoom
-                  key={session.id + currentNamespace()}
-                  session={session}
-                  finish={() => {
-                    if (
-                      data.jobs?.some(
-                        (j) =>
-                          j.kind === 'session' &&
-                          j.id === session.id &&
-                          j.status === 'complete',
-                      )
-                    )
-                      setSession(null);
-                    navigate('plan');
-                  }}
-                />
-              )}
-              {page === 'study' && session?.mode !== 'test' && (
-                <StudyView
-                  session={session}
-                  finish={() => {
-                    if (
-                      session &&
-                      data.jobs?.some(
-                        (j) =>
-                          j.kind === 'session' &&
-                          j.id === session.id &&
-                          j.status === 'complete',
-                      )
-                    )
-                      setSession(null);
-                    navigate('home');
-                  }}
-                />
-              )}
-              {page === 'subjects' && <SubjectsView key={subject} />}{' '}
-              {page === 'library' && <LibraryView />}
-              {page === 'you' && <YouView />}
-              {page === 'devices' && <WatchDevices key={currentNamespace()}/>}
-              {page === 'shop' && <ShopView />}
-              {page === 'habitat' && <HabitatView key={currentNamespace()} />}
-              {['redeem', 'admin', 'super'].includes(page) && (
-                <RewardsView
-                  key={page + currentNamespace()}
-                  mode={page as 'redeem' | 'admin' | 'super'}
-                />
-              )}
-              {page === 'chest' && (
-                <ChestView
-                  key={subject + currentNamespace()}
-                  sessionId={subject}
-                />
-              )}
-              {page === 'analytics' && <AnalyticsView />}
-              {page === 'results' && <AlphaResults initialView={section||'scores'}/>}
-            </div>
-          </main>
-        </SidebarProvider>
-      )}
+        </ProductShell>
+      ) : page === 'course' && ready ? <CourseRoom key={subject+currentNamespace()} courseId={subject}/> : page === 'remedy' && ready ? <RemediationCourse key={subject+currentNamespace()} courseId={subject}/> : page === 'onboarding' && ready ? <OnboardingView key={currentNamespace()}/> : page === 'exam' && ready ? <ExamRoom key={subject+currentNamespace()} runId={subject}/> : page === 'assessment' && ready ? (()=>{const draft=data.jobs?.find(j=>j.id===subject&&j.kind==='assessment');return draft?.session?<AssessmentRoom key={subject+currentNamespace()} session={draft.session} finish={()=>navigate('results')}/>:<div role="status">此测试尚未同步完整<button onClick={()=>void sync()}>同步后重试</button></div>})() : <div role="status">正在读取学习记录…</div>}
       {message && (
         <div className="toast" role="status">
           <span>{message}</span>

@@ -1,4 +1,5 @@
 'use client';
+import {tr} from '@/lib/i18n';
 import { useMemo, useState } from 'react';
 import { useReview } from './review-context';
 import { currentNamespace } from '@/lib/store';
@@ -68,12 +69,12 @@ export default function ExamScopePicker({
   }
   return (
     <fieldset className="exam-scope-picker" disabled={disabled || saving}>
-      <legend>考试范围</legend>
+      <legend>{tr("results:考试范围")}</legend>
       <div className="scope-tools">
         <input
           type="search"
-          aria-label="搜索考试范围知识点"
-          placeholder="搜索知识点、章节"
+          aria-label={tr("results:搜索考试范围知识点")}
+          placeholder={tr("results:搜索知识点、章节")}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
         />
@@ -81,20 +82,16 @@ export default function ExamScopePicker({
           type="button"
           className="secondary"
           onClick={() => onChange([])}
-        >
-          全学科范围
-        </button>
+        >{tr("results:全学科范围")}</button>
       </div>
       <p role="status">
         {value.length
-          ? `已选 ${value.length} 个知识点`
-          : `全学科范围 · 共 ${nodes.length} 个知识点`}
+          ? tr("common:已选 {{v0}} 个知识点",{v0:(value.length)})
+          : tr("common:全学科范围 · 共 {{v0}} 个知识点",{v0:(nodes.length)})}
       </p>
       {!!templates.length && (
-        <label>
-          常用与最近范围
-          <select
-            aria-label="应用范围模板"
+        <label>{tr("results:常用与最近范围")}<select
+            aria-label={tr("results:应用范围模板")}
             value=""
             onChange={(e) => {
               const t = templates.find((t) => t.id === e.target.value);
@@ -106,7 +103,7 @@ export default function ExamScopePicker({
                 );
             }}
           >
-            <option value="">选择一个范围模板</option>
+            <option value="">{tr("results:选择一个范围模板")}</option>
             {templates.map((t) => (
               <option key={t.id} value={t.id}>
                 {t.name}（
@@ -122,16 +119,13 @@ export default function ExamScopePicker({
       )}
       {!!missing.length && (
         <p role="alert">
-          {missing.length} 个已选知识点已不可用。
-          <button
+          {missing.length}{tr("results:个已选知识点已不可用。")}<button
             type="button"
             className="quiet"
             onClick={() =>
               onChange(value.filter((id) => !missing.includes(id)))
             }
-          >
-            移除失效选择
-          </button>
+          >{tr("results:移除失效选择")}</button>
         </p>
       )}
       <div className="scope-chapters">
@@ -163,7 +157,7 @@ export default function ExamScopePicker({
                     )
                   }
                 >
-                  {selected === all.length ? '取消本章' : '本章全选'}
+                  {selected === all.length ? tr("results:取消本章") : tr("results:本章全选")}
                 </button>
               </div>
               {shown.map((n) => (
@@ -189,12 +183,12 @@ export default function ExamScopePicker({
           (n.title + ' ' + [n.course, n.unit, n.chapter].join(' '))
             .toLocaleLowerCase()
             .includes(needle),
-        ) && <p>没有匹配的知识点。</p>}
+        ) && <p>{tr("results:没有匹配的知识点。")}</p>}
       </div>
       <div className="scope-template-save">
         <input
-          aria-label="常用范围名称"
-          placeholder="保存当前选择为常用范围"
+          aria-label={tr("results:常用范围名称")}
+          placeholder={tr("results:保存当前选择为常用范围")}
           maxLength={30}
           value={templateName}
           onChange={(e) => setTemplateName(e.target.value)}
@@ -205,11 +199,11 @@ export default function ExamScopePicker({
           disabled={!value.length || !templateName.trim()}
           onClick={() => void saveTemplate()}
         >
-          {saving ? '保存中…' : '保存范围'}
+          {saving ? tr("results:保存中…") : tr("results:保存范围")}
         </button>
       </div>
       {message && <p role="status">{message}</p>}
-      <small>不选择知识点表示全学科；章节全选会包含本章全部知识点。</small>
+      <small>{tr("results:不选择知识点表示全学科；章节全选会包含本章全部知识点。")}</small>
     </fieldset>
   );
 }

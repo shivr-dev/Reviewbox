@@ -1,7 +1,9 @@
 'use client';
+import {tr} from '@/lib/i18n';
 import { useState, useRef, useEffect } from 'react';
 import type { Question } from '@/lib/model';
 import MathText from './math-text';
+import {matchingAnswer,connectMatching} from '@/lib/matching';
 export default function MatchingInput({
   question,
   value,
@@ -15,6 +17,9 @@ export default function MatchingInput({
 }) {
   const [left, setLeft] = useState('');
   const m = question.matching;
+  const selectedRef=useRef(value);
+  useEffect(()=>{selectedRef.current=value;},[value]);
+  useEffect(()=>{setLeft('');selectedRef.current=value;},[question.id]);
   const board = useRef<HTMLDivElement>(null);
   const [layout, setLayout] = useState<{
     height: number;
@@ -26,7 +31,7 @@ export default function MatchingInput({
     if (!el) return;
     const measure = () => {
       const rect = el.getBoundingClientRect();
-      const columns = el.querySelectorAll(':scope > div');
+      const columns = el.querySelectorAll(':scope > .matching-column');
       const centers = (column: Element | undefined) =>
         Array.from(column?.querySelectorAll('button') ?? [], (button) => {
           const r = button.getBoundingClientRect();
@@ -42,26 +47,23 @@ export default function MatchingInput({
     observer.observe(el);
     el.querySelectorAll('button').forEach((button) => observer.observe(button));
     measure();
+    void document.fonts?.ready.then(measure);
     return () => observer.disconnect();
   }, [question.id]);
   if (!m) return null;
-  let selected: Record<string, string> = {};
-  try {
-    selected = JSON.parse(value || '{}');
-  } catch {}
+  const selected=matchingAnswer(question,value)??{};
   function connect(right: string) {
     if (!left) return;
-    const next = { ...selected };
-    for (const k of Object.keys(next)) if (next[k] === right) delete next[k];
-    next[left] = right;
-    onChange(JSON.stringify(next));
+    const next=connectMatching(question,selectedRef.current,left,right);
+    selectedRef.current=next;
+    onChange(next);
     setLeft('');
   }
   return (
     <div className="matching-task">
-      <p className="muted">依次点击左侧和右侧建立连线；再次选择可修改。</p>
+      <p className="muted">{tr("common:依次点击左侧和右侧建立连线；再次选择可修改。")}</p>
       <div className="matching-board" ref={board}>
-        <svg
+        <svg className="matching-lines"
           viewBox={`0 0 100 ${layout.height}`}
           preserveAspectRatio="none"
           aria-hidden="true"
@@ -71,6 +73,8 @@ export default function MatchingInput({
             return j < 0 ? null : (
               <line
                 key={l.id}
+                data-match-left={l.id}
+                data-match-right={selected[l.id]}
                 x1="0"
                 y1={layout.left[i] ?? 0}
                 x2="100"
@@ -79,9 +83,12 @@ export default function MatchingInput({
             );
           })}
         </svg>
-        <div>
+        <div className="matching-column">
           {m.left.map((l, i) => (
             <button
+              type="button"
+              data-match-left={l.id}
+              aria-pressed={left===l.id}
               key={l.id}
               disabled={disabled}
               className={
@@ -94,9 +101,11 @@ export default function MatchingInput({
             </button>
           ))}
         </div>
-        <div>
+        <div className="matching-column">
           {m.right.map((r, i) => (
             <button
+              type="button"
+              data-match-right={r.id}
               key={r.id}
               disabled={disabled || !left}
               className={
@@ -110,6 +119,7 @@ export default function MatchingInput({
           ))}
         </div>
       </div>
+      <ul className="matching-summary" aria-label="已选择的连线">{m.left.filter(l=>selected[l.id]).map(l=><li key={l.id}><MathText>{l.text+' → '+m.right.find(r=>r.id===selected[l.id])!.text}</MathText></li>)}</ul>
     </div>
   );
 }

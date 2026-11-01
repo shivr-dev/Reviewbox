@@ -1,4 +1,5 @@
 'use client';
+import {tr} from '@/lib/i18n';
 import { useRef, useState, type CSSProperties } from 'react';
 import {
   ArrowLeft,
@@ -21,12 +22,12 @@ import SubjectIcon from './subject-icon';
 import LibraryView from './library-view';
 const steps = [
   '欢迎来到 Review',
-  '先回忆，再核对',
-  '认识几个标志',
-  '每天留多少时间？',
-  '最重视哪几科？',
-  '导入你的学习内容',
-  '建立你的能力起点',
+  tr("planner:先回忆，再核对"),
+  tr("planner:认识几个标志"),
+  tr("planner:每天留多少时间？"),
+  tr("planner:最重视哪几科？"),
+  tr("planner:导入你的学习内容"),
+  tr("planner:建立你的能力起点"),
 ];
 export default function OnboardingView() {
   const { data, navigate, refresh, notify, start } = useReview();
@@ -69,7 +70,7 @@ export default function OnboardingView() {
   async function save(next: number, complete = false) {
     if (lock.current) return false;
     if (!total) {
-      notify('请至少选择一门学科');
+      notify(tr("planner:请至少选择一门学科"));
       return false;
     }
     lock.current = true;
@@ -141,15 +142,13 @@ export default function OnboardingView() {
           className="quiet"
           disabled={busy}
           onClick={() => navigate('you')}
-        >
-          账户与配置
-        </button>
+        >{tr("planner:账户与配置")}</button>
       </header>
-      <nav aria-label="新手引导进度">
+      <nav aria-label={tr("planner:新手引导进度")}>
         <div
           className="onboarding-progress-track"
           role="progressbar"
-          aria-label="新手引导进度"
+          aria-label={tr("planner:新手引导进度")}
           aria-valuemin={0}
           aria-valuemax={steps.length}
           aria-valuenow={step + 1}
@@ -170,12 +169,12 @@ export default function OnboardingView() {
                 {
                   [
                     '',
-                    '先想一想，再看答案。',
-                    '这些标志会陪你一起学习。',
-                    '选择每天能坚持的时间。',
-                    '拖动调整，右侧是计划占比。',
-                    '添加教材、笔记或题目。',
-                    '用少量题目，找到你的起点。',
+                    tr("planner:先想一想，再看答案。"),
+                    tr("planner:这些标志会陪你一起学习。"),
+                    tr("planner:选择每天能坚持的时间。"),
+                    tr("planner:拖动调整，右侧是计划占比。"),
+                    tr("planner:添加教材、笔记或题目。"),
+                    tr("planner:用少量题目，找到你的起点。"),
                   ][step]
                 }
               </p>
@@ -186,26 +185,24 @@ export default function OnboardingView() {
           {step === 0 && (
             <div className="onboarding-welcome">
               <Penguin action="welcome" actionKey="onboarding-welcome" />
-              <h1>欢迎来到 Review</h1>
-              <p>先做一点设置，再开始学习。</p>
+              <h1>{tr("planner:欢迎来到 Review")}</h1>
+              <p>{tr("planner:先做一点设置，再开始学习。")}</p>
             </div>
           )}
           {step === 1 && (
             <>
               <div className="onboarding-demo">
-                <span>试一试 · 不记录成绩</span>
-                <strong>{revealed ? '狼藉' : 'láng jí'}</strong>
+                <span>{tr("planner:试一试 · 不记录成绩")}</span>
+                <strong>{revealed ? tr("planner:狼藉") : 'láng jí'}</strong>
                 {!revealed ? (
                   <button
                     className="secondary"
                     onClick={() => setRevealed(true)}
                   >
-                    <Eye size={18} />
-                    显示答案
-                  </button>
+                    <Eye size={18} />{tr("planner:显示答案")}</button>
                 ) : (
                   <div className="onboarding-demo-ratings">
-                    {['答错', '不确定', '答对'].map((r) => (
+                    {['答错', tr("planner:不确定"), tr("planner:答对")].map((r) => (
                       <button
                         key={r}
                         className={
@@ -220,8 +217,8 @@ export default function OnboardingView() {
                 )}
                 <small>
                   {demoRating
-                    ? '就是这样。真实练习会记住你的判断。'
-                    : '看拼音写汉字由你手动检查。'}
+                    ? tr("planner:就是这样。真实练习会记住你的判断。")
+                    : tr("planner:看拼音写汉字由你手动检查。")}
                 </small>
               </div>
             </>
@@ -232,18 +229,18 @@ export default function OnboardingView() {
                 {[
                   {
                     Icon: Clock3,
-                    title: '到期复习',
+                    title: tr("common:到期复习"),
                     text: '隔一段时间，再回忆',
                   },
-                  { Icon: Flag, title: '能力测试', text: '完成后查看解析' },
+                  { Icon: Flag, title: tr("common:能力测试"), text: '完成后查看解析' },
                   {
                     Icon: Snowflake,
-                    title: '连胜冻结',
+                    title: tr("common:连胜冻结"),
                     text: '为休息日保留连胜',
                   },
                   {
                     Icon: ShieldCheck,
-                    title: '私有同步',
+                    title: tr("common:私有同步"),
                     text: '登录后跨设备继续',
                   },
                 ].map(({ Icon, title, text }) => (
@@ -261,7 +258,7 @@ export default function OnboardingView() {
               <div
                 className="onboarding-time-options"
                 role="group"
-                aria-label="每日可用时间"
+                aria-label={tr("planner:每日可用时间")}
               >
                 {[10, 15, 20, 30, 45, 60, 90, 120].map((n) => (
                   <button
@@ -271,7 +268,7 @@ export default function OnboardingView() {
                     onClick={() => setMinutes(n)}
                   >
                     <strong>{n}</strong>
-                    <span>分钟</span>
+                    <span>{tr("planner:分钟")}</span>
                   </button>
                 ))}
               </div>
@@ -283,7 +280,7 @@ export default function OnboardingView() {
                 {SUBJECTS.map((s) => (
                   <label key={s.id}>
                     <SubjectIcon subject={s.id} />
-                    <strong>{s.name}</strong>
+                    <strong>{tr('subjects:'+s.name)}</strong>
                     <input
                       type="range"
                       min={0}
@@ -310,7 +307,7 @@ export default function OnboardingView() {
                   </label>
                 ))}
               </div>
-              <small>拖到最左侧，可暂停该学科的自动安排。</small>
+              <small>{tr("planner:拖到最左侧，可暂停该学科的自动安排。")}</small>
             </>
           )}
           {step === 5 && (
@@ -320,15 +317,15 @@ export default function OnboardingView() {
                 <strong>
                   {data.questions.length
                     ? data.questions.length + ' 道题已就绪'
-                    : '添加自己的内容'}
+                    : tr("planner:添加自己的内容")}
                 </strong>
                 <button
                   className="secondary"
                   onClick={() => setImportOpen(!importOpen)}
                 >
-                  {importOpen ? '收起导入工具' : '打开导入工具'}
+                  {importOpen ? tr("planner:收起导入工具") : tr("planner:打开导入工具")}
                 </button>
-                <small>支持手动导入，无需 AI 额度。</small>
+                <small>{tr("planner:支持手动导入，无需 AI 额度。")}</small>
               </div>
               {importOpen && <LibraryView />}
             </>
@@ -336,16 +333,14 @@ export default function OnboardingView() {
           {step === 6 && (
             <div className="assistant-initial-test">
               <Target size={42} />
-              <strong>{diagnostic.length} 题已就绪</strong>
-              <small>未测学科保留“未评估”。</small>
+              <strong>{diagnostic.length}{tr("planner:题已就绪")}</strong>
+              <small>{tr("planner:未测学科保留“未评估”。")}</small>
               {!diagnostic.length && (
                 <button
                   className="secondary"
                   disabled={busy}
                   onClick={() => void save(5)}
-                >
-                  先导入题目
-                </button>
+                >{tr("planner:先导入题目")}</button>
               )}
             </div>
           )}
@@ -357,9 +352,7 @@ export default function OnboardingView() {
               disabled={busy}
               onClick={() => void save(step - 1)}
             >
-              <ArrowLeft size={16} />
-              上一步
-            </button>
+              <ArrowLeft size={16} />{tr("planner:上一步")}</button>
           )}
           {step < 6 ? (
             <button
@@ -367,7 +360,7 @@ export default function OnboardingView() {
               disabled={busy || !total}
               onClick={() => void save(step + 1)}
             >
-              {busy ? '正在保存' : '下一步'}
+              {busy ? tr("planner:正在保存") : tr("planner:下一步")}
               <ArrowRight size={17} />
             </button>
           ) : (
@@ -379,8 +372,7 @@ export default function OnboardingView() {
                   if (await save(6, true))
                     start(diagnostic, 'test', '首次能力诊断');
                 }}
-              >
-                开始首次测试 <ArrowRight size={18} />
+              >{tr("planner:开始首次测试")}<ArrowRight size={18} />
               </button>
               <button
                 className="quiet"
@@ -388,9 +380,7 @@ export default function OnboardingView() {
                 onClick={async () => {
                   if (await save(6, true)) navigate('home');
                 }}
-              >
-                稍后测试
-              </button>
+              >{tr("planner:稍后测试")}</button>
             </div>
           )}
         </footer>

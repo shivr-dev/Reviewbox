@@ -1,4 +1,5 @@
 'use client';
+import {tr} from '@/lib/i18n';
 import { useState } from 'react';
 import { Trash2, Download } from 'lucide-react';
 import {
@@ -17,10 +18,8 @@ export default function ClearDataCard() {
     [scope, setScope] = useState('local');
   return (
     <section className="clear-data-panel">
-      <h2>清理所有学习数据</h2>
-      <p>
-        移除测试留下的课程、资料、题目、学习记录、掌握度、笔记和计划。清理后保留账户与基础学科框架。
-      </p>
+      <h2>{tr("settings:清理所有学习数据")}</h2>
+      <p>{tr("settings:移除测试留下的课程、资料、题目、学习记录、掌握度、笔记和计划。清理后保留账户与基础学科框架。")}</p>
       <button
         className="danger-button"
         onClick={() => {
@@ -30,9 +29,7 @@ export default function ClearDataCard() {
           setError('');
         }}
       >
-        <Trash2 size={15} />
-        清理所有数据
-      </button>
+        <Trash2 size={15} />{tr("settings:清理所有数据")}</button>
       <Dialog
         open={open}
         onOpenChange={(value) => {
@@ -40,13 +37,11 @@ export default function ClearDataCard() {
         }}
       >
         <DialogContent className="clear-dialog">
-          <DialogTitle>确认清理全部学习数据</DialogTitle>
+          <DialogTitle>{tr("settings:确认清理全部学习数据")}</DialogTitle>
           <DialogDescription>
             {scope === 'local'
-              ? '将清理此设备未登录学习空间的全部个人数据。'
-              : '将清理当前学习账户的本地及云端数据，同时清理此设备未登录学习空间的数据。其他学习账户不受影响。'}
-            此操作无法撤销；已保存的 SAT／ACT 试卷也会移除。
-          </DialogDescription>
+              ? tr("settings:将清理此设备未登录学习空间的全部个人数据。")
+              : tr("settings:将清理当前学习账户的本地及云端数据，同时清理此设备未登录学习空间的数据。其他学习账户不受影响。")}{tr("settings:此操作无法撤销；已保存的 SAT／ACT 试卷也会移除。")}</DialogDescription>
           <button
             className="quiet"
             disabled={busy}
@@ -60,12 +55,8 @@ export default function ClearDataCard() {
               )
             }
           >
-            <Download size={15} />
-            先导出当前空间备份
-          </button>
-          <label>
-            输入“清理所有数据”以确认
-            <input
+            <Download size={15} />{tr("settings:先导出当前空间备份")}</button>
+          <label>{tr("settings:输入“清理所有数据”以确认")}<input
               value={confirmation}
               onChange={(e) => setConfirmation(e.target.value)}
               disabled={busy}
@@ -78,12 +69,10 @@ export default function ClearDataCard() {
               className="secondary"
               disabled={busy}
               onClick={() => setOpen(false)}
-            >
-              取消
-            </button>
+            >{tr("settings:取消")}</button>
             <button
               className="danger-button"
-              disabled={busy || confirmation !== '清理所有数据'}
+              disabled={busy || confirmation !== tr('settings:清理所有数据')}
               onClick={async () => {
                 setBusy(true);
                 setError('');
@@ -99,7 +88,7 @@ export default function ClearDataCard() {
                 }
               }}
             >
-              {busy ? '正在清理…' : '确认永久清理'}
+              {busy ? tr("settings:正在清理…") : tr("settings:确认永久清理")}
             </button>
           </div>
         </DialogContent>

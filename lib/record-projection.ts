@@ -1,9 +1,11 @@
 import { projectQuality } from './question-quality';
 import type { LocalRecord, StudyData } from './model';
+import {blockedPackRecord,packRemovalGuards} from './pack-removal';
 
 /** Shared web/native projection, including course hydration and quality exclusions. */
 export function projectRecords(input: LocalRecord[]): StudyData {
-  const records = input.filter((r) => !r.deleted);
+  const guards=packRemovalGuards(input);
+  const records = input.filter((r) => !r.deleted&&!blockedPackRecord(r,guards));
   const get = (kind: string) =>
     records.filter((r) => r.kind === kind).map((r) => r.payload);
   // Legacy web sessions use an active-session storage alias. A later canonical
@@ -14,7 +16,13 @@ export function projectRecords(input: LocalRecord[]): StudyData {
     const stamp=(r:LocalRecord)=>Date.parse(r.updated_at)||0;
     if(!previous||stamp(row)>stamp(previous)||(stamp(row)===stamp(previous)&&row.id===id))logicalJobs.set(id,row);
   }
-  const jobs = [...logicalJobs.values()].filter(r=>r.payload.kind!=='pack-version-part').map(r=>r.payload);
+  const jobs = [...logicalJobs.values()].filter(r=>!['pack-version-part','pack-removal-part'].includes(r.payload.kind)).map(r=>{
+    const j=r.payload;
+    if(!['active','break','queued','pending'].includes(j.status))return j;
+    const blocked=new Set(guards.flatMap(g=>g.questionIds));
+    const items=j.items?.filter((i:any)=>!blocked.has(i.question?.id??i.questionId));
+    return items&&items.length!==j.items.length?{...j,items,status:items.length?j.status:'cancelled',cancelReason:'pack-removed'}:j;
+  });
   const jobMap = new Map(jobs.map((j) => [j.id, j]));
   const hydrated = jobs.map((j) =>
     j.kind === 'course' && j.storageVersion === 1
@@ -46,6 +54,7 @@ export function projectRecords(input: LocalRecord[]): StudyData {
     jobs: [...hydrated,...hydrated.filter(j=>j.kind==='session'&&j.ownerDeviceId&&j.mode==='review'&&j.status==='complete'&&j.eventIds?.length).map(j=>({id:'study-completion:'+j.id,kind:'study-completion',sessionId:j.id,title:j.title,completedAt:j.completedAt,questionIds:(j.items??[]).map((i:any)=>i.question.id)}))],
     nodes: get('node'),
     questions: get('question'),
+    historicalQuestions: input.filter(r=>r.kind==='question'&&r.deleted).map(r=>r.payload).concat(jobs.filter(j=>j.kind==='historical-question').map(j=>j.question)),
     events: get('event'),
     exams: get('exam'),
     notes: get('note'),

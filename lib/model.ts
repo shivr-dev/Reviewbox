@@ -169,6 +169,7 @@ export type Question = {
     right: { id: string; text: string }[];
   };
   transferFrom?: string;
+  referenceProvenance?: {kind:'generated-variant';generatedAt:string;model:string;trainingGoal:string;changes:string;sources:{id:string;source:'k12'|'eduqs'|'cjeval';url:string;revision:string;sourceId:string;license:string;rights:string}[]};
   collectionId?: string;
   collectionTitle?: string;
   passage?: string;
@@ -206,6 +207,7 @@ export type Grade = {
   model: string;
 };
 export type AnswerEvent = {
+  matchingSnapshot?:{matching:NonNullable<Question['matching']>;reference:string;questionVersion:string};
   answerFormat?: 'text'|'latex'|'mixed';
   hintLevel?: 'light' | 'method' | 'step' | 'answer';
   wallTimeMs?: number;
@@ -374,6 +376,8 @@ export type LocalRecord = {
   deleted: boolean;
 };
 export type StudyData = {
+  /** Read-only snapshots for reports; never enter practice queues. */
+  historicalQuestions?: Question[];
   jobs?: any[];
   nodes: Node[];
   questions: Question[];
@@ -392,7 +396,7 @@ export type StudyData = {
     gameSound?: boolean;
     gameHearts?: boolean;
     gameSkin?: string;
-    alphaPreview?: boolean;
+    locale?: 'zh-CN'|'zh-TW'|'ja'|'ko'|'en'|'es'|'fr'|'ru';
     assistantAi?: boolean;
     studyMode?: 'auto' | 'guided' | 'manual';
     studyAutoStart?: { enabled: boolean; acknowledgedAt: string };

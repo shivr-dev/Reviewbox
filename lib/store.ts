@@ -1,9 +1,10 @@
 import {previewPack,planPack,stable,content,packHash,packVersions,type PackPreview,type PackChoices} from './pack-versions';
 import { apiFetch } from './runtime';
 import { openDB, type IDBPDatabase } from 'idb';
-import { corePack } from './seed';
+
 import { projectRecords } from './record-projection';
 import { courseCompletionRecords } from './course-lifecycle';
+import {previewPackRemoval,removalRecords,type PackRemovalPreview} from './pack-removal';
 import {
   type LocalRecord,
   type StudyData,
@@ -201,6 +202,30 @@ export async function commitPackUpdate(preview:PackPreview&{records:LocalRecord[
 export async function installPack(pack:Pack,ns=currentNamespace(),choices:PackChoices={}) {
   return commitPackUpdate(await previewInstallPack(pack,ns),choices);
 }
+export async function inspectPackRemoval(packId:string,ns=currentNamespace()){
+ return {...await previewPackRemoval(packId,await allRecords(ns)),namespace:ns};
+}
+export async function removeInstalledPack(preview:PackRemovalPreview&{namespace:string}){
+ const ns=preview.namespace;assertWritable(ns);if(ns!==currentNamespace())throw new Error('账户已切换，请重新确认');
+ // Hash validation is completed before opening the IDB transaction. Awaiting
+ // WebCrypto inside it would let the browser close the transaction prematurely.
+ const snapshot=await allRecords(ns),current=await previewPackRemoval(preview.packId,snapshot);
+ const db=await database(),tx=db.transaction(['records','queue'],'readwrite');
+ try{const rows=(await tx.objectStore('records').getAll()).filter(r=>r.namespace===ns);
+ if(stable(rows.map(r=>({id:r.id,payload:r.payload,deleted:r.deleted,updated_at:r.updated_at})))!==current.fingerprint)throw new Error('学习记录刚刚变化，请重新查看删除预览');
+ if(current.fingerprint!==preview.fingerprint)throw new Error('学习记录刚刚变化，请重新查看删除预览');
+ const plan=removalRecords(current,rows);for(const r of plan.writes){const row={...r,key:ns+'/'+r.id,namespace:ns};await tx.objectStore('records').put(row);await tx.objectStore('queue').put(row);}await tx.done;return plan.removalId;
+ }catch(e){try{tx.abort();}catch{}await tx.done.catch(()=>{});throw e;}
+}
+export async function undoPackRemoval(removalId:string,ns=currentNamespace()){
+ assertWritable(ns);if(ns!==currentNamespace())throw new Error('账户已切换');const db=await database(),tx=db.transaction(['records','queue'],'readwrite');
+ try{const rows=(await tx.objectStore('records').getAll()).filter(r=>r.namespace===ns),job=rows.find(r=>r.id===removalId)?.payload;
+ if(!job||job.status!=='removed'||Date.now()>Date.parse(job.undoUntil))throw new Error('撤销时限已过；历史记录仍保留，可以重新导入学习包');
+ const before:LocalRecord[]=JSON.parse(job.partIds.map((id:string)=>{const part=rows.find(r=>r.id===id);if(part?.payload.operationId!==job.operationId)throw new Error('撤销记录尚未同步完整');return part.payload.text;}).join(''));
+ const at=new Date().toISOString();for(const r of before){const present=rows.find(p=>p.id===r.id);if(present&&present.updated_at>job.removedAt)throw new Error('删除后内容又有修改，请重新导入以避免覆盖');const row={...r,payload:{...r.payload,_packRestore:{packId:job.packId,operationId:job.operationId},...(r.kind==='pack'?{restoredFromRemoval:job.operationId}:{})},updated_at:at,key:ns+'/'+r.id,namespace:ns};await tx.objectStore('records').put(row);await tx.objectStore('queue').put(row);}
+ const row={id:removalId,kind:'job',payload:{...job,status:'restored'},updated_at:at,deleted:false,key:ns+'/'+removalId,namespace:ns};await tx.objectStore('records').put(row);await tx.objectStore('queue').put(row);await tx.done;
+ }catch(e){try{tx.abort();}catch{}await tx.done.catch(()=>{});throw e;}
+}
 export async function undoPackUpdate(versionId:string,ns=currentNamespace()) {
   assertWritable(ns);const db=await database(),tx=db.transaction(['records','queue'],'readwrite');
   try {
@@ -218,31 +243,11 @@ export async function undoPackUpdate(versionId:string,ns=currentNamespace()) {
   }catch(e){try{tx.abort();}catch{}await tx.done.catch(()=>{});throw e;}
 }
 export async function initialize() {
-  if (!(await allRecords()).some((r) => r.kind === 'node'))
-    await installPack({
-      ...corePack,
-      manifest: {
-        ...corePack.manifest,
-        id: 'review-framework',
-        title: '多学科知识框架',
-      },
-      questions: [],
-    });
-  if (!(await getMeta('biology-framework-v1:' + namespace))) {
-    const existing = new Set((await allRecords()).map((r) => r.id));
-    const now = new Date().toISOString();
-    await saveRecords(
-      corePack.knowledge
-        .filter((n) => n.subject === 'biology' && !existing.has(n.id))
-        .map((n) => ({
-          id: n.id,
-          kind: 'node' as const,
-          payload: n,
-          updated_at: now,
-          deleted: false,
-        })),
-    );
-    await setMeta('biology-framework-v1:' + namespace, true);
+  // Production spaces start empty. Content is installed only by the learner.
+  // The 2.0 migration archives only hash-matching originals. Edited content,
+  // independent notes, shared nodes, scores and immutable attempts are protected.
+  for(const packId of ['review-core','review-framework']){
+    if((await allRecords()).some(r=>r.kind==='pack'&&!r.deleted&&r.payload.id===packId))await removeInstalledPack(await inspectPackRemoval(packId));
   }
   try {
     await navigator.storage?.persist?.();

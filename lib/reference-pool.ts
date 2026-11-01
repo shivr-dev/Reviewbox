@@ -1,0 +1,23 @@
+import {z} from 'zod';
+import {packHash} from './pack-versions';
+export const REFERENCE_SOURCES={
+ k12:{name:'K12 Multidisciplinary',revision:'c99985f5280a411f3a89441ab9186c605d1fb39f',url:'https://huggingface.co/datasets/zhenliuu/k12-multidisciplinary',license:'未声明',rights:'personal-reference',imageBase:'training/'},
+ eduqs:{name:'EduQS',revision:'4221dc16bd9ca92a3bf6a3fc2741d0b9e664026a',url:'https://huggingface.co/datasets/chaosY/EduQS',license:'Apache-2.0 (publisher declaration)',rights:'personal-reference',imageBase:''},
+ cjeval:{name:'CJEval',revision:'590fb8f34239f642324b806b68374c303fe643bf',url:'https://github.com/SmileWHC/CJEval',license:'Academic/research only; no commercial use',rights:'research-only',imageBase:''},
+} as const;
+export type ReferenceSource=keyof typeof REFERENCE_SOURCES;
+export function searchTerms(text:string){const normalized=text.normalize('NFKC').toLocaleLowerCase();const words=normalized.match(/[a-z][a-z0-9_-]{1,35}|[\u3400-\u9fff]{2,}/g)??[];return [...new Set(words.flatMap(w=>/[\u3400-\u9fff]/.test(w)?[w,...Array.from({length:w.length-1},(_,i)=>w.slice(i,i+2))]:[w]))].slice(0,160);}
+const safePath=z.string().max(500).refine(s=>!s.startsWith('/')&&!s.includes('..')&&!s.includes('\\')&&!/^[a-z]+:/i.test(s),'Unsafe reference image path');
+const text=(v:unknown)=>typeof v==='string'?v:Array.isArray(v)?v.map(String).join('\n'):'';
+const subjectMap:Record<string,string>={'数学':'math','初中数学':'math','物理':'physics','初中物理':'physics','化学':'chemistry','初中化学':'chemistry','语文':'chinese','初中语文':'chinese','英语':'english','初中英语':'english','生物':'biology','初中生物':'biology','历史':'history','初中历史':'history','地理':'geography','初中地理':'geography'};
+export async function adaptReference(source:ReferenceSource,raw:Record<string,unknown>,file:string,line:number){
+ const info=REFERENCE_SOURCES[source];let prompt='',answer='',explanation='',subject='',type='',options:string[]=[],images:string[]=[],sourceId='',grade:unknown,difficulty:unknown,concepts:string[]=[];
+ if(source==='k12'){prompt=text(raw.question);answer=text(raw.answer);explanation=text(raw.explanation);subject=text(raw.subject);type=text(raw.question_type);options=Array.isArray(raw.options)?raw.options.map(o=>typeof o==='string'?o:`${(o as any).label??''} ${(o as any).text??''}`):[];images=Array.isArray(raw.images)?raw.images.map(i=>safePath.parse(typeof i==='string'?i:(i as any).path)):[];sourceId=text(raw.id);}
+ if(source==='eduqs'){prompt=text(raw.question_info);answer=text(raw.answer);explanation=text(raw.solution_info);subject=text(raw.subject);type=text(raw.type);options=z.array(z.string()).max(12).parse(raw.options??[]);if(raw.image)images=[safePath.parse(raw.image)];sourceId=text(raw.id);grade=raw.grade;difficulty=raw.difficulty;concepts=Array.isArray(raw.side_information)?raw.side_information.map(String):[];}
+ if(source==='cjeval'){prompt=text(raw.ques_content);answer=text(raw.ques_answer);explanation=text(raw.ques_analyze);subject=text(raw.subject);type=text(raw.ques_type);difficulty=raw.ques_difficulty;concepts=Array.isArray(raw.ques_knowledges)?raw.ques_knowledges.map(String):[];sourceId=String(line);}
+ if(prompt.length<3||prompt.length>30000||answer.length>16000)throw new Error('参考题正文长度不正确');
+ const hash=await packHash({prompt:prompt.normalize('NFKC').replace(/\s+/g,' ').trim(),options,answer,images});
+ const issue=source==='eduqs'&&file.includes('middle_')&&grade==='high'?'grade-mismatch':images.length?'images-required':!answer?'missing-answer':'unreviewed';
+ return {id:'ref:'+hash,content_hash:hash,subject:subjectMap[subject]??subject,question_type:type,prompt,answer,explanation,options,image_refs:images,grade:grade??null,difficulty:difficulty??null,concepts,search_terms:searchTerms(prompt+' '+concepts.join(' ')),qa_status:issue,provenance:[{source,source_name:info.name,source_url:info.url,revision:info.revision,file: safePath.parse(file),source_record_id:sourceId||String(line),line,declared_license:info.license,rights_status:info.rights,scope:'private',imported_at:new Date().toISOString()}],raw_record:raw};
+}
+export const referenceCandidateSchema=z.object({id:z.string().max(100),subject:z.string().max(40),prompt:z.string().max(30000),answer:z.string().max(16000),explanation:z.string().max(30000),question_type:z.string().max(100),options:z.array(z.string().max(5000)).max(12),provenance:z.array(z.object({source:z.enum(['k12','eduqs','cjeval']),source_url:z.string().url(),revision:z.string().max(80),source_record_id:z.string().max(200),declared_license:z.string().max(200),rights_status:z.string().max(50)}).passthrough()).min(1).max(20),qa_status:z.string().max(100)}).passthrough();

@@ -16,7 +16,6 @@ const pages = new Set([
   'redeem',
   'admin',
   'super',
-  'habitat',
   'study',
   'assessment',
   'exam',
@@ -56,14 +55,14 @@ export function workspaceHash({
       .join('/')
   );
 }
-export const ALPHA_MAIN_NAV = [
+export const MAIN_NAV = [
   { id: 'home', label: '今天' },
   { id: 'plan', label: '学习计划' },
   { id: 'subjects', label: '学科与资料' },
   { id: 'results', label: '成绩与考试' },
   { id: 'workshop', label: '工坊' },
 ] as const;
-export function alphaSection(page: string) {
+export function workspaceSection(page: string) {
   if (['subjects', 'library', 'course'].includes(page)) return 'subjects';
   if (['results', 'analytics', 'exam', 'assessment'].includes(page))
     return 'results';
@@ -77,8 +76,7 @@ export function alphaSection(page: string) {
       'redeem',
       'super',
       'admin',
-      'habitat',
-      'brand-studio',
+          'brand-studio',
     ].includes(page)
   )
     return 'workshop';

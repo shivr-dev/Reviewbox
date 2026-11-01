@@ -1,4 +1,5 @@
 'use client';
+import {tr} from '@/lib/i18n';
 import {useId,useMemo,useRef} from 'react';
 import type {SemanticDiagram} from '@/lib/diagram-spec';
 import type {DiagramStage} from '@/lib/shaded-regions';
@@ -55,5 +56,5 @@ export function OpticsDrawing({spec,stage='question',id}:{spec:Spec;stage?:Diagr
 export default function OpticsDiagram({spec,stage='question'}:{spec:Spec;stage?:DiagramStage}){
  const ref=useRef<SVGSVGElement>(null),id='optics'+useId().replace(/[^a-z0-9]/gi,'');
  const drawing=useMemo(()=>{try{return {content:<OpticsDrawing spec={spec} stage={stage} id={id}/>};}catch(e){return {error:(e as Error).message};}},[spec,stage,id]);
- return <figure className="diagram publication-diagram" data-engine="ray-optics" data-diagram-kind="optics">{drawing.error?<p role="alert">光路条件需要确认：{drawing.error}</p>:<svg ref={ref} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 340" role="img" aria-label={spec.caption??'光路图'} fontFamily={PRINT_FONT}>{drawing.content}</svg>}<figcaption><span>{spec.caption}</span><button className="diagram-export" type="button" disabled={!!drawing.error} onClick={()=>ref.current&&downloadDiagram(ref.current,'Reviewbox-optics-'+stage)}>导出 SVG</button></figcaption></figure>;
+ return <figure className="diagram publication-diagram" data-engine="ray-optics" data-diagram-kind="optics">{drawing.error?<p role="alert">{tr("common:光路条件需要确认：")}{drawing.error}</p>:<svg ref={ref} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 340" role="img" aria-label={spec.caption??'光路图'} fontFamily={PRINT_FONT}>{drawing.content}</svg>}<figcaption><span>{spec.caption}</span><button className="diagram-export" type="button" disabled={!!drawing.error} onClick={()=>ref.current&&downloadDiagram(ref.current,'Reviewbox-optics-'+stage)}>{tr("common:导出 SVG")}</button></figcaption></figure>;
 }

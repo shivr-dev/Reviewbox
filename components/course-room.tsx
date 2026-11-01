@@ -1,4 +1,5 @@
 'use client';
+import {tr} from '@/lib/i18n';
 import { courseErrorMessage } from '@/lib/course-errors';
 import { CourseSources, CourseStudyTools } from './course-tools';
 import HtmlCourse from './html-course';
@@ -60,8 +61,7 @@ function ProcessExplorer({ content }: { content: CourseContent }) {
         ))}
       </div>
       <article key={step}>
-        <span>
-          步骤 {step + 1} / {content.process.steps.length}
+        <span>{tr("study:步骤")}{step + 1} / {content.process.steps.length}
         </span>
         <h3>
           <MathText>{content.process.steps[step].title}</MathText>
@@ -76,16 +76,12 @@ function ProcessExplorer({ content }: { content: CourseContent }) {
           disabled={step === 0}
           onClick={() => setStep(step - 1)}
         >
-          <ChevronLeft size={16} />
-          上一步
-        </button>
+          <ChevronLeft size={16} />{tr("study:上一步")}</button>
         <button
           className="quiet"
           disabled={step === content.process.steps.length - 1}
           onClick={() => setStep(step + 1)}
-        >
-          下一步
-          <ChevronRight size={16} />
+        >{tr("study:下一步")}<ChevronRight size={16} />
         </button>
       </div>
     </section>
@@ -125,12 +121,10 @@ function Checkpoint({
   return (
     <div className="lesson-check" ref={element}>
       <div className="section-head">
-        <span>理解检验</span>
+        <span>{tr("study:理解检验")}</span>
         {passed && (
           <span className="course-passed">
-            <Check size={14} />
-            已通过
-          </span>
+            <Check size={14} />{tr("study:已通过")}</span>
         )}
       </div>
       <h3>
@@ -169,13 +163,13 @@ function Checkpoint({
             }
           }}
         >
-          {busy ? '正在保存' : '检查答案'}
+          {busy ? tr("study:正在保存") : tr("study:检查答案")}
         </button>
       )}
       {(checked || passed) && (
         <div className="lesson-check-feedback">
           <b>
-            {passed || correct ? '理解检验已通过' : '请根据解析重新检查推理。'}
+            {passed || correct ? tr("study:理解检验已通过") : tr("study:请根据解析重新检查推理。")}
           </b>
           <p>
             <MathText>{q.explanation}</MathText>
@@ -188,9 +182,7 @@ function Checkpoint({
                 setAnswer('');
                 shown.current = Date.now();
               }}
-            >
-              重新作答
-            </button>
+            >{tr("study:重新作答")}</button>
           )}
         </div>
       )}
@@ -250,7 +242,7 @@ export default function CourseRoom({ courseId }: { courseId: string }) {
       .catch(() => {})
       .then(() => saveCourse(nextValue, ns.current));
     queue.current.catch(() =>
-      setError('课程进度未能保存，请检查设备存储后重试。'),
+      setError(tr("study:课程进度未能保存，请检查设备存储后重试。")),
     );
     return queue.current;
   }
@@ -265,7 +257,7 @@ export default function CourseRoom({ courseId }: { courseId: string }) {
       await refresh();
       navigate('subjects', course?.subject, 'courses');
     } catch {
-      setError('请先完成本地保存后再退出。');
+      setError(tr("study:请先完成本地保存后再退出。"));
     }
   }
   function select(index: number) {
@@ -326,12 +318,12 @@ export default function CourseRoom({ courseId }: { courseId: string }) {
     const currentSection = c?.sections[c.current];
     if (!c || !currentSection?.content || working || lock.current) return;
     if (currentNamespace() !== ns.current) {
-      setError('账户已切换，请重新打开课程');
+      setError(tr("study:账户已切换，请重新打开课程"));
       return;
     }
     const checks = courseQuestions(c, currentSection, 'checks');
     if (checks.some((q) => !currentSection.passed.includes(q.id))) {
-      notify('请先完成本节的全部理解检验');
+      notify(tr("study:请先完成本节的全部理解检验"));
       return;
     }
     const next = {
@@ -364,7 +356,7 @@ export default function CourseRoom({ courseId }: { courseId: string }) {
         else {
           setNeedsPracticeImport(true);
           notify(
-            '教学进度已保存。请导入本课程的巩固题，系统不会自动消耗 AI 额度。',
+            tr("study:教学进度已保存。请导入本课程的巩固题，系统不会自动消耗 AI 额度。"),
           );
         }
       }
@@ -465,7 +457,7 @@ export default function CourseRoom({ courseId }: { courseId: string }) {
     if (!ref.current || !proposal) return;
     const s = ref.current.sections.find((s) => s.id === proposal.sectionId);
     if (!s || s.revision !== proposal.revision) {
-      setError('课件版本已经变化，请重新生成修改预览');
+      setError(tr("study:课件版本已经变化，请重新生成修改预览"));
       return;
     }
     try {
@@ -479,9 +471,9 @@ export default function CourseRoom({ courseId }: { courseId: string }) {
       await refresh();
       setProposal(null);
       setMessage('');
-      notify('修改已应用，原版本已保留');
+      notify(tr("study:修改已应用，原版本已保留"));
     } catch {
-      setError('修改未保存，请重试。');
+      setError(tr("study:修改未保存，请重试。"));
     }
   }
   async function undo() {
@@ -506,16 +498,16 @@ export default function CourseRoom({ courseId }: { courseId: string }) {
         ),
       });
       await refresh();
-      notify('已恢复上一版本；理解检验将重新记录。');
+      notify(tr("study:已恢复上一版本；理解检验将重新记录。"));
     } catch {
-      setError('恢复未完成，请重试。');
+      setError(tr("study:恢复未完成，请重试。"));
     }
   }
   if (!course)
     return (
       <section className="panel">
-        <h2>正在读取课程</h2>
-        <button onClick={() => navigate('subjects')}>返回学科</button>
+        <h2>{tr("study:正在读取课程")}</h2>
+        <button onClick={() => navigate('subjects')}>{tr("study:返回学科")}</button>
       </section>
     );
   const checks = section ? courseQuestions(course, section, 'checks') : [];
@@ -524,18 +516,15 @@ export default function CourseRoom({ courseId }: { courseId: string }) {
     <div className="course-room">
       <header className="course-topbar">
         <button className="quiet" onClick={() => void leave()}>
-          <ArrowLeft size={16} />
-          返回学科
-        </button>
+          <ArrowLeft size={16} />{tr("study:返回学科")}</button>
         <div>
           <b>{course.title}</b>
           <span>
-            {completed} / {course.sections.length} 节已完成
-          </span>
+            {completed} / {course.sections.length}{tr("study:节已完成")}</span>
         </div>
         <button
           className="quiet"
-          aria-label="切换课程目录"
+          aria-label={tr("study:切换课程目录")}
           onClick={() => setNavOpen(!navOpen)}
         >
           {navOpen ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
@@ -550,9 +539,7 @@ export default function CourseRoom({ courseId }: { courseId: string }) {
                 .then(() => setError(''))
                 .catch(() => {})
             }
-          >
-            重试保存
-          </button>
+          >{tr("study:重试保存")}</button>
         </div>
       )}
       <div
@@ -560,17 +547,15 @@ export default function CourseRoom({ courseId }: { courseId: string }) {
       >
         {navOpen && (
           <aside className="course-directory">
-            <p>课程目录</p>
+            <p>{tr("study:课程目录")}</p>
             <label className="course-bookmark-filter">
               <input
                 type="checkbox"
                 checked={bookmarksOnly}
                 onChange={(e) => setBookmarksOnly(e.target.checked)}
-              />
-              只看书签
-            </label>
+              />{tr("study:只看书签")}</label>
             {bookmarksOnly && !course.sections.some((s) => s.bookmarked) && (
-              <p className="muted">尚未添加书签，可在小节顶部添加。</p>
+              <p className="muted">{tr("study:尚未添加书签，可在小节顶部添加。")}</p>
             )}
             <nav>
               {course.sections.map(
@@ -591,13 +576,13 @@ export default function CourseRoom({ courseId }: { courseId: string }) {
                       </span>
                       <div>
                         {s.title}
-                        {s.bookmarked && <small>已加入书签</small>}
+                        {s.bookmarked && <small>{tr("study:已加入书签")}</small>}
                         <small>
                           {s.completedAt
-                            ? '已完成'
+                            ? tr("study:已完成")
                             : s.content
-                              ? '可以学习'
-                              : '等待编制'}
+                              ? tr("common:可以学习")
+                              : tr("common:等待编制")}
                         </small>
                       </div>
                     </button>
@@ -606,9 +591,7 @@ export default function CourseRoom({ courseId }: { courseId: string }) {
             </nav>
             <details>
               <summary>
-                <FileText size={14} />
-                教材与笔记依据
-              </summary>
+                <FileText size={14} />{tr("study:教材与笔记依据")}</summary>
               <p>{course.sourceNames.join('、') || '直接输入的学习资料'}</p>
               <pre>{section?.source}</pre>
             </details>
@@ -617,9 +600,7 @@ export default function CourseRoom({ courseId }: { courseId: string }) {
                 className="secondary"
                 disabled={!aiReady || !!working}
                 onClick={() => void resume()}
-              >
-                继续编制剩余课程
-              </button>
+              >{tr("study:继续编制剩余课程")}</button>
             )}
             {working && (
               <p className="muted" role="status">
@@ -635,8 +616,8 @@ export default function CourseRoom({ courseId }: { courseId: string }) {
           {!content ? (
             <section className="lesson-wait">
               <BookOpen size={32} />
-              <h2>本节课件尚未编制</h2>
-              <p>已经完成的课件已保存在本地。继续编制时只处理缺少的章节。</p>
+              <h2>{tr("study:本节课件尚未编制")}</h2>
+              <p>{tr("study:已经完成的课件已保存在本地。继续编制时只处理缺少的章节。")}</p>
               {section?.error && (
                 <p role="alert">{courseErrorMessage(section.error)}</p>
               )}
@@ -715,19 +696,15 @@ export default function CourseRoom({ courseId }: { courseId: string }) {
                         '将此课件升级为自由布局的互动 HTML 教件。根据知识特点设计可操作的演示和解释动画，保留全部教材内容与练习衔接。',
                       );
                     }}
-                  >
-                    升级为互动课件
-                  </button>
+                  >{tr("study:升级为互动课件")}</button>
                   <div className="lesson-heading">
                     <p className="eyebrow">
-                      LESSON {String(course.current + 1).padStart(2, '0')} ·
-                      课程复习
-                    </p>
+                      LESSON {String(course.current + 1).padStart(2, '0')}{tr("study:· 课程复习")}</p>
                     <h1>
                       <MathText>{content.title}</MathText>
                     </h1>
                     <div className="lesson-objectives">
-                      <b>学习目标</b>
+                      <b>{tr("study:学习目标")}</b>
                       <ul>
                         {content.objectives.map((o, i) => (
                           <li key={i}>
@@ -739,7 +716,7 @@ export default function CourseRoom({ courseId }: { courseId: string }) {
                   </div>
                   {content.uncertainties.length > 0 && (
                     <details className="lesson-source-gap">
-                      <summary>需要核对的教材信息</summary>
+                      <summary>{tr("study:需要核对的教材信息")}</summary>
                       {content.uncertainties.map((s, i) => (
                         <p key={i}>
                           <MathText>{s}</MathText>
@@ -759,7 +736,7 @@ export default function CourseRoom({ courseId }: { courseId: string }) {
                         <MathText>{concept.explanation}</MathText>
                       </div>
                       <div className="lesson-why">
-                        <b>理解其原理</b>
+                        <b>{tr("study:理解其原理")}</b>
                         <p>
                           <MathText>{concept.why}</MathText>
                         </p>
@@ -770,7 +747,7 @@ export default function CourseRoom({ courseId }: { courseId: string }) {
                           <MathText>{concept.example.prompt}</MathText>
                         </h3>
                         <details>
-                          <summary>展开完整分析过程</summary>
+                          <summary>{tr("study:展开完整分析过程")}</summary>
                           <ol>
                             {concept.example.steps.map((s, j) => (
                               <li key={j}>
@@ -779,15 +756,13 @@ export default function CourseRoom({ courseId }: { courseId: string }) {
                             ))}
                           </ol>
                           <p className="lesson-conclusion">
-                            <b>结论</b>
+                            <b>{tr("study:结论")}</b>
                             <MathText>{concept.example.answer}</MathText>
                           </p>
                         </details>
                       </div>
                       <details className="lesson-misconception">
-                        <summary>
-                          辨析易错理解：
-                          <MathText>{concept.misconception}</MathText>
+                        <summary>{tr("study:辨析易错理解：")}<MathText>{concept.misconception}</MathText>
                         </summary>
                         <p>
                           <MathText>{concept.correction}</MathText>
@@ -845,10 +820,8 @@ export default function CourseRoom({ courseId }: { courseId: string }) {
                   ))}
                   <section className="lesson-recall">
                     <p className="eyebrow">RETRIEVAL</p>
-                    <h2>闭卷回顾</h2>
-                    <p className="muted">
-                      暂时离开讲解，尝试完整说明以下问题。需要时可以返回相关段落，或在课程答疑中请求进一步解释。
-                    </p>
+                    <h2>{tr("study:闭卷回顾")}</h2>
+                    <p className="muted">{tr("study:暂时离开讲解，尝试完整说明以下问题。需要时可以返回相关段落，或在课程答疑中请求进一步解释。")}</p>
                     <ol>
                       {content.recall.map((r, i) => (
                         <li key={i}>
@@ -858,24 +831,20 @@ export default function CourseRoom({ courseId }: { courseId: string }) {
                     </ol>
                   </section>
                   <details className="lesson-evidence">
-                    <summary>本节教材依据与版本</summary>
+                    <summary>{tr("study:本节教材依据与版本")}</summary>
                     {content.sourceQuotes.map((q, i) => (
                       <blockquote key={i}>
                         <MathText>{q}</MathText>
                       </blockquote>
                     ))}
-                    <p>
-                      第 {section!.revision} 版 · 原始资料与历史作答均保留。
-                    </p>
+                    <p>{tr("study:第")}{section!.revision}{tr("study:版 · 原始资料与历史作答均保留。")}</p>
                     {section!.history.length > 0 && (
                       <button
                         className="secondary"
                         disabled={!!working}
                         onClick={() => void undo()}
                       >
-                        <RotateCcw size={15} />
-                        恢复上一版本
-                      </button>
+                        <RotateCcw size={15} />{tr("study:恢复上一版本")}</button>
                     )}
                   </details>
                 </>
@@ -883,33 +852,28 @@ export default function CourseRoom({ courseId }: { courseId: string }) {
               <footer className="lesson-footer">
                 <div>
                   {content.format === 'free-html' ? (
-                    <b>完成互动学习后，进入巩固练习</b>
+                    <b>{tr("study:完成互动学习后，进入巩固练习")}</b>
                   ) : (
                     <b>
                       {
                         checks.filter((q) => section!.passed.includes(q.id))
                           .length
                       }{' '}
-                      / {checks.length} 项理解检验已通过
-                    </b>
+                      / {checks.length}{tr("study:项理解检验已通过")}</b>
                   )}
-                  <p>完成本节后继续下一节；课程结束后进入巩固练习。</p>
+                  <p>{tr("study:完成本节后继续下一节；课程结束后进入巩固练习。")}</p>
                   {practiceRequested && (
-                    <p role="status">课件已就绪，请点击右侧按钮确认完成。</p>
+                    <p role="status">{tr("study:课件已就绪，请点击右侧按钮确认完成。")}</p>
                   )}
                   {needsPracticeImport && (
-                    <p role="status">
-                      该课程暂无已核验巩固题。可先导入课程题目，稍后从学习计划继续。
-                    </p>
+                    <p role="status">{tr("study:该课程暂无已核验巩固题。可先导入课程题目，稍后从学习计划继续。")}</p>
                   )}
                 </div>
                 {needsPracticeImport && (
                   <button
                     className="secondary"
                     onClick={() => navigate('library')}
-                  >
-                    导入课程巩固题
-                  </button>
+                  >{tr("study:导入课程巩固题")}</button>
                 )}
                 <button
                   className="primary"
@@ -920,8 +884,8 @@ export default function CourseRoom({ courseId }: { courseId: string }) {
                   onClick={() => void complete()}
                 >
                   {course.current === course.sections.length - 1
-                    ? '完成课程并练习'
-                    : '完成本节并继续'}
+                    ? tr("study:完成课程并练习")
+                    : tr("study:完成本节并继续")}
                   <ArrowRight size={16} />
                 </button>
               </footer>
@@ -931,17 +895,17 @@ export default function CourseRoom({ courseId }: { courseId: string }) {
       </div>
       <button className="course-chat-launcher" onClick={ask}>
         <MessageSquare size={20} />
-        <span>课程答疑</span>
+        <span>{tr("study:课程答疑")}</span>
       </button>
       {chatOpen && (
-        <aside className="course-chat" aria-label="课程答疑">
+        <aside className="course-chat" aria-label={tr("study:课程答疑")}>
           <header>
             <div>
-              <b>课程答疑</b>
+              <b>{tr("study:课程答疑")}</b>
               <span>{content?.title ?? section?.title}</span>
             </div>
             <button
-              aria-label="关闭课程答疑"
+              aria-label={tr("study:关闭课程答疑")}
               onClick={() => setChatOpen(false)}
             >
               <X size={18} />
@@ -950,23 +914,21 @@ export default function CourseRoom({ courseId }: { courseId: string }) {
           <div className="course-chat-messages">
             {selection && (
               <div className="course-chat-selection">
-                <b>选中的内容</b>
+                <b>{tr("study:选中的内容")}</b>
                 <p>
                   <MathText>{selection}</MathText>
                 </p>
-                <button onClick={() => setSelection('')}>取消引用</button>
+                <button onClick={() => setSelection('')}>{tr("study:取消引用")}</button>
               </div>
             )}
             {!course.chat.some((m) => m.sectionId === section?.id) && (
-              <p className="muted">
-                可以引用页面中的一段内容，要求解释原理、补充例题或调整当前课件。修改将先显示预览。
-              </p>
+              <p className="muted">{tr("study:可以引用页面中的一段内容，要求解释原理、补充例题或调整当前课件。修改将先显示预览。")}</p>
             )}
             {course.chat
               .filter((m) => m.sectionId === section?.id)
               .map((m, i) => (
                 <article key={i} className={m.role}>
-                  <small>{m.role === 'user' ? '提问' : '解释'}</small>
+                  <small>{m.role === 'user' ? tr("study:提问") : tr("study:解释")}</small>
                   <p>
                     <MathText>{m.text}</MathText>
                   </p>
@@ -982,19 +944,17 @@ export default function CourseRoom({ courseId }: { courseId: string }) {
                           body: m.text,
                           updatedAt: new Date().toISOString(),
                         }).then(() => {
-                          notify('答疑内容已加入学科笔记');
+                          notify(tr("study:答疑内容已加入学科笔记"));
                           return refresh();
                         })
                       }
-                    >
-                      保存至笔记
-                    </button>
+                    >{tr("study:保存至笔记")}</button>
                   )}
                 </article>
               ))}
             {proposal && (
               <section className="course-edit-preview">
-                <b>课件修改预览</b>
+                <b>{tr("study:课件修改预览")}</b>
                 <h3>{proposal.content.title}</h3>
                 <ul>
                   {proposal.content.objectives.map((o, i) => (
@@ -1005,7 +965,7 @@ export default function CourseRoom({ courseId }: { courseId: string }) {
                   <HtmlCourse
                     html={proposal.content.html}
                     freeForm={proposal.content.format === 'free-html'}
-                    title="修改预览"
+                    title={tr("study:修改预览")}
                     checks={courseQuestions(
                       course,
                       {
@@ -1031,19 +991,13 @@ export default function CourseRoom({ courseId }: { courseId: string }) {
                     </p>
                   </details>
                 ))}
-                <p className="muted">
-                  应用后保留上一版本，并重新开放本节理解检验。此前的学习记录不变。
-                </p>
+                <p className="muted">{tr("study:应用后保留上一版本，并重新开放本节理解检验。此前的学习记录不变。")}</p>
                 <div className="button-row">
-                  <button className="primary" onClick={() => void apply()}>
-                    应用修改
-                  </button>
+                  <button className="primary" onClick={() => void apply()}>{tr("study:应用修改")}</button>
                   <button
                     className="secondary"
                     onClick={() => setProposal(null)}
-                  >
-                    取消
-                  </button>
+                  >{tr("study:取消")}</button>
                 </div>
               </section>
             )}
@@ -1061,12 +1015,12 @@ export default function CourseRoom({ courseId }: { courseId: string }) {
             }}
           >
             <textarea
-              aria-label="课程答疑问题"
+              aria-label={tr("study:课程答疑问题")}
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               maxLength={2500}
               rows={3}
-              placeholder="说明需要解释或修改的内容"
+              placeholder={tr("study:说明需要解释或修改的内容")}
             />
             <div>
               <button
@@ -1074,17 +1028,13 @@ export default function CourseRoom({ courseId }: { courseId: string }) {
                 className="quiet"
                 disabled={!message.trim() || !!working || !content || !aiReady}
                 onClick={() => void send('revise')}
-              >
-                修改当前课件
-              </button>
+              >{tr("study:修改当前课件")}</button>
               <button
                 type="submit"
                 className="primary"
                 disabled={!message.trim() || !!working || !content || !aiReady}
               >
-                <Send size={15} />
-                发送
-              </button>
+                <Send size={15} />{tr("study:发送")}</button>
             </div>
           </form>
         </aside>

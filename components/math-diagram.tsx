@@ -1,4 +1,5 @@
 'use client';
+import {tr} from '@/lib/i18n';
 import {useEffect,useId,useRef,useState} from 'react';
 import type {Board} from 'jsxgraph';
 import {semanticDiagramSchema} from '@/lib/diagram-spec';
@@ -110,9 +111,9 @@ export default function MathDiagram({spec,stage='question'}:{spec:MathSpec;stage
   return ()=>{cancelled=true;dispose?.();};
  },[signature,stage,uid,retry,figureWidth]);
  return <figure className="diagram publication-diagram" style={{maxWidth:figureWidth}} data-diagram-kind={spec.kind} aria-busy={status==='loading'}>
-  {status==='loading'&&<div className="diagram-loading" role="status" aria-live="polite"><span className="diagram-spinner" aria-hidden="true"/><span>题图加载中…</span><small>首次使用需要加载绘图工具</small></div>}
-  {status==='error'&&<div className="diagram-error" role="alert"><p>图形未显示：{error}。请保留原图或检查图形条件。</p><button type="button" className="diagram-export" onClick={()=>setRetry(n=>n+1)}>重试加载</button></div>}
+  {status==='loading'&&<div className="diagram-loading" role="status" aria-live="polite"><span className="diagram-spinner" aria-hidden="true"/><span>{tr("common:题图加载中…")}</span><small>{tr("common:首次使用需要加载绘图工具")}</small></div>}
+  {status==='error'&&<div className="diagram-error" role="alert"><p>{tr("common:图形未显示：")}{error}{tr("common:。请保留原图或检查图形条件。")}</p><button type="button" className="diagram-export" onClick={()=>setRetry(n=>n+1)}>{tr("common:重试加载")}</button></div>}
   <div ref={host} id={'math-'+uid} className="publication-board" style={{aspectRatio:figureWidth+'/380'}} hidden={status==='error'}/>
-  <figcaption><span>{spec.caption}</span><button type="button" disabled={status!=='ready'} className="diagram-export" onClick={()=>{const svg=host.current?.querySelector('svg');if(svg)downloadDiagram(svg,'Reviewbox-'+spec.kind+'-'+stage);}}>导出 SVG</button></figcaption>
+  <figcaption><span>{spec.caption}</span><button type="button" disabled={status!=='ready'} className="diagram-export" onClick={()=>{const svg=host.current?.querySelector('svg');if(svg)downloadDiagram(svg,'Reviewbox-'+spec.kind+'-'+stage);}}>{tr("common:导出 SVG")}</button></figcaption>
  </figure>;
 }

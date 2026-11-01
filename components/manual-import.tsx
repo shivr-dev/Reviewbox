@@ -1,4 +1,5 @@
 'use client';
+import {tr} from '@/lib/i18n';
 import { useRef, useState } from 'react';
 import {
   Dialog,
@@ -44,9 +45,7 @@ export default function ManualImport({
           origin.current = currentNamespace();
           setOpen(true);
         }}
-      >
-        手动导入题目
-      </button>
+      >{tr("library:手动导入题目")}</button>
       <Dialog
         open={open}
         onOpenChange={(v) => {
@@ -54,17 +53,12 @@ export default function ManualImport({
         }}
       >
         <DialogContent className="import-dialog manual-question-dialog">
-          <DialogTitle>手动导入题目</DialogTitle>
-          <DialogDescription>
-            选择学科与题型，填写或粘贴普通文字，预览后保存。全程不调用
-            AI，也不要求编写 JSON。
-          </DialogDescription>
+          <DialogTitle>{tr("library:手动导入题目")}</DialogTitle>
+          <DialogDescription>{tr("library:选择学科与题型，填写或粘贴普通文字，预览后保存。全程不调用 AI，也不要求编写 JSON。")}</DialogDescription>
           {!preview ? (
             <>
               <div className="exam-form-grid">
-                <label>
-                  学科
-                  <select
+                <label>{tr("library:学科")}<select
                     value={subject}
                     onChange={(e) => {
                       const s = e.target.value as Subject;
@@ -75,14 +69,12 @@ export default function ManualImport({
                   >
                     {SUBJECTS.map((s) => (
                       <option key={s.id} value={s.id}>
-                        {s.name}
+                        {tr('subjects:'+s.name)}
                       </option>
                     ))}
                   </select>
                 </label>
-                <label>
-                  题型
-                  <select
+                <label>{tr("library:题型")}<select
                     value={preset}
                     onChange={(e) => {
                       setPreset(e.target.value);
@@ -98,21 +90,21 @@ export default function ManualImport({
                 </label>
               </div>
               <label>
-                {preset === 'pinyin' ? '字词篇目名称' : '知识点或篇目名称'}
+                {preset === 'pinyin' ? tr("library:字词篇目名称") : tr("library:知识点或篇目名称")}
                 <input
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder={preset === 'pinyin' ? '例如：藤野先生字词' : '例如：二次函数顶点、静夜思'}
+                  placeholder={preset === 'pinyin' ? tr("library:例如：藤野先生字词") : tr("library:例如：二次函数顶点、静夜思")}
                   maxLength={200}
                 />
               </label>
               <p className="muted">
                 {preset === 'pinyin'
-                  ? '每行一道，格式为：拼音｜汉字。篇目是字词集合，每个字词单独记录掌握度；练整篇时会覆盖全部字词。揭晓后手动判断，无需输入汉字。'
-                  : '使用下方示例的字段格式。多道题之间单独一行填写 ---；原文和答案均可换行。'}
+                  ? tr("library:每行一道，格式为：拼音｜汉字。篇目是字词集合，每个字词单独记录掌握度；练整篇时会覆盖全部字词。揭晓后手动判断，无需输入汉字。")
+                  : tr("library:使用下方示例的字段格式。多道题之间单独一行填写 ---；原文和答案均可换行。")}
               </p>
               <details className="manual-format-help" open>
-                <summary>查看当前题型格式</summary>
+                <summary>{tr("library:查看当前题型格式")}</summary>
                 <pre>{manualExample(preset, subject)}</pre>
                 <button
                   className="quiet"
@@ -125,13 +117,9 @@ export default function ManualImport({
                         : manualExample(preset, subject),
                     );
                   }}
-                >
-                  将示例加入编辑框
-                </button>
+                >{tr("library:将示例加入编辑框")}</button>
               </details>
-              <label>
-                题目内容
-                <textarea
+              <label>{tr("library:题目内容")}<textarea
                   rows={9}
                   value={text}
                   onChange={(e) => setText(e.target.value)}
@@ -139,9 +127,7 @@ export default function ManualImport({
                   placeholder={manualExample(preset, subject)}
                 />
               </label>
-              <label className="muted">
-                也可读取按以上格式填写的文本文件
-                <input
+              <label className="muted">{tr("library:也可读取按以上格式填写的文本文件")}<input
                   type="file"
                   accept=".txt,.md,.tsv"
                   onChange={async (e) => {
@@ -149,7 +135,7 @@ export default function ManualImport({
                     e.target.value = '';
                     if (!file) return;
                     if (file.size > 1500000) {
-                      setError('文本文件最多 1.5 MB。');
+                      setError(tr("library:文本文件最多 1.5 MB。"));
                       return;
                     }
                     setText(await file.text());
@@ -167,15 +153,12 @@ export default function ManualImport({
                     setError(e instanceof Error ? e.message : '内容格式不正确');
                   }
                 }}
-              >
-                预览导入内容
-              </button>
+              >{tr("library:预览导入内容")}</button>
             </>
           ) : (
             <>
               <h3>
-                {preview.title} · {preview.questions.length} 道题
-              </h3>
+                {preview.title} · {preview.questions.length}{tr("library:道题")}</h3>
               <div className="import-preview">
                 {preview.questions.map((q, i) => (
                   <article key={q.id}>
@@ -192,9 +175,7 @@ export default function ManualImport({
                         {String.fromCharCode(65 + j)}. <MathText>{o}</MathText>
                       </p>
                     ))}
-                    <p>
-                      答案：
-                      <MathText>
+                    <p>{tr("library:答案：")}<MathText>
                         {q.matching
                           ? q.matching.left
                               .map(
@@ -218,9 +199,7 @@ export default function ManualImport({
                   className="secondary"
                   disabled={busy}
                   onClick={() => setPreview(null)}
-                >
-                  返回修改
-                </button>
+                >{tr("library:返回修改")}</button>
                 <button
                   className="primary"
                   disabled={busy}
@@ -256,7 +235,7 @@ export default function ManualImport({
                       setText('');
                       setOpen(false);
                       await refresh();
-                      notify('手动导入完成，可在本学科练习和题目库中查看。');
+                      notify(tr("library:手动导入完成，可在本学科练习和题目库中查看。"));
                     } catch (e) {
                       setError(
                         e instanceof Error ? e.message : '保存失败，内容已保留',
@@ -267,7 +246,7 @@ export default function ManualImport({
                     }
                   }}
                 >
-                  {busy ? '正在保存…' : '确认导入'}
+                  {busy ? tr("library:正在保存…") : tr("library:确认导入")}
                 </button>
               </div>
             </>

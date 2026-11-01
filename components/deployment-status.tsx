@@ -1,4 +1,5 @@
 'use client';
+import {tr} from '@/lib/i18n';
 import { useEffect, useState } from 'react';
 import { assetPath } from '@/lib/runtime';
 
@@ -45,12 +46,12 @@ export default function DeploymentStatus() {
     <section className="pages-deploy-card">
       {waiting && <div className="pages-deploy-spinner" aria-hidden="true" />}
       <p className="eyebrow">REVIEWBOX UPDATE</p>
-      <h2>{waiting ? '请稍等' : '本次更新未完成'}</h2>
-      <p>{notice.state === 'building' ? '新版本正在构建和发布。完成后页面会自动更新。' : notice.state === 'publishing' ? '构建已完成，正在等待网页文件生效。' : '你仍可使用当前版本；请稍后检查 GitHub Actions。'}</p>
+      <h2>{waiting ? tr("common:请稍等") : tr("common:本次更新未完成")}</h2>
+      <p>{notice.state === 'building' ? tr("common:新版本正在构建和发布。完成后页面会自动更新。") : notice.state === 'publishing' ? tr("common:构建已完成，正在等待网页文件生效。") : tr("common:你仍可使用当前版本；请稍后检查 GitHub Actions。")}</p>
       <button onClick={() => {
         sessionStorage.setItem('review-dismissed-run', String(notice.runId));
         setNotice(null);
-      }}>{waiting ? '继续使用当前版本' : '关闭提示'}</button>
+      }}>{waiting ? tr("common:继续使用当前版本") : tr("common:关闭提示")}</button>
     </section>
   </div>;
 }

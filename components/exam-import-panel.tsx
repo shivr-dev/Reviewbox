@@ -1,4 +1,5 @@
 'use client';
+import {tr} from '@/lib/i18n';
 import { useRef, useState } from 'react';
 import ImportTemplates from './import-templates';
 import { useReview } from './review-context';
@@ -79,11 +80,11 @@ export default function ExamImportPanel({
       .map((s) => s.trim())
       .filter(Boolean);
     if (!prompt.trim() || !answer.trim() || !explanation.trim()) {
-      setError('请填写题干、答案和解析。');
+      setError(tr("library:请填写题干、答案和解析。"));
       return;
     }
-    let native:any={};if(exam==='DET'){try{native=JSON.parse(detFields);if(!native||Array.isArray(native)||typeof native!=='object')throw Error();}catch{setError('扩展字段需要有效的 JSON 对象。');return;}}
-    let detAnswer:any=answer;if(exam==='DET'&&/^\s*\[/.test(answer)){try{detAnswer=JSON.parse(answer);}catch{setError('多空答案需要有效的 JSON 数组。');return;}}
+    let native:any={};if(exam==='DET'){try{native=JSON.parse(detFields);if(!native||Array.isArray(native)||typeof native!=='object')throw Error();}catch{setError(tr("library:扩展字段需要有效的 JSON 对象。"));return;}}
+    let detAnswer:any=answer;if(exam==='DET'&&/^\s*\[/.test(answer)){try{detAnswer=JSON.parse(answer);}catch{setError(tr("library:多空答案需要有效的 JSON 数组。"));return;}}
     setItems([
       ...items,
       {
@@ -172,38 +173,29 @@ export default function ExamImportPanel({
   }
   return (
     <details className="exam-import panel">
-      <summary>导入试卷 · 手动 / 智能识别</summary>
-      <p className="muted">
-        支持 JSON、带音频的试卷 ZIP
-        或编号选择题文本。先检查内容，再保存为私人试卷；不会调用 AI 重新生成。
-      </p>
+      <summary>{tr("library:导入试卷 · 手动 / 智能识别")}</summary>
+      <p className="muted">{tr("library:支持 JSON、带音频的试卷 ZIP 或编号选择题文本。先检查内容，再保存为私人试卷；不会调用 AI 重新生成。")}</p>
       <div className="button-row">
         <button
           className={mode === 'smart' ? 'primary' : 'secondary'}
           onClick={() => setMode('smart')}
-        >
-          智能导入
-        </button>
+        >{tr("library:智能导入")}</button>
         <button
           className={mode === 'manual' ? 'primary' : 'secondary'}
           onClick={() => setMode('manual')}
-        >
-          手动录入
-        </button>
+        >{tr("library:手动录入")}</button>
         <button
           className="quiet"
           onClick={async () => {
             try {
               await navigator.clipboard.writeText(EXAM_IMPORT_SKILL);
-              notify('考试包出题 Skill 已复制');
+              notify(tr("library:考试包出题 Skill 已复制"));
             } catch {
               setSource(EXAM_IMPORT_SKILL);
-              setError('剪贴板不可用，请在文本框中手动复制。');
+              setError(tr("library:剪贴板不可用，请在文本框中手动复制。"));
             }
           }}
-        >
-          复制考试包 Skill
-        </button>
+        >{tr("library:复制考试包 Skill")}</button>
       </div>
       {mode === 'smart' ? (
         <>
@@ -215,9 +207,7 @@ export default function ExamImportPanel({
             grade={grade}
             onUse={setSource}
           />
-          <label className="field">
-            试卷文件
-            <input
+          <label className="field">{tr("library:试卷文件")}<input
               type="file"
               accept=".json,.zip"
               disabled={busy}
@@ -228,14 +218,12 @@ export default function ExamImportPanel({
               }}
             />
           </label>
-          <label className="field">
-            粘贴完整试卷或题目
-            <textarea
+          <label className="field">{tr("library:粘贴完整试卷或题目")}<textarea
               rows={8}
               value={source}
               onChange={(e) => setSource(e.target.value)}
               placeholder={
-                '1. Question\nA. First choice\nB. Second choice\n答案：A\n解析：Explanation'
+                tr("library:1. Question\nA. First choice\nB. Second choice\n答案：A\n解析：Explanation")
               }
             />
           </label>
@@ -245,20 +233,14 @@ export default function ExamImportPanel({
             onClick={() =>
               void inspect(() => smartExamText(source, exam, mapSection, grade))
             }
-          >
-            识别并预览
-          </button>
+          >{tr("library:识别并预览")}</button>
         </>
       ) : (
         <>
           <div className="exam-form-grid">
-            <label className="field">
-              试卷名称
-              <input value={title} onChange={(e) => setTitle(e.target.value)} />
+            <label className="field">{tr("library:试卷名称")}<input value={title} onChange={(e) => setTitle(e.target.value)} />
             </label>
-            <label className="field">
-              当前部分
-              <select
+            <label className="field">{tr("library:当前部分")}<select
                 value={section}
                 onChange={(e) => setSection(e.target.value)}
               >
@@ -275,9 +257,7 @@ export default function ExamImportPanel({
               </select>
             </label>
             {exam !== 'MAP' && (
-              <label className="field">
-                时间（分钟）
-                <input
+              <label className="field">{tr("library:时间（分钟）")}<input
                   type="number"
                   min={1}
                   max={240}
@@ -288,17 +268,15 @@ export default function ExamImportPanel({
             )}
           </div>
           {exam==='DET'&&<div className="exam-form-grid">
-            <label className="field">Duolingo 题型<select value={detType} onChange={e=>{const t=e.target.value,v=DET_TEMPLATES[t];setDetType(t);setDetFields(JSON.stringify(v.native??{},null,2));setDetWord(v.word??'');setDetAudio(v.audioText??'');setPrompt(v.prompt??'Complete the task.');setPassage(v.passage??'');setOptions(v.choices?.join('\n')??'');setAnswer(Array.isArray(v.answer)?JSON.stringify(v.answer):v.answer??v.choices?.[v.correct]??'');setExplanation(v.explanation??'');}}>{Object.entries(DET_TASKS).map(([type,spec])=><option value={type} key={type}>{spec.route}</option>)}</select></label>
-            <label className="field">单词（Read and Select）<input value={detWord} onChange={e=>setDetWord(e.target.value)}/></label>
-            <label className="field">朗读文本<textarea value={detAudio} onChange={e=>setDetAudio(e.target.value)}/></label>
-            <label className="field">图片（图片写作 / 口语）<input type="file" accept="image/png,image/jpeg,image/webp" onChange={e=>{const f=e.target.files?.[0];if(!f)return;if(f.size>1300000){setError('请选择小于 1.3 MB 的图片。');return;}const reader=new FileReader();reader.onload=()=>{let n:any;try{n=JSON.parse(detFields);}catch{n={};}setDetFields(JSON.stringify({...n,image:reader.result,imageAlt:f.name},null,2));};reader.readAsDataURL(f);}}/></label>
-            <label className="field">扩展字段（可从题型模板填写）<textarea rows={5} value={detFields} onChange={e=>setDetFields(e.target.value)}/><small>例如补词需要 before、prefix、missingLength、after；多空答案填 JSON 数组。可先载入格式模板后编辑。</small></label>
+            <label className="field">{tr("library:Duolingo 题型")}<select value={detType} onChange={e=>{const t=e.target.value,v=DET_TEMPLATES[t];setDetType(t);setDetFields(JSON.stringify(v.native??{},null,2));setDetWord(v.word??'');setDetAudio(v.audioText??'');setPrompt(v.prompt??'Complete the task.');setPassage(v.passage??'');setOptions(v.choices?.join('\n')??'');setAnswer(Array.isArray(v.answer)?JSON.stringify(v.answer):v.answer??v.choices?.[v.correct]??'');setExplanation(v.explanation??'');}}>{Object.entries(DET_TASKS).map(([type,spec])=><option value={type} key={type}>{spec.route}</option>)}</select></label>
+            <label className="field">{tr("library:单词（Read and Select）")}<input value={detWord} onChange={e=>setDetWord(e.target.value)}/></label>
+            <label className="field">{tr("library:朗读文本")}<textarea value={detAudio} onChange={e=>setDetAudio(e.target.value)}/></label>
+            <label className="field">{tr("library:图片（图片写作 / 口语）")}<input type="file" accept="image/png,image/jpeg,image/webp" onChange={e=>{const f=e.target.files?.[0];if(!f)return;if(f.size>1300000){setError(tr("library:请选择小于 1.3 MB 的图片。"));return;}const reader=new FileReader();reader.onload=()=>{let n:any;try{n=JSON.parse(detFields);}catch{n={};}setDetFields(JSON.stringify({...n,image:reader.result,imageAlt:f.name},null,2));};reader.readAsDataURL(f);}}/></label>
+            <label className="field">{tr("library:扩展字段（可从题型模板填写）")}<textarea rows={5} value={detFields} onChange={e=>setDetFields(e.target.value)}/><small>{tr("library:例如补词需要 before、prefix、missingLength、after；多空答案填 JSON 数组。可先载入格式模板后编辑。")}</small></label>
           </div>}
           {exam === 'MAP' && (
             <div className="exam-form-grid">
-              <label className="field">
-                题型
-                <select
+              <label className="field">{tr("library:题型")}<select
                   value={mapType}
                   onChange={(e) => setMapType(e.target.value)}
                 >
@@ -309,43 +287,37 @@ export default function ExamImportPanel({
                   ))}
                 </select>
               </label>
-              <label className="field">
-                具体能力
-                <input
+              <label className="field">{tr("library:具体能力")}<input
                   value={skill}
                   onChange={(e) => setSkill(e.target.value)}
-                  placeholder="例如：Pronoun agreement"
+                  placeholder={tr("library:例如：Pronoun agreement")}
                 />
               </label>
             </div>
           )}
           <p className="muted">
             {exam === 'MAP'
-              ? '多选答案每行一项；拖放原文用 {{1}}、{{2}} 标空，答案按空格顺序每行一项；选词纠错在原文中用 [word] 标记可选词，选项栏填写这些词。'
-              : '表单适合选择题和写作。补词、组句、听力音频与口语请使用试卷文件导入，格式可从上方 Skill 复制。'}
+              ? tr("library:多选答案每行一项；拖放原文用 {{1}}、{{2}} 标空，答案按空格顺序每行一项；选词纠错在原文中用 [word] 标记可选词，选项栏填写这些词。")
+              : tr("library:表单适合选择题和写作。补词、组句、听力音频与口语请使用试卷文件导入，格式可从上方 Skill 复制。")}
           </p>
           {exam==='MAP'&&mapType==='gap_match'&&<>
-            <label className="field"><span><input type="checkbox" checked={tableLayout} onChange={e=>setTableLayout(e.target.checked)}/> 使用词义拖放表格</span></label>
-            {tableLayout&&<label className="field">原文中的目标词<input value={mapWord} onChange={e=>setMapWord(e.target.value)}/><small>填写完整原文，不需要标空；词库填备选词义，答案填一项。</small></label>}
+            <label className="field"><span><input type="checkbox" checked={tableLayout} onChange={e=>setTableLayout(e.target.checked)}/>{tr("library:使用词义拖放表格")}</span></label>
+            {tableLayout&&<label className="field">{tr("library:原文中的目标词")}<input value={mapWord} onChange={e=>setMapWord(e.target.value)}/><small>{tr("library:填写完整原文，不需要标空；词库填备选词义，答案填一项。")}</small></label>}
           </>}
-          <label className="field">
-            共享材料
-            <textarea
+          <label className="field">{tr("library:共享材料")}<textarea
               value={passage}
               onChange={(e) => setPassage(e.target.value)}
             />
           </label>
-          <label className="field">
-            题干
-            <textarea
+          <label className="field">{tr("library:题干")}<textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
             />
           </label>
           <label className="field">
             {exam === 'MAP'
-              ? '选项 / 词库 / 可选词（每行一项）'
-              : '选项（每行一个；写作留空）'}
+              ? tr("library:选项 / 词库 / 可选词（每行一项）")
+              : tr("library:选项（每行一个；写作留空）")}
             <textarea
               value={options}
               onChange={(e) => setOptions(e.target.value)}
@@ -353,23 +325,17 @@ export default function ExamImportPanel({
           </label>
           {exam === 'MAP' && mapType === 'two_part' && (
             <>
-              <label className="field">
-                Part B 题干
-                <textarea
+              <label className="field">{tr("library:Part B 题干")}<textarea
                   value={partB}
                   onChange={(e) => setPartB(e.target.value)}
                 />
               </label>
-              <label className="field">
-                Part B 选项（每行一项）
-                <textarea
+              <label className="field">{tr("library:Part B 选项（每行一项）")}<textarea
                   value={partBOptions}
                   onChange={(e) => setPartBOptions(e.target.value)}
                 />
               </label>
-              <label className="field">
-                Part B 完整正确选项
-                <input
+              <label className="field">{tr("library:Part B 完整正确选项")}<input
                   value={partBAnswer}
                   onChange={(e) => setPartBAnswer(e.target.value)}
                 />
@@ -377,31 +343,24 @@ export default function ExamImportPanel({
             </>
           )}
           {exam === 'MAP' && mapType === 'hot_text' && (
-            <label className="field">
-              正确替换词（需要学生输入修正时填写）
-              <input
+            <label className="field">{tr("library:正确替换词（需要学生输入修正时填写）")}<input
                 value={correction}
                 onChange={(e) => setCorrection(e.target.value)}
               />
             </label>
           )}
-          <label className="field">
-            完整正确选项 / 参考答案
-            <textarea
+          <label className="field">{tr("library:完整正确选项 / 参考答案")}<textarea
               value={answer}
               onChange={(e) => setAnswer(e.target.value)}
             />
           </label>
-          <label className="field">
-            解析
-            <textarea
+          <label className="field">{tr("library:解析")}<textarea
               value={explanation}
               onChange={(e) => setExplanation(e.target.value)}
             />
           </label>
           <div className="button-row">
-            <button className="secondary" onClick={addQuestion}>
-              加入当前部分（{items.length}）
+            <button className="secondary" onClick={addQuestion}>{tr("library:加入当前部分（")}{items.length}）
             </button>
             {exam !== 'MAP' && (
               <button
@@ -412,9 +371,7 @@ export default function ExamImportPanel({
                   setItems([]);
                   setPassage('');
                 }}
-              >
-                完成此部分
-              </button>
+              >{tr("library:完成此部分")}</button>
             )}
             <button
               className="primary"
@@ -436,13 +393,9 @@ export default function ExamImportPanel({
                   });
                 })
               }
-            >
-              预览整卷
-            </button>
+            >{tr("library:预览整卷")}</button>
           </div>
-          <p className="muted">
-            已完成 {sections.length} 个部分；当前部分 {items.length} 题。
-          </p>
+          <p className="muted">{tr("library:已完成")}{sections.length}{tr("library:个部分；当前部分")}{items.length}{tr("library:题。")}</p>
         </>
       )}
       {error && (
@@ -450,14 +403,12 @@ export default function ExamImportPanel({
           {error}
         </p>
       )}
-      {busy && <p role="status">正在检查试卷…</p>}
+      {busy && <p role="status">{tr("library:正在检查试卷…")}</p>}
       {preview && (
         <div className="paper-progress">
           <h3>{preview.paper.title}</h3>
           <p>
-            {preview.paper.exam} · {preview.paper.options.stages?.length} 个部分
-            · {preview.questions.length} 页题目
-          </p>
+            {preview.paper.exam} · {preview.paper.options.stages?.length}{tr("library:个部分 ·")}{preview.questions.length}{tr("library:页题目")}</p>
           {preview.warnings.map((w) => (
             <p key={w} className="muted">
               {w}
@@ -473,16 +424,14 @@ export default function ExamImportPanel({
                 await refresh();
                 onImported(preview.paper);
                 setPreview(null);
-                notify('私人试卷已保存，可以直接开始。');
+                notify(tr("library:私人试卷已保存，可以直接开始。"));
               } catch (e) {
                 setError(e instanceof Error ? e.message : '保存失败');
               } finally {
                 setBusy(false);
               }
             }}
-          >
-            保存试卷
-          </button>
+          >{tr("library:保存试卷")}</button>
         </div>
       )}
     </details>

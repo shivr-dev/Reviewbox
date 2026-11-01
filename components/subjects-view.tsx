@@ -1,4 +1,5 @@
 'use client';
+import {tr} from '@/lib/i18n';
 import SubjectIcon from './subject-icon';
 import ManualImport from './manual-import';
 import {
@@ -45,7 +46,7 @@ import {
   transferTarget,
 } from '@/lib/learning-intelligence';
 import PressureLab from './pressure-lab';
-import { reactions } from '@/lib/seed';
+import { reactions } from '@/lib/chemistry-reactions';
 import {
   Choice,
   Empty,
@@ -135,11 +136,11 @@ export default function SubjectsView() {
       data.questions.find((q) => q.subject === s?.id);
     const n = data.nodes.find((n) => n.id === q?.nodeId);
     if (!q || !n) {
-      notify('先完成一道练习，再进行迁移挑战');
+      notify(tr("subjects:先完成一道练习，再进行迁移挑战"));
       return;
     }
     if (!aiReady) {
-      notify('暂无已核验迁移题，连接学习服务后可准备新题');
+      notify(tr("subjects:暂无已核验迁移题，连接学习服务后可准备新题"));
       return;
     }
     const target = transferTarget(data, q);
@@ -180,7 +181,7 @@ export default function SubjectsView() {
         ? nodes.filter((n) => scope.includes(n.id))
         : nodes.slice();
     if (!eligible.length) {
-      notify('请先选择测试范围');
+      notify(tr("subjects:请先选择测试范围"));
       return;
     }
     try {
@@ -241,8 +242,8 @@ export default function SubjectsView() {
       <>
         <Heading
           eyebrow="YOUR SUBJECTS"
-          title="八门学科，一张知识地图。"
-          description="从章节走向知识点，再找到具体需要练习的能力。"
+          title={tr("subjects:八门学科，一张知识地图。")}
+          description={tr("subjects:从章节走向知识点，再找到具体需要练习的能力。")}
         />
         <div className="subject-large-grid">
           {SUBJECTS.map((s, i) => {
@@ -262,8 +263,8 @@ export default function SubjectsView() {
                   </span>
                   <ArrowUpRight size={17} />
                 </div>
-                <h2>{s.name}</h2>
-                <p className="muted">{s.course}</p>
+                <h2>{tr('subjects:'+s.name)}</h2>
+                <p className="muted">{tr('subjects:'+s.course)}</p>
                 <Meter
                   value={
                     assessed.length
@@ -278,11 +279,9 @@ export default function SubjectsView() {
                   )}
                 />
                 <div className="subject-large-bottom">
-                  <span>{ns.length} 个知识点</span>
+                  <span>{ns.length}{tr("subjects:个知识点")}</span>
                   <span>
-                    {data.questions.filter((q) => q.subject === s.id).length}{' '}
-                    道练习
-                  </span>
+                    {data.questions.filter((q) => q.subject === s.id).length}{' '}{tr("subjects:道练习")}</span>
                 </div>
               </button>
             );
@@ -298,7 +297,7 @@ export default function SubjectsView() {
     <>
       <Heading
         eyebrow={s.en.toUpperCase()}
-        title={s.name}
+        title={tr('subjects:'+s.name)}
         description={s.course + ' · 课程、练习与能力评估'}
         action={
           <div className="button-row">
@@ -307,26 +306,24 @@ export default function SubjectsView() {
               className="primary"
               disabled={!queue.length}
               onClick={() => start(queue)}
-            >
-              开始专项练习
-              <ArrowRight size={16} />
+            >{tr("subjects:开始专项练习")}<ArrowRight size={16} />
             </button>
           </div>
         }
       />
       <div className="subject-stat-row">
         <div>
-          <span>知识点</span>
+          <span>{tr("subjects:知识点")}</span>
           <strong>{nodes.length}</strong>
         </div>
         <div>
-          <span>已评估</span>
+          <span>{tr("subjects:已评估")}</span>
           <strong>
             {nodes.filter((n) => nodeMastery(n, states) !== null).length}
           </strong>
         </div>
         <div>
-          <span>薄弱能力</span>
+          <span>{tr("subjects:薄弱能力")}</span>
           <strong>
             {
               Object.values(states).filter(
@@ -339,7 +336,7 @@ export default function SubjectsView() {
           </strong>
         </div>
         <div>
-          <span>最近练习</span>
+          <span>{tr("subjects:最近练习")}</span>
           <strong className="date-stat">
             {dateLabel(
               data.events.filter((e) => e.subject === s.id).at(-1)
@@ -351,13 +348,13 @@ export default function SubjectsView() {
       <Tabs value={tab} onValueChange={(v) => setTab(String(v))}>
         <TabsList variant="line" className="page-tabs">
           {[
-            ['review', '复习'],
-            ['practice', '练习'],
-            ['notes', '笔记'],
-            ['tests', '测试'],
-            ['knowledge', '知识与分析'],
-            ['materials', '资料'],
-            ...(s.id === 'chemistry' ? [['periodic', '元素周期表']] : []),
+            ['review', tr("subjects:复习")],
+            ['practice', tr("subjects:练习")],
+            ['notes', tr("subjects:笔记")],
+            ['tests', tr("subjects:测试")],
+            ['knowledge', tr("subjects:知识与分析")],
+            ['materials', tr("subjects:资料")],
+            ...(s.id === 'chemistry' ? [['periodic', tr("subjects:元素周期表")]] : []),
           ].map(([id, title]) => (
             <TabsTrigger key={id} value={id}>
               {title}
@@ -369,23 +366,22 @@ export default function SubjectsView() {
         </TabsContent>
         <TabsContent value="knowledge">
           <details className="panel subject-analysis-summary">
-            <summary>能力表现与遗忘风险</summary>
+            <summary>{tr("subjects:能力表现与遗忘风险")}</summary>
             <AnalyticsView subject={s.id} embedded />
           </details>
           <div className="toolbar">
             <div className="search-box">
               <Search size={17} />
               <input
-                aria-label="搜索知识点"
+                aria-label={tr("subjects:搜索知识点")}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="搜索知识点、章节或能力"
+                placeholder={tr("subjects:搜索知识点、章节或能力")}
               />
             </div>
             <span className="muted">
-              {nodes.length} 个知识点 ·{' '}
-              {nodes.reduce((a, n) => a + n.skills.length, 0)} 种能力
-            </span>
+              {nodes.length}{tr("subjects:个知识点 ·")}{' '}
+              {nodes.reduce((a, n) => a + n.skills.length, 0)}{tr("subjects:种能力")}</span>
           </div>
           <div className="panel knowledge-list">
             {nodes
@@ -406,8 +402,7 @@ export default function SubjectsView() {
                   <div className="grow">
                     <h3>{n.title}</h3>
                     <p className="muted">
-                      {n.chapter} · {n.skills.length} 种能力
-                      {n.prerequisites.length ? ' · 含前置知识' : ''}
+                      {n.chapter} · {n.skills.length}{tr("subjects:种能力")}{n.prerequisites.length ? tr("subjects: · 含前置知识") : ''}
                     </p>
                   </div>
                   <Meter
@@ -424,8 +419,8 @@ export default function SubjectsView() {
           {s.id === 'chemistry' && (
             <section className="panel">
               <div className="section-head">
-                <h2>化学反应图谱</h2>
-                <span className="muted">点击反应，查看条件与现象</span>
+                <h2>{tr("subjects:化学反应图谱")}</h2>
+                <span className="muted">{tr("subjects:点击反应，查看条件与现象")}</span>
               </div>
               <div className="reaction-map">
                 {reactions.map((r) => (
@@ -444,11 +439,9 @@ export default function SubjectsView() {
               </div>
               <div className="reaction-detail">
                 <h3>{reaction.equation}</h3>
-                <p>
-                  反应物：{reaction.reactants}　生成物：{reaction.products}
+                <p>{tr("subjects:反应物：")}{reaction.reactants}{tr("subjects:生成物：")}{reaction.products}
                 </p>
-                <p>
-                  条件：{reaction.condition}　现象：{reaction.phenomenon}
+                <p>{tr("subjects:条件：")}{reaction.condition}{tr("subjects:现象：")}{reaction.phenomenon}
                 </p>
                 <button
                   className="quiet"
@@ -457,21 +450,19 @@ export default function SubjectsView() {
                       data.nodes.find((n) => n.id === reaction.nodeId)!,
                     )
                   }
-                >
-                  查看关联知识
-                  <ArrowRight size={14} />
+                >{tr("subjects:查看关联知识")}<ArrowRight size={14} />
                 </button>
               </div>
             </section>
           )}
           {s.id === 'history' && (
             <section className="panel">
-              <h2>历史时间线</h2>
+              <h2>{tr("subjects:历史时间线")}</h2>
               <div className="timeline">
                 {[
-                  ['15–16 世纪', '新航路的开辟', 'core-history-2'],
-                  ['18 世纪 60 年代', '工业革命兴起', 'core-history-1'],
-                  ['19 世纪 60–90 年代', '洋务运动', 'core-history-3'],
+                  ['15–16 世纪', tr("subjects:新航路的开辟"), 'core-history-2'],
+                  ['18 世纪 60 年代', tr("subjects:工业革命兴起"), 'core-history-1'],
+                  ['19 世纪 60–90 年代', tr("subjects:洋务运动"), 'core-history-3'],
                 ].map(([date, title, id]) => (
                   <button
                     key={id}
@@ -481,7 +472,7 @@ export default function SubjectsView() {
                   >
                     <time>{date}</time>
                     <h3>{title}</h3>
-                    <span className="muted">时间 · 原因 · 影响</span>
+                    <span className="muted">{tr("subjects:时间 · 原因 · 影响")}</span>
                   </button>
                 ))}
               </div>
@@ -494,19 +485,17 @@ export default function SubjectsView() {
               <div className="section-head">
                 <div>
                   <p className="eyebrow">CHINESE WORD SETS</p>
-                  <h2>字词篇目</h2>
+                  <h2>{tr("subjects:字词篇目")}</h2>
                 </div>
-                <span className="muted">按篇目完整练习</span>
+                <span className="muted">{tr("subjects:按篇目完整练习")}</span>
               </div>
-              <p className="muted">
-                篇目是字词集合；每个字词单独记录掌握度。整篇练习会覆盖全部字词，不受每日推荐题量限制。
-              </p>
+              <p className="muted">{tr("subjects:篇目是字词集合；每个字词单独记录掌握度。整篇练习会覆盖全部字词，不受每日推荐题量限制。")}</p>
               <div className="pinyin-collection-list">
                 {collections.map((collection) => (
                   <div className="pinyin-collection-row" key={collection.id}>
                     <div>
                       <strong>{collection.title}</strong>
-                      <span>{collection.count} 个字词</span>
+                      <span>{collection.count}{tr("subjects:个字词")}</span>
                     </div>
                     <button
                       className="secondary"
@@ -515,8 +504,7 @@ export default function SubjectsView() {
                           pinyinPracticeQueue(data.questions, collection.id),
                         )
                       }
-                    >
-                      练完整篇 <ArrowRight size={15} />
+                    >{tr("subjects:练完整篇")}<ArrowRight size={15} />
                     </button>
                   </div>
                 ))}
@@ -527,41 +515,39 @@ export default function SubjectsView() {
           <div className="home-columns">
             <section className="panel">
               <div className="section-head">
-                <h2>自适应专项练习</h2>
+                <h2>{tr("subjects:自适应专项练习")}</h2>
                 <BookOpen size={20} />
               </div>
-              <p className="muted">
-                按能力掌握度选择难度，同一知识点交错出现。
-              </p>
+              <p className="muted">{tr("subjects:按能力掌握度选择难度，同一知识点交错出现。")}</p>
               <div className="practice-filters">
                 <Choice
-                  label="练习来源"
+                  label={tr("subjects:练习来源")}
                   value={practiceSource}
                   onChange={setPracticeSource}
                   options={[
-                    { value: 'all', label: '全部练习' },
-                    { value: 'wrong', label: '只练错题本' },
-                    { value: 'blind', label: '信心校准 · 自信却答错' },
+                    { value: 'all', label: tr("common:全部练习") },
+                    { value: 'wrong', label: tr("common:只练错题本") },
+                    { value: 'blind', label: tr("common:信心校准 · 自信却答错") },
                   ]}
                 />
                 <Choice
-                  label="练习题型"
+                  label={tr("subjects:练习题型")}
                   value={practiceType}
                   onChange={setPracticeType}
                   options={[
-                    { value: 'all', label: '全部题型' },
+                    { value: 'all', label: tr("common:全部题型") },
                     ...QUESTION_TYPES.filter(
                       (t) => s.id === 'chinese' || t.id !== 'pinyin',
-                    ).map((t) => ({ value: t.id, label: t.label })),
+                    ).map((t) => ({ value: t.id, label: tr('subjects:'+t.label) })),
                   ]}
                 />
                 {s.id === 'chinese' && fullPinyin && collections.length > 1 && (
                   <Choice
-                    label="字词篇目"
+                    label={tr("subjects:字词篇目")}
                     value={pinyinCollection}
                     onChange={setPinyinCollection}
                     options={[
-                      { value: 'all', label: '全部篇目' },
+                      { value: 'all', label: tr("common:全部篇目") },
                       ...collections.map((collection) => ({
                         value: collection.id,
                         label: collection.title,
@@ -572,15 +558,13 @@ export default function SubjectsView() {
               </div>
               <div className="practice-count">
                 {queue.length}
-                <span>道可练习题目</span>
+                <span>{tr("subjects:道可练习题目")}</span>
               </div>
               <button
                 className="primary"
                 disabled={!queue.length}
                 onClick={() => start(queue)}
-              >
-                开始练习
-                <ArrowRight size={16} />
+              >{tr("subjects:开始练习")}<ArrowRight size={16} />
               </button>
               <div className="innovation-action">
                 <button
@@ -590,36 +574,31 @@ export default function SubjectsView() {
                     (!aiReady && !transferCandidates(data, s.id).length)
                   }
                   onClick={() => void transfer()}
-                >
-                  迁移挑战 <ArrowUpRight size={15} />
+                >{tr("subjects:迁移挑战")}<ArrowUpRight size={15} />
                 </button>
-                <p className="muted">换个情境，检验同一种能力。</p>
+                <p className="muted">{tr("subjects:换个情境，检验同一种能力。")}</p>
               </div>
             </section>
             <section className="panel">
-              <h2>{s.id === 'ce' ? '生成英语专项练习' : '准备新的变式练习'}</h2>
-              <p className="muted">准备好的题目会先核验，再加入题池。</p>
+              <h2>{s.id === 'ce' ? tr("subjects:生成英语专项练习") : tr("subjects:准备新的变式练习")}</h2>
+              <p className="muted">{tr("subjects:准备好的题目会先核验，再加入题池。")}</p>
               <div className="form-grid">
-                <label>
-                  知识点
-                  <Choice
-                    label="生成知识点"
+                <label>{tr("subjects:知识点")}<Choice
+                    label={tr("subjects:生成知识点")}
                     value={generationNodeId}
                     onChange={(v) => {
                       setGenerationNodeId(v);
                       setSkillId('');
                     }}
                     options={[
-                      { value: '', label: '自动选择薄弱知识' },
+                      { value: '', label: tr("common:自动选择薄弱知识") },
                       ...nodes.map((n) => ({ value: n.id, label: n.title })),
                     ]}
                   />
                 </label>
                 {generationNodeId && (
-                  <label>
-                    能力
-                    <Choice
-                      label="生成能力"
+                  <label>{tr("subjects:能力")}<Choice
+                      label={tr("subjects:生成能力")}
                       value={
                         skillId ||
                         (nodes.find((n) => n.id === generationNodeId)?.skills[0]
@@ -634,10 +613,8 @@ export default function SubjectsView() {
                     />
                   </label>
                 )}
-                <label>
-                  题目数量
-                  <Choice
-                    label="题目数量"
+                <label>{tr("subjects:题目数量")}<Choice
+                    label={tr("subjects:题目数量")}
                     value={count}
                     onChange={setCount}
                     options={['1', '3', '5', '8', '10'].map((n) => ({
@@ -646,17 +623,15 @@ export default function SubjectsView() {
                     }))}
                   />
                 </label>
-                <label>
-                  难度
-                  <Choice
-                    label="难度"
+                <label>{tr("subjects:难度")}<Choice
+                    label={tr("subjects:难度")}
                     value={difficulty}
                     onChange={setDifficulty}
                     options={[
-                      { value: 'auto', label: '自适应挑战区' },
+                      { value: 'auto', label: tr("common:自适应挑战区") },
                       ...['1', '2', '3', '4', '5'].map((n) => ({
                         value: n,
-                        label: ['基础', '容易', '标准', '进阶', '综合'][
+                        label: ['基础', tr("subjects:容易"), tr("subjects:标准"), tr("subjects:进阶"), tr("subjects:综合")][
                           Number(n) - 1
                         ],
                       })),
@@ -664,16 +639,14 @@ export default function SubjectsView() {
                   />
                 </label>
                 {s.id === 'ce' && (
-                  <label>
-                    练习风格
-                    <Choice
-                      label="练习风格"
+                  <label>{tr("subjects:练习风格")}<Choice
+                      label={tr("subjects:练习风格")}
                       value={style}
                       onChange={setStyle}
                       options={[
-                        { value: 'SAT', label: 'SAT 风格' },
-                        { value: 'ACT', label: 'ACT 风格' },
-                        { value: 'TOEFL', label: 'TOEFL 风格' },
+                        { value: 'SAT', label: tr("common:SAT 风格") },
+                        { value: 'ACT', label: tr("common:ACT 风格") },
+                        { value: 'TOEFL', label: tr("common:TOEFL 风格") },
                         { value: 'Grammar', label: 'Grammar' },
                       ]}
                     />
@@ -681,19 +654,16 @@ export default function SubjectsView() {
                 )}
               </div>
               <details className="generation-types">
-                <summary>
-                  题型偏好 ·{' '}
+                <summary>{tr("subjects:题型偏好 ·")}{' '}
                   {questionTypes.length
                     ? questionTypes
                         .map(
                           (t) => QUESTION_TYPES.find((x) => x.id === t)?.label,
                         )
                         .join('、')
-                    : '自动选择'}
+                    : tr("subjects:自动选择")}
                 </summary>
-                <p className="muted">
-                  勾选后仅生成所选题型；不选时根据能力自动决定。
-                </p>
+                <p className="muted">{tr("subjects:勾选后仅生成所选题型；不选时根据能力自动决定。")}</p>
                 <div className="type-checkboxes">
                   {QUESTION_TYPES.filter(
                     (t) => s.id === 'chinese' || t.id !== 'pinyin',
@@ -724,9 +694,7 @@ export default function SubjectsView() {
                 <ArrowRight size={16} />
               </button>
               {!aiReady && (
-                <p className="inline-hint">
-                  题目生成连接待配置，本地练习可正常进行。
-                </p>
+                <p className="inline-hint">{tr("subjects:题目生成连接待配置，本地练习可正常进行。")}</p>
               )}
             </section>
           </div>
@@ -739,7 +707,7 @@ export default function SubjectsView() {
             )
             .map((j) => (
               <section className="panel" key={j.id}>
-                <h3>{j.node.title} · 待完成的练习</h3>
+                <h3>{j.node.title}{tr("subjects:· 待完成的练习")}</h3>
                 <p className="muted">{j.error || '上次准备尚未完成'}</p>
                 <button
                   className="secondary"
@@ -759,27 +727,23 @@ export default function SubjectsView() {
                         setGenerating,
                       );
                       await refresh();
-                      notify('题目已核验并加入题库');
+                      notify(tr("subjects:题目已核验并加入题库"));
                     } catch (e) {
                       notify(e instanceof Error ? e.message : '暂时无法继续');
                     } finally {
                       setGenerating('');
                     }
                   }}
-                >
-                  继续准备
-                </button>
+                >{tr("subjects:继续准备")}</button>
               </section>
             ))}
         </TabsContent>
         <TabsContent value="notes">
           <section className="panel">
-            <h2>记录课程笔记</h2>
+            <h2>{tr("subjects:记录课程笔记")}</h2>
             <div className="form-grid">
-              <label>
-                关联知识点
-                <Choice
-                  label="关联知识点"
+              <label>{tr("subjects:关联知识点")}<Choice
+                  label={tr("subjects:关联知识点")}
                   value={noteNode || nodes[0]?.id || ''}
                   onChange={setNoteNode}
                   options={nodes.map((n) => ({ value: n.id, label: n.title }))}
@@ -790,7 +754,7 @@ export default function SubjectsView() {
               rows={4}
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="用自己的话写下理解、易错原因或新的联系。"
+              placeholder={tr("subjects:用自己的话写下理解、易错原因或新的联系。")}
             />
             <button
               className="primary"
@@ -804,14 +768,12 @@ export default function SubjectsView() {
                   });
                   setNote('');
                   await refresh();
-                  notify('笔记已保存');
+                  notify(tr("subjects:笔记已保存"));
                 } catch (e) {
                   notify(String(e));
                 }
               }}
-            >
-              保存笔记
-            </button>
+            >{tr("subjects:保存笔记")}</button>
           </section>
           {data.notes
             .filter((note) => nodes.some((n) => n.id === note.nodeId))
@@ -836,28 +798,24 @@ export default function SubjectsView() {
               <section className="panel" key={m.id}>
                 <div className="section-head">
                   <h2>{m.name}</h2>
-                  <span className="muted">{m.nodeIds.length} 个关联知识点</span>
+                  <span className="muted">{m.nodeIds.length}{tr("subjects:个关联知识点")}</span>
                 </div>
                 <details>
-                  <summary>查看提取内容</summary>
+                  <summary>{tr("subjects:查看提取内容")}</summary>
                   <p className="pre-wrap">{m.text}</p>
                 </details>
               </section>
             ))}
           <Empty
-            title="让课件与笔记进入复习"
+            title={tr("subjects:让课件与笔记进入复习")}
             action={
               <button
                 className="primary"
                 onClick={() => navigate('library', s.id)}
-              >
-                导入资料
-                <Plus size={16} />
+              >{tr("subjects:导入资料")}<Plus size={16} />
               </button>
             }
-          >
-            导入资料后，确认识别结果即可创建知识与练习。
-          </Empty>
+          >{tr("subjects:导入资料后，确认识别结果即可创建知识与练习。")}</Empty>
         </TabsContent>
         <TabsContent value="tests">
           <section className="panel">
@@ -866,31 +824,27 @@ export default function SubjectsView() {
           {s.id === 'ce' && <FullExamHub />}
           <details className="panel custom-test-settings" open={s.id !== 'ce'}>
             <summary>
-              {s.id === 'ce' ? '自定义专项测试' : '建立一次专项测试'}
+              {s.id === 'ce' ? tr("subjects:自定义专项测试") : tr("subjects:建立一次专项测试")}
             </summary>
             <section>
-              <p className="muted">按章节或能力，自由安排题量。</p>
+              <p className="muted">{tr("subjects:按章节或能力，自由安排题量。")}</p>
               <div className="form-grid">
-                <label>
-                  测试范围类型
-                  <Choice
-                    label="测试范围类型"
+                <label>{tr("subjects:测试范围类型")}<Choice
+                    label={tr("subjects:测试范围类型")}
                     value={testType}
                     onChange={setTestType}
                     options={[
-                      { value: 'chapter', label: '章节测试' },
-                      { value: 'unit', label: '单元测试' },
-                      { value: 'subject', label: '学科测试' },
-                      { value: 'custom', label: '自定义测试' },
+                      { value: 'chapter', label: tr("common:章节测试") },
+                      { value: 'unit', label: tr("common:单元测试") },
+                      { value: 'subject', label: tr("common:学科测试") },
+                      { value: 'custom', label: tr("common:自定义测试") },
                     ]}
                   />
                 </label>
-                <label>
-                  题目数量
-                  <Choice
+                <label>{tr("subjects:题目数量")}<Choice
                     value={count}
                     onChange={setCount}
-                    label="题数"
+                    label={tr("subjects:题数")}
                     options={['5', '8', '10', '20'].map((n) => ({
                       value: n,
                       label: n + ' 题',
@@ -931,14 +885,12 @@ export default function SubjectsView() {
                       test: true,
                     });
                     if (!qs.length) {
-                      notify('所选范围暂无可用题目');
+                      notify(tr("subjects:所选范围暂无可用题目"));
                       return;
                     }
                     start(qs, 'test', s.name + ' · 模拟测试');
                   }}
-                >
-                  开始测试
-                  <ArrowRight size={16} />
+                >{tr("subjects:开始测试")}<ArrowRight size={16} />
                 </button>
                 <button
                   className="secondary"
@@ -952,9 +904,7 @@ export default function SubjectsView() {
                   {generating || '先生成新题'}
                 </button>
               </div>
-              <p className="inline-hint">
-                客观题需真实作答；主观题按评分标准批改。测试结果会影响后续复习。
-              </p>
+              <p className="inline-hint">{tr("subjects:客观题需真实作答；主观题按评分标准批改。测试结果会影响后续复习。")}</p>
             </section>
           </details>
           {data.jobs
@@ -969,12 +919,12 @@ export default function SubjectsView() {
                 <div>
                   <h3>{j.session.title}</h3>
                   <p className="muted">
-                    {dateLabel(j.startedAt)} · {j.session.items.length} 题 ·{' '}
+                    {dateLabel(j.startedAt)} · {j.session.items.length}{tr("subjects:题 ·")}{' '}
                     {j.status === 'answering'
-                      ? '作答未完成'
+                      ? tr("subjects:作答未完成")
                       : j.status === 'grading'
-                        ? '等待检查'
-                        : '已完成'}
+                        ? tr("common:等待检查")
+                        : tr("common:已完成")}
                   </p>
                 </div>
                 <button
@@ -982,10 +932,10 @@ export default function SubjectsView() {
                   onClick={() => navigate('assessment', j.id)}
                 >
                   {j.status === 'answering'
-                    ? '继续测试'
+                    ? tr("subjects:继续测试")
                     : j.status === 'grading'
-                      ? '继续检查'
-                      : '查看解析'}
+                      ? tr("common:继续检查")
+                      : tr("common:查看解析")}
                 </button>
               </section>
             ))}
@@ -1001,8 +951,7 @@ export default function SubjectsView() {
               <section className="panel" key={t.id}>
                 <h3>{t.title}</h3>
                 <p className="muted">
-                  {dateLabel(t.at)} · {t.eventIds.length} 题
-                </p>
+                  {dateLabel(t.at)} · {t.eventIds.length}{tr("subjects:题")}</p>
               </section>
             ))}
         </TabsContent>
@@ -1017,9 +966,7 @@ export default function SubjectsView() {
             <>
               <p className="node-description">{node.description}</p>
               {node.prerequisites.length > 0 && (
-                <div className="prerequisites">
-                  前置知识：
-                  {node.prerequisites.map((id) => (
+                <div className="prerequisites">{tr("subjects:前置知识：")}{node.prerequisites.map((id) => (
                     <button
                       key={id}
                       className="quiet"
@@ -1032,7 +979,7 @@ export default function SubjectsView() {
                   ))}
                 </div>
               )}
-              <h3>能力掌握</h3>
+              <h3>{tr("subjects:能力掌握")}</h3>
               {node.skills.map((sk) => {
                 const st = states[keyOf(node.id, sk.id)];
                 return (
@@ -1041,8 +988,8 @@ export default function SubjectsView() {
                       <h3>{sk.title}</h3>
                       <p className="muted">
                         {st?.attemptCount
-                          ? `${st.attemptCount} 次练习 · 下次 ${dateLabel(st.nextReview)} · 稳定度 ${st.stability.toFixed(1)} 天`
-                          : '尚未评估'}
+                          ? tr("common:{{v0}} 次练习 · 下次 {{v1}} · 稳定度 {{v2}} 天",{v0:(st.attemptCount),v1:(dateLabel(st.nextReview)),v2:(st.stability.toFixed(1))})
+                          : tr("subjects:尚未评估")}
                       </p>
                     </div>
                     <Meter
@@ -1059,7 +1006,7 @@ export default function SubjectsView() {
                         if (!qs.length) {
                           setSkillId(sk.id);
                           notify(
-                            '该能力还没有题目，可以生成新题或在资料库自建',
+                            tr("subjects:该能力还没有题目，可以生成新题或在资料库自建"),
                           );
                           return;
                         }
@@ -1072,9 +1019,7 @@ export default function SubjectsView() {
                           })),
                         );
                       }}
-                    >
-                      练习
-                      <ArrowRight size={14} />
+                    >{tr("subjects:练习")}<ArrowRight size={14} />
                     </button>
                   </div>
                 );
