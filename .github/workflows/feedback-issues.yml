@@ -1,0 +1,34 @@
+name: Deliver website bug reports
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/feedback-issues.yml'
+      - 'scripts/publish-feedback-issues.mjs'
+permissions:
+  contents: read
+  issues: write
+  id-token: write
+concurrency:
+  group: website-feedback
+  cancel-in-progress: false
+jobs:
+  deliver:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const {pathToFileURL} = await import('node:url');
+            const {publishFeedback} = await import(pathToFileURL(process.env.GITHUB_WORKSPACE + '/scripts/publish-feedback-issues.mjs'));
+            const identityToken = await core.getIDToken('reviewbox-feedback');
+            core.setSecret(identityToken);
+            const count = await publishFeedback({github, identityToken});
+            core.info(`Delivered ${count} bug reports.`);
