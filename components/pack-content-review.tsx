@@ -10,10 +10,14 @@ import {
   type GradingRule,
 } from '@/lib/grading-rules';
 import { inspectPackContent } from '@/lib/import-review';
+import {inspectScientificDiagram} from '@/lib/scientific-inspector';
 import { proposeGradingRule } from '@/lib/ai-client';
 import { currentNamespace } from '@/lib/store';
 import { useReview } from './review-context';
 import Diagram from './diagram';
+import ScientificAuthoring from './scientific-authoring';
+import {validateChemicalDiagram} from '@/lib/chemical-engine';
+import {bioAsset} from '@/lib/bioicons';
 import {
   semanticDiagramSchema,
   type SemanticDiagram,
@@ -327,7 +331,11 @@ function DiagramReview({
   q: Question;
   onChange: (q: Question) => void;
 }) {
+  const [checking,setChecking]=useState(false);
+  const active=useRef(true),namespace=useRef(currentNamespace());
+  useEffect(()=>{active.current=true;return()=>{active.current=false;};},[]);
   const [stage,setStage]=useState<'question'|'hint'|'solution'>('question');
+  const [confirmed,setConfirmed]=useState(q.diagramChoice==='redraw');
   const [draft, setDraft] = useState<SemanticDiagram | undefined>(() =>
       diagramSuggestion(q),
     ),
@@ -339,9 +347,12 @@ function DiagramReview({
     !images.length &&
     q.diagram?.type === 'semantic' &&
     JSON.stringify(q.diagram) === JSON.stringify(draft);
+  const science=draft?inspectScientificDiagram(draft,q):null;
   return (
     <div className="import-diagram-review">
       <label className="diagram-phase-picker">{tr("library:作者预览阶段")}<select value={stage} onChange={e=>setStage(e.target.value as typeof stage)}><option value="question">{tr("library:题目（作答前）")}</option><option value="hint">{tr("library:提示")}</option><option value="solution">{tr("library:解析")}</option></select></label>
+      {science&&<section className="science-review" aria-label={tr('library:图形条件检查')}><div className="science-checks"><span>{tr('library:结构合法')}：{science.schemaValid?tr('common:通过'):tr('common:需检查')}</span><span>{tr('library:科学关系')}：{('enginePending' in science&&science.enginePending)?tr('common:需引擎检查'):science.physicsValid?tr('common:通过'):tr('common:需检查')}</span><span>{tr('library:题干一致性')}：{science.questionConsistent==='inconsistent'?tr('common:存在矛盾'):tr('common:需要人工复核')}</span></div>{science.problems.length>0&&<ul role="alert">{science.problems.map((p,i)=><li key={i}>{p}</li>)}</ul>}<details><summary>{tr('library:查看检查依据')}</summary><ul>{science.checks.map((p,i)=><li key={i}>{p}</li>)}</ul></details></section>}
+      <ScientificAuthoring initial={draft} onChoose={diagram=>{setDraft(diagram);setConfirmed(false);setError('');}}/>
       <div className={'pack-compare' + (identical ? ' single-diagram' : '')}>
         {!identical && (
           <div>
@@ -371,6 +382,7 @@ function DiagramReview({
           )}
         </div>
       </div>
+      {science&&<label className="science-confirm"><input type="checkbox" checked={confirmed} onChange={e=>setConfirmed(e.target.checked)}/>{tr('library:我已核对题图数值、单位与待求量')}</label>}
       <div className="button-row">
         {!!images.length && (
           <button
@@ -383,15 +395,24 @@ function DiagramReview({
           <button
             type="button"
             className="primary"
-            onClick={() => {
+            disabled={checking}
+            onClick={async () => {
               const parsed = semanticDiagramSchema.safeParse(draft);
               if (!parsed.success) {
                 setError(parsed.error.issues.map((i) => i.message).join('；'));
                 return;
               }
-              onChange({ ...q, diagram: parsed.data, diagramChoice: 'redraw' });
+              if(!confirmed){setError(tr('library:请先核对题图条件，再确认使用重绘'));return;}
+              if(science?.questionConsistent==='inconsistent'){setError(tr('library:题图与所引条件存在矛盾，请修改结构数据或保留原图'));return;}
+              setChecking(true);
+              try{
+              if(parsed.data.kind==='chemistry')await validateChemicalDiagram(parsed.data);
+              if(parsed.data.kind==='bioasset'&&!bioAsset(parsed.data.assetId))throw new Error('素材未在授权目录中登记');
+              if(!active.current||namespace.current!==currentNamespace())return;
+              onChange({ ...q, diagram: parsed.data, diagramChoice: 'redraw',diagramHistory:[...(q.diagramHistory??[]),...(q.diagram?[{diagram:q.diagram,choice:q.diagramChoice,at:new Date().toISOString()}]:[])].slice(-8) });
+              }catch(e){if(active.current)setError((e as Error).message);}finally{if(active.current)setChecking(false);}
             }}
-          >{tr("library:使用专业重绘")}</button>
+          >{checking?tr('library:正在核验…'):tr("library:使用专业重绘")}</button>
         )}
         {draft && (
           <button
@@ -406,6 +427,7 @@ function DiagramReview({
           onClick={() => onChange({ ...q, diagramChoice: 'skip' })}
         >{tr("library:跳过本题图形处理")}</button>
       </div>
+      {!!q.diagramHistory?.length&&<details><summary>{tr('library:以前的图形版本')}</summary>{q.diagramHistory.map((h,i)=><button className="text-button" type="button" key={i} onClick={()=>onChange({...q,diagram:h.diagram,diagramChoice:h.choice,diagramHistory:[...q.diagramHistory!.filter((_,j)=>j!==i),...(q.diagram?[{diagram:q.diagram,choice:q.diagramChoice,at:new Date().toISOString()}]:[])].slice(-8)})}>{tr('library:恢复此图形')} · {i+1}</button>)}</details>}
       {editing && draft && (
         <div className="diagram-label-editor">
           <p className="settings-caption">{tr("library:只调整标注。坐标、尺寸与物理条件须由原始结构数据确定。")}</p>

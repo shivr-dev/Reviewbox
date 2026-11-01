@@ -1,14 +1,16 @@
 'use client';
+import DiagramExport from './diagram-export';
 import {tr} from '@/lib/i18n';
 import {useId,useMemo,useRef} from 'react';
 import type {SemanticDiagram} from '@/lib/diagram-spec';
 import type {DiagramStage} from '@/lib/shaded-regions';
 import {traceOptics,type OpticsSegment} from '@/lib/ray-optics-adapter';
+import {OpticsSpecialDrawing} from './scientific/optics-special';
 import {downloadDiagram,printProjection,publicationLabels,PRINT_FONT,type XY} from '@/lib/math-svg';
 type Spec=Extract<SemanticDiagram,{kind:'optics'}>;
 export function opticsVisibility(spec:Spec,stage:DiagramStage){
  const visible=(phase:DiagramStage|undefined)=>!phase||phase==='question'||phase===stage||stage==='solution';
- return {image:spec.showImage&&visible(spec.imagePhase),rays:spec.showRays&&visible(spec.raysPhase)};
+ return {image:spec.showImage&&visible(spec.imagePhase??'solution'),rays:spec.showRays&&visible(spec.raysPhase??'solution')};
 }
 /** Liang-Barsky clipping keeps rays directed and finite without moving their intersections. */
 function clip(segment:OpticsSegment,b:[number,number,number,number]):[XY,XY]|null{
@@ -17,8 +19,9 @@ function clip(segment:OpticsSegment,b:[number,number,number,number]):[XY,XY]|nul
  return [[a.x+lo*dx,a.y+lo*dy],[a.x+hi*dx,a.y+hi*dy]];
 }
 export function OpticsDrawing({spec,stage='question',id}:{spec:Spec;stage?:DiagramStage;id:string}){
- const trace=traceOptics({...spec,lens:spec.lens??'convex',focalLength:spec.focalLength??1,objectDistance:spec.objectDistance??4,objectHeight:spec.objectHeight??1}),visibility=opticsVisibility(spec,stage),isInterface=spec.opticalElement==='interface',isMirror=spec.opticalElement==='mirror';
- const f=spec.focalLength??1,u=spec.objectDistance??4,h=spec.objectHeight??1;
+ if(spec.view==='parallel'||spec.view==='reflection')return <OpticsSpecialDrawing spec={spec} stage={stage} id={id}/>;
+ const f=spec.focalLength??1,u=spec.objectDistance??4,h=spec.objectHeight??f*.3;
+ const trace=traceOptics({...spec,lens:spec.lens??'convex',focalLength:f,objectDistance:u,objectHeight:h}),visibility=opticsVisibility(spec,stage),isInterface=spec.opticalElement==='interface',isMirror=spec.opticalElement==='mirror';
  const known:XY[]=isInterface?[[-4,-2.8],[4,2.8]]:[[-u,0],[-u,h],[0,-h],[0,h]];
  if(!isInterface&&!isMirror)known.push([-2*f,0],[2*f,0]);
  if(visibility.image&&trace.image)known.push([trace.image.tip.x,trace.image.tip.y],[trace.image.base.x,trace.image.base.y]);
@@ -48,7 +51,8 @@ export function OpticsDrawing({spec,stage='question',id}:{spec:Spec;stage?:Diagr
   }
   elements.push(arrow([-u,0],[-u,h],'object'));label([-u,h],'A');label([-u,0],'B');
   if(visibility.image&&trace.image){const im=trace.image;elements.push(arrow([im.base.x,im.base.y],[im.tip.x,im.tip.y],'image',im.virtual));label([im.tip.x,im.tip.y],'A′');label([im.base.x,im.base.y],'B′');}
-  if(spec.showDistances){label([-u/2,bounds[1]*.75],`u = ${u}`,false);if(visibility.image&&trace.image)label([trace.image.distance/2,bounds[1]*.75],`v = ${Number(trace.image.distance.toPrecision(5))}`,false);}
+  if(spec.view==='apparatus'){const rail=bounds[1]*.5;elements.push(line([bounds[0],rail],[bounds[2],rail],false,'rail'),line([-u,0],[-u,rail],false,'candle-stand'),line([0,-vertical*.9],[0,rail],false,'lens-stand'));}
+  if(spec.showDistances){label([-u/2,bounds[1]*.75],`u = ${u}${spec.unit?' '+spec.unit:''}`,false);if(visibility.image&&trace.image&&(!isMirror||spec.mirrorAngle===undefined||spec.mirrorAngle===90))label([trace.image.distance/2,bounds[1]*.75],`v = ${Number(trace.image.distance.toPrecision(5))}${spec.unit?' '+spec.unit:''}`,false);}
  }
  const text=publicationLabels(labels,obstacles,600,340);
  return <><defs><marker id={id+'-arrow'} viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 1 L7 4 L0 7" fill="none" stroke="#222" strokeWidth="1.2"/></marker><clipPath id={id+'-clip'}><rect x="20" y="18" width="560" height="304"/></clipPath></defs><rect width="600" height="340" fill="white"/><g fill="none" stroke="#222" strokeWidth="1.25" clipPath={`url(#${id}-clip)`}>{elements}{rays}</g><g dangerouslySetInnerHTML={{__html:text}}/></>;
@@ -56,5 +60,5 @@ export function OpticsDrawing({spec,stage='question',id}:{spec:Spec;stage?:Diagr
 export default function OpticsDiagram({spec,stage='question'}:{spec:Spec;stage?:DiagramStage}){
  const ref=useRef<SVGSVGElement>(null),id='optics'+useId().replace(/[^a-z0-9]/gi,'');
  const drawing=useMemo(()=>{try{return {content:<OpticsDrawing spec={spec} stage={stage} id={id}/>};}catch(e){return {error:(e as Error).message};}},[spec,stage,id]);
- return <figure className="diagram publication-diagram" data-engine="ray-optics" data-diagram-kind="optics">{drawing.error?<p role="alert">{tr("common:光路条件需要确认：")}{drawing.error}</p>:<svg ref={ref} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 340" role="img" aria-label={spec.caption??'光路图'} fontFamily={PRINT_FONT}>{drawing.content}</svg>}<figcaption><span>{spec.caption}</span><button className="diagram-export" type="button" disabled={!!drawing.error} onClick={()=>ref.current&&downloadDiagram(ref.current,'Reviewbox-optics-'+stage)}>{tr("common:导出 SVG")}</button></figcaption></figure>;
+ return <figure className="diagram publication-diagram" data-engine="ray-optics" data-diagram-kind="optics">{drawing.error?<p role="alert">{tr("common:光路条件需要确认：")}{drawing.error}</p>:<svg ref={ref} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 340" role="img" aria-label={spec.caption??'光路图'} fontFamily={PRINT_FONT}>{drawing.content}</svg>}<figcaption><span>{spec.caption}{!spec.objectHeight&&spec.view!=='parallel'&&spec.view!=='reflection'&&spec.opticalElement!=='interface'?' · '+tr('common:物体高度仅作示意'):''}</span><DiagramExport getSvg={()=>ref.current} name={'Reviewbox-optics-'+stage} disabled={!!drawing.error}/></figcaption></figure>;
 }

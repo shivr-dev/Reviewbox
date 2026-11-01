@@ -179,6 +179,7 @@ export type Question = {
   diagram?: Diagram;
   media?: {id:string;src:string;alt:string;purpose?:'question'|'solution'}[];
   diagramChoice?: 'original'|'redraw'|'skip';
+  diagramHistory?: {diagram:Diagram;choice?:'original'|'redraw'|'skip';at:string}[];
   source: string;
   tags: string[];
   verified?: boolean;

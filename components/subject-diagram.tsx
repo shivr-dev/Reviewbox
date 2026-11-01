@@ -1,6 +1,15 @@
 'use client';
 import {tr} from '@/lib/i18n';
-import { useId, useRef } from 'react';
+import { useId, useRef, lazy, Suspense } from 'react';
+import ScientificDiagram from './scientific-diagram';
+import {ScientificDrawing} from './scientific-diagram';
+const MathDiagram=lazy(()=>import('./math-diagram'));
+const OpticsDiagram=lazy(()=>import('./optics-diagram'));
+const ChemistryDiagram=lazy(()=>import('./chemistry-diagram'));
+const MacromoleculeDiagram=lazy(()=>import('./macromolecule-diagram'));
+const BioAssetDiagram=lazy(()=>import('./bioasset-diagram'));
+const BiologyNetwork=lazy(()=>import('./biology-network'));
+import {downloadDiagram} from '@/lib/math-svg';
 import type { ReactNode } from 'react';
 import {
   semanticDiagramSchema,
@@ -101,341 +110,9 @@ export function SemanticDrawing({
   spec: SemanticDiagram;
   id: string;
 }) {
+  if(['measurement','wave','motion','forces','lever','buoyancy','statistics','biology'].includes(spec.kind)||spec.kind==='experiment'&&spec.setup==='inclined_cart')return <ScientificDrawing spec={spec} id={id}/>;
   const arrow = `url(#arrow-${id})`,
     parts: ReactNode[] = [];
-  if (spec.kind === 'geometry') {
-    const all = [...spec.points];
-    for (const c of spec.circles ?? []) {
-      const center = spec.points.find((p) => p.id === c.center)!;
-      all.push(
-        { id: 'bounds', x: center.x + c.r, y: center.y + c.r },
-        { id: 'bounds', x: center.x - c.r, y: center.y - c.r },
-      );
-    }
-    const project = fit(all),
-      p = new Map(spec.points.map((p) => [p.id, project(p)]));
-    for (const [i, [a, b]] of spec.segments.entries())
-      parts.push(
-        <line
-          key={'l' + i}
-          x1={p.get(a)!.x}
-          y1={p.get(a)!.y}
-          x2={p.get(b)!.x}
-          y2={p.get(b)!.y}
-        />,
-      );
-    for (const c of spec.circles ?? []) {
-      const a = p.get(c.center)!,
-        src = spec.points.find((p) => p.id === c.center)!,
-        b = project({ x: src.x + c.r, y: src.y });
-      parts.push(
-        <circle
-          key={c.id}
-          cx={a.x}
-          cy={a.y}
-          r={Math.abs(b.x - a.x)}
-          fill="none"
-        />,
-      );
-    }
-    for (const [i, m] of (spec.marks ?? []).entries()) {
-      const ps = m.points.map((x) => p.get(x)!);
-      if (m.kind === 'right') {
-        const [a, b, c] = ps,
-          la = Math.hypot(a.x - b.x, a.y - b.y),
-          lc = Math.hypot(c.x - b.x, c.y - b.y),
-          u = { x: ((a.x - b.x) / la) * 12, y: ((a.y - b.y) / la) * 12 },
-          v = { x: ((c.x - b.x) / lc) * 12, y: ((c.y - b.y) / lc) * 12 };
-        parts.push(
-          <path
-            key={'m' + i}
-            d={`M${b.x + u.x},${b.y + u.y} l${v.x},${v.y} l${-u.x},${-u.y}`}
-            fill="none"
-          />,
-        );
-      }
-      if (m.kind === 'parallel' || m.kind === 'equal')
-        for (let j = 0; j < 2; j++) {
-          const a = ps[j * 2],
-            b = ps[j * 2 + 1],
-            cx = (a.x + b.x) / 2,
-            cy = (a.y + b.y) / 2,
-            angle = (Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI;
-          parts.push(
-            <g
-              key={'m' + i + j}
-              transform={`translate(${cx} ${cy}) rotate(${angle})`}
-            >
-              {m.kind === 'equal' ? (
-                <path d="M0 -6 V6" />
-              ) : (
-                <path d="M-5 -5 L1 0 L-5 5 M1 -5 L7 0 L1 5" fill="none" />
-              )}
-            </g>,
-          );
-        }
-      if (m.kind === 'angle') {
-        const [a, b, c] = ps,
-          a1 = Math.atan2(a.y - b.y, a.x - b.x),
-          a2 = Math.atan2(c.y - b.y, c.x - b.x),
-          delta = ((a2 - a1 + Math.PI * 3) % (Math.PI * 2)) - Math.PI,
-          r = 23;
-        parts.push(
-          <path
-            key={'m' + i}
-            d={`M${b.x + r * Math.cos(a1)},${b.y + r * Math.sin(a1)} A${r},${r} 0 0 ${delta > 0 ? 1 : 0} ${b.x + r * Math.cos(a2)},${b.y + r * Math.sin(a2)}`}
-            fill="none"
-          />,
-        );
-      }
-      if (m.kind === 'dimension') {
-        const [a, b] = ps;
-        parts.push(
-          <g key={'m' + i}>
-            <path
-              d={`M${a.x} ${a.y + 22} L${b.x} ${b.y + 22}`}
-              markerStart={arrow}
-              markerEnd={arrow}
-            />
-            <text
-              x={(a.x + b.x) / 2}
-              y={(a.y + b.y) / 2 + 42}
-              textAnchor="middle"
-              stroke="none"
-              fill="#20252b"
-            >
-              {m.label}
-            </text>
-          </g>,
-        );
-      }
-    }
-    parts.push(
-      <g key="points" fill="#20252b">
-        {spec.points.map((pt) => {
-          const a = p.get(pt.id)!;
-          return <circle key={pt.id} cx={a.x} cy={a.y} r="2.5" />;
-        })}
-      </g>,
-      <Labels
-        key="labels"
-        items={spec.points.map((pt) => ({
-          ...p.get(pt.id)!,
-          text: pt.label ?? pt.id,
-        }))}
-      />,
-    );
-    for (const [i, m] of (spec.marks ?? []).entries())
-      if (m.label && m.kind === 'angle') {
-        const a = p.get(m.points[1])!;
-        parts.push(
-          <text
-            key={'angle-label' + i}
-            x={a.x + 28}
-            y={a.y - 18}
-            stroke="none"
-            fill="#20252b"
-          >
-            {m.label}
-          </text>,
-        );
-      }
-  }
-  if (spec.kind === 'function') {
-    const [xmin, xmax] = spec.xRange,
-      [ymin, ymax] = spec.yRange,
-      px = (x: number) => 55 + ((x - xmin) / (xmax - xmin)) * 450,
-      py = (y: number) => 285 - ((y - ymin) / (ymax - ymin)) * 250;
-    const x0 = Math.max(55, Math.min(505, px(0))),
-      y0 = Math.max(35, Math.min(285, py(0))),
-      nice = (d: number) => {
-        const p = 10 ** Math.floor(Math.log10(d / 8)),
-          m = d / 8 / p;
-        return (m <= 1 ? 1 : m <= 2 ? 2 : m <= 5 ? 5 : 10) * p;
-      },
-      tx = spec.tickX ?? nice(xmax - xmin),
-      ty = spec.tickY ?? nice(ymax - ymin);
-    for (
-      let x = Math.ceil(xmin / tx) * tx, i = 0;
-      x <= xmax && i++ < 40;
-      x += tx
-    )
-      parts.push(
-        <g key={'x' + i}>
-          {spec.grid && (
-            <line
-              x1={px(x)}
-              y1="35"
-              x2={px(x)}
-              y2="285"
-              stroke="#dce1e5"
-              strokeWidth=".6"
-            />
-          )}
-          <path d={`M${px(x)} ${y0}v5`} />
-          {Math.abs(x) > 1e-7 && (
-            <text
-              x={px(x)}
-              y={y0 + 20}
-              textAnchor="middle"
-              stroke="none"
-              fill="#20252b"
-              fontSize="12"
-            >
-              {+x.toPrecision(5)}
-            </text>
-          )}
-        </g>,
-      );
-    for (
-      let y = Math.ceil(ymin / ty) * ty, i = 0;
-      y <= ymax && i++ < 40;
-      y += ty
-    )
-      parts.push(
-        <g key={'y' + i}>
-          {spec.grid && (
-            <line
-              x1="55"
-              y1={py(y)}
-              x2="505"
-              y2={py(y)}
-              stroke="#dce1e5"
-              strokeWidth=".6"
-            />
-          )}
-          <path d={`M${x0} ${py(y)}h-5`} />
-          {Math.abs(y) > 1e-7 && (
-            <text
-              x={x0 - 10}
-              y={py(y) + 4}
-              textAnchor="end"
-              stroke="none"
-              fill="#20252b"
-              fontSize="12"
-            >
-              {+y.toPrecision(5)}
-            </text>
-          )}
-        </g>,
-      );
-    parts.push(
-      <g key="axes">
-        <path d={`M55 ${y0}H517 M${x0} 285V23`} markerEnd={arrow} />
-        <text x="528" y={y0 + 4} stroke="none" fill="#20252b">
-          x
-        </text>
-        <text x={x0 + 10} y="22" stroke="none" fill="#20252b">
-          y
-        </text>
-      </g>,
-    );
-    parts.push(
-      <defs key="clip">
-        <clipPath id={'plot-' + id}>
-          <rect x="55" y="35" width="450" height="250" />
-        </clipPath>
-      </defs>,
-    );
-    spec.functions.forEach((f, i) => {
-      let d = '',
-        last: number | undefined;
-      for (let k = 0; k <= 700; k++) {
-        const x = xmin + ((xmax - xmin) * k) / 700,
-          y = evaluateExpression(f.expression, x);
-        if (!Number.isFinite(y) || y < ymin || y > ymax) {
-          last = undefined;
-          continue;
-        }
-        const yy = py(y);
-        d +=
-          (last === undefined || Math.abs(yy - last) > 100 ? 'M' : 'L') +
-          px(x).toFixed(2) +
-          ',' +
-          yy.toFixed(2) +
-          ' ';
-        last = yy;
-      }
-      parts.push(
-        <path
-          key={'f' + i}
-          d={d}
-          fill="none"
-          strokeDasharray={i ? '7 4' : undefined}
-          strokeWidth="2"
-          clipPath={`url(#plot-${id})`}
-        />,
-      );
-    });
-    parts.push(
-      <Labels
-        key="labels"
-        items={(spec.keyPoints ?? []).map((p) => ({
-          x: px(p.x),
-          y: py(p.y),
-          text: p.label ?? p.id,
-        }))}
-      />,
-    );
-  }
-  if (spec.kind === 'forces') {
-    const tilt = spec.surface === 'incline' ? (spec.incline ?? 0) : 0,
-      origin = { x: 260, y: 163 },
-      contact = {
-        x: 260 + 42 * Math.sin(rad(tilt)),
-        y: 163 + 42 * Math.cos(rad(tilt)),
-      };
-    parts.push(
-      <g key="body" transform={`rotate(${-tilt} 260 163)`}>
-        {spec.surface !== 'none' && (
-          <>
-            <path d="M100 205 H440" />
-            <path
-              d="M110 205l-10 10 M140 205l-10 10 M170 205l-10 10 M200 205l-10 10 M230 205l-10 10 M260 205l-10 10 M290 205l-10 10 M320 205l-10 10 M350 205l-10 10 M380 205l-10 10 M410 205l-10 10"
-              strokeWidth="1"
-            />
-          </>
-        )}
-        {spec.body === 'box' ? (
-          <rect x="212" y="121" width="96" height="84" rx="2" fill="#fff" />
-        ) : (
-          <circle cx="260" cy="163" r="42" fill="#fff" />
-        )}
-      </g>,
-    );
-    const labels = [];
-    for (const f of spec.forces) {
-      const p =
-          f.origin === 'center'
-            ? origin
-            : f.origin === 'contact'
-              ? contact
-              : { x: 260, y: 121 },
-        len = f.magnitude
-          ? Math.max(
-              42,
-              Math.min(
-                96,
-                (f.magnitude /
-                  Math.max(...spec.forces.map((f) => f.magnitude ?? 0))) *
-                  96,
-              ),
-            )
-          : 88,
-        end = {
-          x: p.x + len * Math.cos(rad(f.angle)),
-          y: p.y - len * Math.sin(rad(f.angle)),
-        };
-      parts.push(
-        <g key={f.id}>
-          <line x1={p.x} y1={p.y} x2={end.x} y2={end.y} markerEnd={arrow} />
-          <circle cx={p.x} cy={p.y} r="2.5" fill="#20252b" />
-        </g>,
-      );
-      labels.push({ ...end, text: f.label });
-    }
-    parts.push(<Labels key="labels" items={labels} />);
-  }
   if (spec.kind === 'experiment') {
     const items = spec.apparatus,
       evap = spec.setup === 'evaporation',
@@ -560,8 +237,8 @@ export function SemanticDrawing({
                   d={c.kind === 'switch_open' ? 'M-18 -2L15 -17' : 'M-17 0H17'}
                 />
               </>
-            ) : c.kind === 'resistor' ? (
-              <rect x="-24" y="-10" width="48" height="20" fill="#fff" />
+            ) : c.kind === 'resistor'||c.kind==='variable_resistor' ? (
+              <><rect x="-24" y="-10" width="48" height="20" fill="#fff"/>{c.kind==='variable_resistor'&&<path d="M-16 22L16 -22" markerEnd={arrow}/>}</>
             ) : (
               <>
                 <circle r="19" fill="#fff" />
@@ -604,148 +281,6 @@ export function SemanticDrawing({
         ))}
       </g>,
     );
-  }
-  if (spec.kind === 'statistics') {
-    const min = Math.min(0, ...spec.data.map((d) => d.value)),
-      max = Math.max(1, ...spec.data.map((d) => d.value)),
-      py = (v: number) => 270 - ((v - min) / (max - min)) * 220,
-      px = (i: number) => 75 + (i * 430) / Math.max(1, spec.data.length - 1);
-    parts.push(<path key="axes" d={`M50 35V${py(0)}H525`} markerEnd={arrow} />);
-    spec.data.forEach((d, i) =>
-      parts.push(
-        <g key={i}>
-          {spec.chart === 'bar' ? (
-            <rect
-              x={px(i) - Math.min(20, 170 / spec.data.length)}
-              y={Math.min(py(d.value), py(0))}
-              width={Math.min(40, 340 / spec.data.length)}
-              height={Math.abs(py(d.value) - py(0))}
-              fill="#eee"
-            />
-          ) : spec.chart === 'numberline' ? (
-            <path d={`M${px(i)} ${py(0) - 5}v10`} />
-          ) : (
-            <circle cx={px(i)} cy={py(d.value)} r="3" fill="#20252b" />
-          )}
-          <text
-            x={px(i)}
-            y="302"
-            textAnchor="middle"
-            fill="#20252b"
-            stroke="none"
-            fontSize="12"
-          >
-            {d.label}
-          </text>
-          <text
-            x={px(i)}
-            y={py(d.value) - 10}
-            textAnchor="middle"
-            fill="#20252b"
-            stroke="none"
-          >
-            {d.value}
-            {spec.unit}
-          </text>
-        </g>,
-      ),
-    );
-    if (spec.chart === 'line')
-      parts.push(
-        <polyline
-          key="line"
-          points={spec.data.map((d, i) => `${px(i)},${py(d.value)}`).join(' ')}
-          fill="none"
-        />,
-      );
-  }
-  if (spec.kind === 'lever') {
-    const xs = [spec.pivot, ...spec.loads.map((l) => l.position)],
-      lo = Math.min(...xs) - 1,
-      hi = Math.max(...xs) + 1,
-      px = (x: number) => 60 + ((x - lo) / (hi - lo)) * 440;
-    parts.push(
-      <g key="beam">
-        <path d="M50 150H515" strokeWidth="4" />
-        <path d={`M${px(spec.pivot)} 152l-16 30h32Z`} fill="#fff" />
-      </g>,
-    );
-    spec.loads.forEach((l, i) =>
-      parts.push(
-        <g key={i}>
-          <line
-            x1={px(l.position)}
-            y1="150"
-            x2={px(l.position)}
-            y2={150 + (l.force > 0 ? 85 : -85)}
-            markerEnd={arrow}
-          />
-          <text
-            x={px(l.position) + 10}
-            y={150 + (l.force > 0 ? 92 : -90)}
-            stroke="none"
-            fill="#20252b"
-          >
-            {l.label}
-          </text>
-        </g>,
-      ),
-    );
-  }
-  if (spec.kind === 'buoyancy') {
-    const y = 185 - (1 - spec.submerged) * 80;
-    parts.push(
-      <g key="vessel">
-        <path d="M150 65V285H410V65" fill="none" />
-        <path d="M151 185H409V284H151Z" fill="#f2f2f2" stroke="none" />
-        <path d="M151 185H409" strokeDasharray="5 3" />
-        <rect x="245" y={y} width="70" height="80" fill="#fff" />
-        {spec.showForces && (
-          <>
-            <path d={`M280 ${y + 40}v-80`} markerEnd={arrow} />
-            <path d={`M280 ${y + 40}v90`} markerEnd={arrow} />
-          </>
-        )}
-      </g>,
-      <Labels
-        key="labels"
-        items={[
-          { x: 315, y: y + 30, text: spec.bodyLabel ?? '物体' },
-          { x: 380, y: 235, text: spec.liquidLabel ?? '液体' },
-        ]}
-      />,
-    );
-  }
-  if (spec.kind === 'motion') {
-    const min = Math.min(...spec.positions.map((p) => p.x)),
-      max = Math.max(...spec.positions.map((p) => p.x)),
-      px = (x: number) => 60 + ((x - min) / Math.max(1, max - min)) * 440;
-    parts.push(<path key="axis" d="M40 185H525" markerEnd={arrow} />);
-    spec.positions.forEach((p, i) =>
-      parts.push(
-        <g key={i}>
-          <circle cx={px(p.x)} cy="165" r="12" fill="#fff" />
-          <path d={`M${px(p.x)} 181v8`} />
-          <text
-            x={px(p.x)}
-            y="215"
-            textAnchor="middle"
-            fill="#20252b"
-            stroke="none"
-          >
-            {p.label ?? `${p.time} s`}
-          </text>
-        </g>,
-      ),
-    );
-    if (spec.direction)
-      parts.push(
-        <path
-          key="direction"
-          d={spec.direction === 'right' ? 'M220 105H340' : 'M340 105H220'}
-          markerEnd={arrow}
-        />,
-      );
   }
   return (
     <>
@@ -926,16 +461,16 @@ export default function SubjectDiagram({ spec }: { spec: SemanticDiagram }) {
     return (
       <p className="diagram-error" role="status">{tr("common:图形条件需要确认，未显示不可靠的示意图。")}</p>
     );
+  if(spec.kind==='chemistry')return <Suspense fallback={<p role="status">{tr('common:题图加载中…')}</p>}><ChemistryDiagram spec={spec}/></Suspense>;
+  if(spec.kind==='macromolecule')return <Suspense fallback={<p role="status">{tr('common:题图加载中…')}</p>}><MacromoleculeDiagram spec={spec}/></Suspense>;
+  if(spec.kind==='bioasset')return <Suspense fallback={<p role="status">{tr('common:题图加载中…')}</p>}><BioAssetDiagram spec={spec}/></Suspense>;
+  if(spec.kind==='biology'&&(spec.view==='food-web'||spec.view==='network'))return <Suspense fallback={<p role="status">{tr('common:题图加载中…')}</p>}><BiologyNetwork spec={spec}/></Suspense>;
+  if(spec.kind==='geometry'||spec.kind==='function')return <Suspense fallback={<figure data-engine="jsxgraph" aria-busy="true">{tr('common:题图加载中…')}</figure>}><MathDiagram spec={spec}/></Suspense>;
+  if(spec.kind==='optics')return <Suspense fallback={<figure data-engine="ray-optics" aria-busy="true">{tr('common:题图加载中…')}</figure>}><OpticsDiagram spec={spec}/></Suspense>;
+  if(['measurement','wave','motion','forces','lever','buoyancy','statistics','biology'].includes(spec.kind)||spec.kind==='experiment'&&spec.setup==='inclined_cart')return <ScientificDiagram spec={parsed.data}/>;
   function exportSVG() {
     if (!ref.current) return;
-    const url = URL.createObjectURL(
-        new Blob([ref.current.outerHTML], { type: 'image/svg+xml' }),
-      ),
-      a = document.createElement('a');
-    a.href = url;
-    a.download = 'Reviewbox-' + spec.kind + '.svg';
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    downloadDiagram(ref.current,'Reviewbox-'+spec.kind);
   }
   const viewBox =
     spec.kind === 'experiment' && spec.setup === 'evaporation'
@@ -963,6 +498,8 @@ export default function SubjectDiagram({ spec }: { spec: SemanticDiagram }) {
             lever: '杠杆图',
             buoyancy: '浮力示意图',
             motion: '运动示意图',
+            measurement:'测量图',wave:'波形图',biology:'生物示意图',
+            chemistry:'化学结构',macromolecule:'生物大分子',bioasset:'科学素材',
           }[spec.kind]
         }
       >

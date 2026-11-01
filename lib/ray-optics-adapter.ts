@@ -61,6 +61,12 @@ export function traceReflection(incoming: OpticsPoint, tangentAngle = 90) {
   return unit(sub(ray.p2, ray.p1));
 }
 
+/** Parallel-ray preset delegates each actual interaction to upstream IdealLens. */
+export function traceParallelLens(kind:'convex'|'concave',focalLength:number){
+ const f=positive(focalLength,'Focal length'),lens={p1:point(0,-3*f),p2:point(0,3*f),focalLength:kind==='convex'?f:-f};
+ return [-.65,0,.65].map((fraction,i)=>{const from=point(-2.2*f,fraction*f),hit=point(0,fraction*f),ray={p1:from,p2:hit};idealLens.onRayIncident.call(lens,ray,i,hit);const direction=unit(sub(ray.p2,ray.p1));return {incident:segment(from,hit,'incident'),outgoing:segment(hit,add(hit,direction,2.3*f),'outgoing')};});
+}
+
 /** Single boundary at x=0; Fresnel powers from upstream BaseGlass.refract. */
 export function traceRefraction(incidenceAngle: number, index1 = 1, index2 = 1.5) {
   positive(index1, 'Incident refractive index');
@@ -120,7 +126,9 @@ export function traceOptics(spec: OpticsSpec): OpticsTrace {
   const lens = { p1: point(0, -extent), p2: point(0, extent), focalLength: focal };
   // These two independent incident rays are transformed by upstream code.
   // The image is their intersection, rather than a separately evaluated lens equation.
-  const traced = [height, 0].map((hitHeight, i) => {
+  const focusX=spec.lens==='convex'?-Math.abs(focal):Math.abs(focal),throughFocus=height*focusX/(distance+focusX);
+  const hitHeights=[height,0,...(Number.isFinite(throughFocus)&&Math.abs(throughFocus)<extent*4?[throughFocus]:[])];
+  const traced = hitHeights.map((hitHeight, i) => {
     const hit = point(0, hitHeight);
     const ray = { p1: { ...tip }, p2: hit };
     idealLens.onRayIncident.call(lens, ray, i, hit);
@@ -128,13 +136,13 @@ export function traceOptics(spec: OpticsSpec): OpticsTrace {
   });
   const a = traced[0], b = traced[1];
   const determinant = a.direction.x * b.direction.y - a.direction.y * b.direction.x;
-  const imageAtInfinity = Math.abs(determinant) <= 1e-12;
+  const imageAtInfinity = Math.abs(determinant) <= 1e-10*Math.max(Math.abs(a.direction.y),Math.abs(b.direction.y),Number.MIN_VALUE);
   const intersection = imageAtInfinity ? null : geometry.linesIntersection({ p1: a.hit, p2: add(a.hit, a.direction, 1) }, { p1: b.hit, p2: add(b.hit, b.direction, 1) });
   if (intersection && (!Number.isFinite(intersection.x) || !Number.isFinite(intersection.y))) throw new RangeError('Image coordinates exceed numerical range');
   const virtual = !!intersection && intersection.x < 0;
   const image = intersection ? { base: point(intersection.x, 0), tip: intersection, distance: intersection.x, height: intersection.y, magnification: intersection.y / height, virtual } : null;
   const rays = traced.map(({ hit, direction }, i) => ({
-    id: i === 0 ? 'parallel' : 'central',
+    id: i === 0 ? 'parallel' : i===1?'central':'focal',
     segments: [segment(tip, hit, 'incident'), segment(hit, add(hit, direction, Math.max(extent, intersection && !virtual ? Math.hypot(intersection.x, intersection.y - hit.y) * 1.15 : 0)), 'outgoing'), ...(virtual && intersection ? [segment(hit, intersection, 'extension', true)] : [])],
   }));
   return { object, image, imageAtInfinity, rays, focalPoints: [point(-Math.abs(focal), 0), point(Math.abs(focal), 0)], observations: [imageAtInfinity ? '物体在焦平面：出射光线平行，像在无穷远。' : virtual ? '出射光线发散；反向延长线交于正立虚像。' : '出射光线相交，形成倒立实像。'] };

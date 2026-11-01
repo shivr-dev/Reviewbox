@@ -27,5 +27,6 @@ export default defineConfig({
     outDir: project + 'pages-dist',
     emptyOutDir: true,
     sourcemap: false,
+    license: { fileName: 'assets/third-party-licenses.txt' },
   },
 });

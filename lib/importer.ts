@@ -165,6 +165,7 @@ export const questionSchema = z.object({
     .max(8)
     .optional(),
   diagramChoice: z.enum(['original', 'redraw', 'skip']).optional(),
+  diagramHistory:z.array(z.object({diagram:diagramSchema,choice:z.enum(['original','redraw','skip']).optional(),at:z.string().datetime()})).max(8).optional(),
   source: safeText,
   tags: z.array(z.string()).max(30),
   version: z.string().max(50),

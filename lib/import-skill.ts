@@ -1,6 +1,9 @@
+import {ACCURATE_AUTHORING_SKILL} from './accurate-authoring-skill';
+import {CHEMICAL_BIOLOGICAL_SKILL} from './chemical-skill';
 import {QUALITY_IMPORT_EXAMPLES,PROFESSIONAL_DIAGRAM_EXAMPLES} from './learning-quality-examples';
 import {SHADING_IMPORT_SKILL} from './professional-diagram-examples';
 import {MATH_AUTHORING_SKILL} from './math-authoring-skill';
+import {SCIENTIFIC_IMPORT_SKILL,BIOLOGY_IMPORT_SKILL} from './scientific-skill';
 import { learningTemplate } from './import-templates';
 import { EXAM_IMPORT_SKILL } from './exam-skill';
 import { validatePack, smartParse } from './importer';
@@ -27,7 +30,7 @@ export function parseImportText(text: string, subject?: Subject) {
 }
 export { IMPORT_EXAMPLE } from './learning-example';
 import { IMPORT_EXAMPLE } from './learning-example';
-export const LEARNING_IMPORT_SKILL = `# Reviewbox 学习包出题 Skill 2.1 · 2026-11-01 · schemaVersion 1
+export const LEARNING_IMPORT_SKILL = `# Reviewbox 学习包出题 Skill 4.1 · 2026-11-01 · schemaVersion 1
 
 根据我随后提供的学科、知识范围、难度、题量和题型，制作原创学习包。只输出一个合法 JSON 对象，可放在一个 json 代码块中。不要输出聊天说明，不要输出备份记录或个人掌握度。
 
@@ -108,4 +111,4 @@ export const IMPORT_SKILL =
     )
     .join('\n\n') +
   '\n\n## 导入 2.0 完整评分与学科图形示例\n' + QUALITY_IMPORT_EXAMPLES.map(pack=>'### '+pack.manifest.title+'\n```json\n'+JSON.stringify(pack,null,2)+'\n```').join('\n\n') + '\n\n### 函数图像结构示例（填入题目的 diagram）\n```json\n'+JSON.stringify(PROFESSIONAL_DIAGRAM_EXAMPLES.function,null,2)+'\n```\n\n' +
-  SHADING_IMPORT_SKILL + '\n\n' + MATH_AUTHORING_SKILL + '\n\n' + EXAM_IMPORT_SKILL;
+  SHADING_IMPORT_SKILL + '\n\n' + MATH_AUTHORING_SKILL + '\n\n' + SCIENTIFIC_IMPORT_SKILL + '\n\n'+ BIOLOGY_IMPORT_SKILL+'\n\n'+CHEMICAL_BIOLOGICAL_SKILL+'\n\n'+ACCURATE_AUTHORING_SKILL+'\n\n' + EXAM_IMPORT_SKILL;

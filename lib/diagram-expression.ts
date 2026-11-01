@@ -1,7 +1,7 @@
 export function evaluateExpression(expression: string, x: number) {
   if (expression.length > 250) throw new Error('表达式过长');
   const tokens =
-    expression.match(/(?:\d*\.)?\d+(?:e[+-]?\d+)?|x|[()+\-*/^]/gi) ?? [];
+    expression.match(/(?:\d*\.)?\d+(?:e[+-]?\d+)?|sin|cos|tan|sqrt|abs|exp|ln|log|pi|e|x|[()+\-*/^]/g) ?? [];
   if (tokens.join('') !== expression.replace(/\s/g, ''))
     throw new Error('不支持的表达式');
   let i = 0,
@@ -15,6 +15,10 @@ export function evaluateExpression(expression: string, x: number) {
       return y;
     }
     if (t === 'x') return x;
+    if(t==='pi')return Math.PI;
+    if(t==='e')return Math.E;
+    const functions:Record<string,(v:number)=>number>={sin:Math.sin,cos:Math.cos,tan:Math.tan,sqrt:Math.sqrt,abs:Math.abs,exp:Math.exp,ln:Math.log,log:Math.log10};
+    if(t in functions){if(tokens[i++]!=='(')throw new Error('函数需要括号');const value=sum();if(tokens[i++]!==')')throw new Error('括号不匹配');return functions[t](value);}
     if (!t || !Number.isFinite(Number(t))) throw new Error('表达式不完整');
     return Number(t);
   }

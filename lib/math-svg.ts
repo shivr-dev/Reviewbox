@@ -138,3 +138,9 @@ export function serializePublicationSvg(svg:SVGSVGElement){
  return '<?xml version="1.0" encoding="UTF-8"?>\n'+new XMLSerializer().serializeToString(clone);
 }
 export function downloadDiagram(svg:SVGSVGElement,name:string){const blob=new Blob([serializePublicationSvg(svg)],{type:'image/svg+xml'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name+'.svg';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+export async function downloadDiagramPng(svg:SVGSVGElement,name:string){
+ const source=URL.createObjectURL(new Blob([serializePublicationSvg(svg)],{type:'image/svg+xml'}));
+ try{await document.fonts.ready;const image=new Image();await new Promise<void>((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('图片导出超时')),15000);image.onload=()=>{clearTimeout(timer);resolve();};image.onerror=()=>{clearTimeout(timer);reject(new Error('题图无法转换为图片'));};image.src=source;});
+  const box=svg.viewBox.baseVal,width=box.width||600,height=box.height||360,scale=Math.min(4,3000/Math.max(width,height)),canvas=document.createElement('canvas');canvas.width=Math.round(width*scale);canvas.height=Math.round(height*scale);const context=canvas.getContext('2d');if(!context)throw new Error('浏览器不能导出图片');context.fillStyle='white';context.fillRect(0,0,canvas.width,canvas.height);context.drawImage(image,0,0,canvas.width,canvas.height);const blob=await new Promise<Blob>((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error('图片导出失败')),'image/png')),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name+'.png';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+ }finally{URL.revokeObjectURL(source);}
+}

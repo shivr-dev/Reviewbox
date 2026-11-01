@@ -6,6 +6,12 @@ import SubjectDiagram from './subject-diagram';
 import { evaluateExpression } from '@/lib/diagram-expression';
 import {semanticDiagramSchema} from '@/lib/diagram-spec';
 import type {DiagramStage} from '@/lib/shaded-regions';
+import {DIAGRAM_RENDERERS,diagramForStage} from '@/lib/diagram-registry';
+const ScientificDiagram=lazy(()=>import('./scientific-diagram'));
+const ChemistryDiagram=lazy(()=>import('./chemistry-diagram'));
+const MacromoleculeDiagram=lazy(()=>import('./macromolecule-diagram'));
+const BioAssetDiagram=lazy(()=>import('./bioasset-diagram'));
+const BiologyNetwork=lazy(()=>import('./biology-network'));
 const MathDiagram=lazy(()=>import('./math-diagram'));
 const OpticsDiagram=lazy(()=>import('./optics-diagram'));
 const DiagramLoading=()=> <figure className="diagram publication-diagram diagram-pending" aria-busy="true"><div className="diagram-loading" role="status" aria-live="polite"><span className="diagram-spinner" aria-hidden="true"/><span>{tr("common:题图加载中…")}</span></div></figure>;
@@ -19,9 +25,16 @@ export default function Diagram({ spec,stage='question' }: { spec: Spec;stage?:D
   if(spec.type==='semantic'){
     const parsed=semanticDiagramSchema.safeParse(spec);
     if(!parsed.success)return <p className="diagram-error" role="alert">{tr("common:图形条件需要确认，未显示不可靠的示意图。")}</p>;
-    const safe=parsed.data;
-    if(safe.kind==='geometry'||safe.kind==='function')return <Suspense fallback={<DiagramLoading/>}><MathDiagram spec={safe} stage={stage}/></Suspense>;
+    const safe=diagramForStage(parsed.data,stage);
+    if(!safe)return null;
+    const renderer=DIAGRAM_RENDERERS[safe.kind];
+    if(safe.kind==='chemistry')return <Suspense fallback={<DiagramLoading/>}><ChemistryDiagram spec={safe} stage={stage}/></Suspense>;
+    if(safe.kind==='macromolecule')return <Suspense fallback={<DiagramLoading/>}><MacromoleculeDiagram spec={safe}/></Suspense>;
+    if(safe.kind==='bioasset')return <Suspense fallback={<DiagramLoading/>}><BioAssetDiagram spec={safe}/></Suspense>;
+    if(safe.kind==='biology'&&(safe.view==='food-web'||safe.view==='network'))return <Suspense fallback={<DiagramLoading/>}><BiologyNetwork spec={safe}/></Suspense>;
+    if(safe.kind==='geometry'||safe.kind==='function')return <Suspense fallback={<DiagramLoading/>}><MathDiagram spec={parsed.data as typeof safe} stage={stage}/></Suspense>;
     if(safe.kind==='optics')return <Suspense fallback={<DiagramLoading/>}><OpticsDiagram spec={safe} stage={stage}/></Suspense>;
+    if(['measurement','wave','motion','mechanics','statistics','biology'].includes(renderer.module)||safe.kind==='experiment'&&safe.setup==='inclined_cart')return <Suspense fallback={<DiagramLoading/>}><ScientificDiagram spec={safe} stage={stage}/></Suspense>;
     return <SubjectDiagram spec={safe}/>;
   }
   // Old packs retain their format. Basic mathematical figures use the same new engine.

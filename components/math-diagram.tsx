@@ -1,4 +1,5 @@
 'use client';
+import DiagramExport from './diagram-export';
 import {tr} from '@/lib/i18n';
 import {useEffect,useId,useRef,useState} from 'react';
 import type {Board} from 'jsxgraph';
@@ -6,6 +7,7 @@ import {semanticDiagramSchema} from '@/lib/diagram-spec';
 import {evaluateExpression} from '@/lib/diagram-expression';
 import {mathBounds,printProjection,publicationLabels,regionArtwork,downloadDiagram,svgEscape,PRINT_FONT,type MathSpec,type XY} from '@/lib/math-svg';
 import {flattenShapes,type DiagramStage} from '@/lib/shaded-regions';
+import {diagramForStage,visiblePhase} from '@/lib/diagram-registry';
 
 /** Only schema-validated coordinates and safe expression callbacks reach JSXGraph. */
 export default function MathDiagram({spec,stage='question'}:{spec:MathSpec;stage?:DiagramStage}){
@@ -18,7 +20,7 @@ export default function MathDiagram({spec,stage='question'}:{spec:MathSpec;stage
   async function mount(){
    const validated=semanticDiagramSchema.parse(JSON.parse(signature));
    if(validated.kind!=='geometry'&&validated.kind!=='function')throw new Error('数学图类型无效');
-   const spec=validated,bounds=mathBounds(spec),W=figureWidth,H=380,{project,scale}=printProjection(bounds,W,H),regions=regionArtwork(spec,stage,'rb'+uid,project,scale,W,H);
+   const spec=diagramForStage(validated,stage) as MathSpec,bounds=mathBounds(spec),W=figureWidth,H=380,{project,scale}=printProjection(bounds,W,H),regions=regionArtwork(spec,stage,'rb'+uid,project,scale,W,H);
    const {default:JXG}=await import('jsxgraph');
    if(cancelled||!host.current)return;
    const container=host.current;container.replaceChildren();
@@ -69,8 +71,8 @@ export default function MathDiagram({spec,stage='question'}:{spec:MathSpec;stage
     const constraints=(spec.regions??[]).flatMap(r=>flattenShapes(r.shape)).flatMap(s=>s.kind==='linear-system'?s.constraints:[]);
     const strictX=constraints.some(c=>c.a===0&&c.c===0&&['lt','gt'].includes(c.relation)),strictY=constraints.some(c=>c.b===0&&c.c===0&&['lt','gt'].includes(c.relation));
     if(spec.grid){for(let x=Math.ceil(xmin);x<xmax&&x-Math.ceil(xmin)<80;x++)segment([x,ymin],[x,ymax],true);for(let y=Math.ceil(ymin);y<ymax&&y-Math.ceil(ymin)<80;y++)segment([xmin,y],[xmax,y],true);}
-    if(xaxis){segment([xmin,0],[xmax,0],strictX,true);label([xmax,0],'x');}
-    if(yaxis){segment([0,ymin],[0,ymax],strictY,true);label([0,ymax],'y');}
+    if(xaxis){segment([xmin,0],[xmax,0],strictX,true);label([xmax,0],spec.xLabel??'x');}
+    if(yaxis){segment([0,ymin],[0,ymax],strictY,true);label([0,ymax],spec.yLabel??'y');}
     if(xaxis&&yaxis)label([0,0],'O');
     const nice=(span:number)=>{const raw=span/7,base=10**Math.floor(Math.log10(raw));return [1,2,5,10].map(n=>n*base).find(n=>n>=raw)!;};
     for(const [axis,step]of [['x',spec.tickX??nice(xmax-xmin)],['y',spec.tickY??nice(ymax-ymin)]] as const){
@@ -85,8 +87,10 @@ export default function MathDiagram({spec,stage='question'}:{spec:MathSpec;stage
     }
     const shapes=(spec.regions??[]).flatMap(r=>flattenShapes(r.shape));
     for(const [i,f]of spec.functions.entries()){
+     if(!visiblePhase(f.phase,stage))continue;
      const exclusive=shapes.some(s=>s.kind==='between'&&((typeof s.lower==='object'&&s.lower.function===i&&s.includeLower===false)||(typeof s.upper==='object'&&s.upper.function===i&&s.includeUpper===false)));
-     const graph=board.create('functiongraph',[(x:number)=>{const y=evaluateExpression(f.expression,x);return Number.isFinite(y)?y:NaN;},xmin,xmax],{...common,strokeWidth:1.65,dash:exclusive?2:0,numberPointsHigh:1200,numberPointsLow:600,doAdvancedPlot:true});
+     const domain=f.domain??[xmin,xmax];
+     const graph=board.create('functiongraph',[(x:number)=>{const y=evaluateExpression(f.expression,x);return Number.isFinite(y)?y:NaN;},domain[0],domain[1]],{...common,strokeWidth:1.65,dash:exclusive?2:0,numberPointsHigh:1200,numberPointsLow:600,doAdvancedPlot:true});
      // Keep function traces inside the mathematical viewport, leaving margins for labels.
      const node=(graph as unknown as {rendNode:SVGElement}).rendNode;if(node)node.style.clipPath=`url(#rb${uid}-plot)`;
      let line:XY[]=[];for(let k=0;k<=600;k++){const x=xmin+(xmax-xmin)*k/600,y=evaluateExpression(f.expression,x);if(Number.isFinite(y)&&y>=ymin&&y<=ymax)line.push(project([x,y]));else if(line.length){obstacles.push(line);line=[];}}if(line.length)obstacles.push(line);
@@ -114,6 +118,6 @@ export default function MathDiagram({spec,stage='question'}:{spec:MathSpec;stage
   {status==='loading'&&<div className="diagram-loading" role="status" aria-live="polite"><span className="diagram-spinner" aria-hidden="true"/><span>{tr("common:题图加载中…")}</span><small>{tr("common:首次使用需要加载绘图工具")}</small></div>}
   {status==='error'&&<div className="diagram-error" role="alert"><p>{tr("common:图形未显示：")}{error}{tr("common:。请保留原图或检查图形条件。")}</p><button type="button" className="diagram-export" onClick={()=>setRetry(n=>n+1)}>{tr("common:重试加载")}</button></div>}
   <div ref={host} id={'math-'+uid} className="publication-board" style={{aspectRatio:figureWidth+'/380'}} hidden={status==='error'}/>
-  <figcaption><span>{spec.caption}</span><button type="button" disabled={status!=='ready'} className="diagram-export" onClick={()=>{const svg=host.current?.querySelector('svg');if(svg)downloadDiagram(svg,'Reviewbox-'+spec.kind+'-'+stage);}}>{tr("common:导出 SVG")}</button></figcaption>
+  <figcaption><span>{spec.caption}</span><DiagramExport getSvg={()=>host.current?.querySelector('svg')} name={'Reviewbox-'+spec.kind+'-'+stage} disabled={status!=='ready'}/></figcaption>
  </figure>;
 }

@@ -1,0 +1,7 @@
+'use client';
+import {useEffect,useRef,useState} from 'react';import type {SemanticDiagram} from '@/lib/diagram-spec';import {bioAsset,loadBioSvg} from '@/lib/bioicons';import DiagramExport from './diagram-export';
+type Spec=Extract<SemanticDiagram,{kind:'bioasset'}>;
+export default function BioAssetDiagram({spec}:{spec:Spec}){const host=useRef<HTMLDivElement>(null),[error,setError]=useState(''),[ready,setReady]=useState(false);let asset:ReturnType<typeof bioAsset>|undefined;try{asset=bioAsset(spec.assetId);}catch{}
+ useEffect(()=>{let cancelled=false;setReady(false);setError('');void loadBioSvg(spec.assetId).then(svg=>{if(!cancelled&&host.current){host.current.innerHTML=svg;setReady(true);}}).catch(e=>{if(!cancelled)setError(e.message);});return()=>{cancelled=true;host.current?.replaceChildren();};},[spec.assetId]);
+ return <figure className="diagram publication-diagram bioasset-diagram" data-engine="bioicons" data-diagram-kind="bioasset" aria-busy={!ready&&!error}>{!ready&&!error&&<p role="status">素材加载中…</p>}{error&&<p role="alert">{error}</p>}<div ref={host} className="bioasset-svg-host"/><figcaption><span>{spec.label??spec.caption??asset?.name}{asset&&<small> <a href={asset.creatorUrl} target="_blank" rel="noreferrer">{asset.creator}</a> · <a href={asset.licenseUrl} target="_blank" rel="noreferrer">{asset.license}</a> · <a href={asset.sourceUrl} target="_blank" rel="noreferrer">Bioicons</a></small>}</span><DiagramExport getSvg={()=>host.current?.querySelector('svg')} name={spec.assetId} disabled={!ready}/></figcaption></figure>;
+}

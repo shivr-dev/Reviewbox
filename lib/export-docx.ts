@@ -1,5 +1,6 @@
 import {Document,Packer,Paragraph,TextRun,ImageRun,Math as Equation,MathRun,MathFraction,MathSuperScript,MathSubScript,MathSubSuperScript,MathRadical,MathRoundBrackets,Header,Footer,PageNumber,AlignmentType,HeadingLevel,type MathComponent,type ParagraphChild} from 'docx';
 import katex from 'katex';
+import {bioAssetCredit} from './bioicons';
 import type {Question} from './model';
 import {SUBJECTS} from './model';
 import {QUESTION_TYPES} from './question-tools';
@@ -68,6 +69,8 @@ export function bookletDocument(questions:Question[],options:BookletOptions){
    const base={transformation:{width,height},altText:{title:image.alt,description:image.alt,name:image.alt}};
    const run=image.type==='svg'?new ImageRun({...base,type:'svg',data:image.data,fallback:{type:'png',data:image.fallback!}}):new ImageRun({...base,type:image.type,data:image.data});
    paragraphs.push(new Paragraph({children:[run],alignment:AlignmentType.CENTER,spacing:{after:120}}));
+   if(q.diagram?.type==='semantic'&&q.diagram.kind==='bioasset')paragraphs.push(para(bioAssetCredit(q.diagram.assetId)));
+   if(q.diagram?.type==='semantic'&&(q.diagram.kind==='chemistry'||q.diagram.kind==='macromolecule'))paragraphs.push(para(q.diagram.source.citation+(q.diagram.source.url?' · '+q.diagram.source.url:'')));
   }
   if(kind!=='answers')for(const [i,option] of (q.options??[]).entries())paragraphs.push(para(`${String.fromCharCode(65+i)}. ${option}`));
   const pairing=q.matching?matchingAnswer(q,q.answer,true):null;

@@ -1,22 +1,25 @@
 import { z } from 'zod';
+import {scientificBase,scientificPhase,measurementSchema,waveSchema,biologySchema,chemistrySchema,macromoleculeSchema,bioAssetSchema,motionSeries,cartApparatus,finite,positive} from './scientific-schema';
+import {scientificErrors} from './scientific-validation-core';
 import { evaluateExpression } from './diagram-expression';
 import {shadedRegionSchema,validateShadedRegions} from './shaded-regions';
 const n = z.number().finite().min(-10000).max(10000),
   pos = z.number().positive().max(10000),
   label = z.string().max(60),
   id = z.string().min(1).max(60);
-const point = z.object({ id, x: n, y: n, label: label.optional() });
+const point = z.object({ id, x: n, y: n, label: label.optional(),phase:scientificPhase.optional() });
 const xy = z.tuple([n, n]);
 const range = z
   .tuple([n, n])
   .refine(([a, b]) => b > a && b - a < 20000, '坐标范围无效');
-const base = { type: z.literal('semantic'), caption: label.optional() };
+const base = scientificBase;
 const geometry = z.object({
   ...base,
   kind: z.literal('geometry'),
   regions:z.array(shadedRegionSchema).max(12).optional(),
   regionTask:z.enum(['read','construct']).optional(),
   auxiliary:z.array(z.tuple([id,id])).max(40).optional(),
+  steps:z.array(z.object({id,label:label.optional(),phase:scientificPhase,segments:z.array(z.tuple([id,id])).max(20)})).max(12).optional(),
   bounds:z.tuple([n,n,n,n]).optional(),
   points: z.array(point).min(2).max(50),
   segments: z.array(z.tuple([id, id])).max(80),
@@ -38,6 +41,7 @@ const geometry = z.object({
         points: z.array(id).min(2).max(4),
         label: label.optional(),
         circleId: id.optional(),
+        phase:scientificPhase.optional(),
       }),
     )
     .max(40)
@@ -54,6 +58,7 @@ const functions = z.object({
     .array(
       z.object({
         expression: z.string().min(1).max(250),
+        domain:range.optional(),phase:scientificPhase.optional(),
         label: label.optional(),
       }),
     )
@@ -62,7 +67,7 @@ const functions = z.object({
   tickX: pos.optional(),
   tickY: pos.optional(),
   keyPoints: z.array(point).max(20).optional(),
-  grid: z.boolean().optional(),
+  grid: z.boolean().optional(),xLabel:label.optional(),yLabel:label.optional(),
 });
 const forces = z.object({
   ...base,
@@ -74,20 +79,21 @@ const forces = z.object({
     .array(
       z.object({
         id,
-        kind: z.enum(['gravity', 'normal', 'friction', 'applied']),
+        kind: z.enum(['gravity', 'normal', 'friction', 'applied','tension','pressure','spring']),
         label,
         origin: z.enum(['center', 'contact', 'top']),
         angle: n,
-        magnitude: pos.optional(),
+        magnitude: pos.optional(),phase:scientificPhase.optional(),bodyId:id.optional(),at:xy.optional(),
       }),
     )
     .min(1)
     .max(12),
+ mass:positive.optional(),g:positive.optional(),equilibrium:z.boolean().optional(),acceleration:z.tuple([finite,finite]).optional(),friction:z.object({type:z.enum(['static','sliding']),coefficient:z.number().min(0).max(3),motionDirection:z.enum(['up','down']).optional()}).optional(),spring:z.object({constant:positive,extension:positive}).optional(),bodies:z.array(z.object({id,x:finite,y:finite,label:label.optional()})).max(5).optional(),interactions:z.array(z.object({first:id,second:id})).max(5).optional(),
 });
 const optics = z.object({
   ...base,
   kind: z.literal('optics'),
-  opticalElement:z.enum(['lens','mirror','interface']).optional(),
+  opticalElement:z.enum(['lens','mirror','interface']).optional(),view:z.enum(['imaging','parallel','reflection','apparatus']).optional(),medium1:label.optional(),medium2:label.optional(),
   lens: z.enum(['convex', 'concave']).optional(),
   focalLength: pos.optional(),
   objectDistance: pos.optional(),
@@ -117,7 +123,7 @@ const apparatusTypes = [
 const experiment = z.object({
   ...base,
   kind: z.literal('experiment'),
-  setup: z.enum(['evaporation', 'filtration', 'apparatus']),
+  setup: z.enum(['evaporation', 'filtration', 'apparatus','inclined_cart']),cart:cartApparatus.optional(),
   apparatus: z
     .array(
       z.object({
@@ -127,7 +133,7 @@ const experiment = z.object({
         liquidLevel: z.number().min(0).max(1).optional(),
       }),
     )
-    .min(1)
+    .min(0)
     .max(10),
   connections: z
     .array(
@@ -156,11 +162,11 @@ const circuit = z.object({
           'resistor',
           'lamp',
           'ammeter',
-          'voltmeter',
+          'voltmeter','variable_resistor',
         ]),
         from: id,
         to: id,
-        label: label.optional(),
+        label: label.optional(),resistance:positive.optional(),voltage:positive.optional(),
       }),
     )
     .min(1)
@@ -169,22 +175,24 @@ const circuit = z.object({
 const statistics = z.object({
   ...base,
   kind: z.literal('statistics'),
-  chart: z.enum(['bar', 'line', 'numberline']),
+  chart: z.enum(['bar', 'line', 'numberline','scatter','histogram','boxplot']),
   data: z
-    .array(z.object({ label, value: n }))
-    .min(1)
-    .max(15),
+    .array(z.object({ label, value: n,x:n.optional() }))
+    .min(0)
+    .max(15).default([]),
   unit: label.optional(),
+  bins:z.array(z.object({from:n,to:n,count:z.number().nonnegative().max(1e6)})).max(30).optional(),
+  summary:z.object({min:n,q1:n,median:n,q3:n,max:n}).optional(),xUnit:label.optional(),
 });
 const lever = z.object({
   ...base,
   kind: z.literal('lever'),
-  pivot: n,
+  pivot: n.default(0),
   loads: z
     .array(z.object({ position: n, force: n, label }))
-    .min(1)
-    .max(8),
-  equilibrium: z.boolean().optional(),
+    .min(0)
+    .max(8).default([]),
+  equilibrium: z.boolean().optional(),mechanism:z.enum(['lever','fixed-pulley','movable-pulley','pulley-block','inclined-plane']).optional(),supportingStrands:z.number().int().min(1).max(6).optional(),load:positive.optional(),effort:positive.optional(),efficiency:z.number().positive().max(1).optional(),height:positive.optional(),length:positive.optional(),armsPhase:scientificPhase.optional(),showArms:z.boolean().optional(),
 });
 const buoyancy = z.object({
   ...base,
@@ -192,7 +200,7 @@ const buoyancy = z.object({
   submerged: z.number().min(0).max(1),
   bodyLabel: label.optional(),
   liquidLabel: label.optional(),
-  showForces: z.boolean().default(false),
+  showForces: z.boolean().default(false),density:positive.optional(),volume:positive.optional(),mass:positive.optional(),g:positive.optional(),state:z.enum(['floating','suspended','sinking']).optional(),forcesPhase:scientificPhase.optional(),
 });
 const motion = z.object({
   ...base,
@@ -205,11 +213,11 @@ const motion = z.object({
         label: label.optional(),
       }),
     )
-    .min(2)
-    .max(12),
-  direction: z.enum(['left', 'right']).optional(),
+    .min(0)
+    .max(12).default([]),
+  direction: z.enum(['left', 'right']).optional(),chart:z.enum(['position','distance-time','velocity-time']).optional(),series:z.array(motionSeries).min(1).max(4).optional(),timeUnit:z.enum(['s','min','h']).optional(),valueUnit:z.enum(['m','cm','km','m/s','km/h','cm/s']).optional(),tickX:positive.optional(),tickY:positive.optional(),
 });
-export const semanticDiagramSchema = z
+export const semanticDiagramStructureSchema = z
   .discriminatedUnion('kind', [
     geometry,
     functions,
@@ -220,11 +228,12 @@ export const semanticDiagramSchema = z
     statistics,
     lever,
     buoyancy,
-    motion,
-  ])
-  .superRefine((s, ctx) => {
+    motion,measurementSchema,waveSchema,biologySchema,chemistrySchema,macromoleculeSchema,bioAssetSchema,
+  ]);
+export const semanticDiagramSchema = semanticDiagramStructureSchema.superRefine((s, ctx) => {
     const problem = (message: string) =>
       ctx.addIssue({ code: 'custom', message });
+    for(const error of scientificErrors(s))problem(error);
     if(s.kind==='geometry'||s.kind==='function')for(const error of validateShadedRegions(s))problem(error);
     if (s.kind === 'geometry') {
       const p = new Map(s.points.map((p) => [p.id, p]));
@@ -233,6 +242,7 @@ export const semanticDiagramSchema = z
       if(cs.size!==(s.circles??[]).length)problem('圆 ID 重复');
       if(s.bounds&&(s.bounds[2]<=s.bounds[0]||s.bounds[3]<=s.bounds[1]))problem('几何显示范围无效');
       for(const pair of s.auxiliary??[])if(pair.some(id=>!p.has(id)))problem('辅助线引用不存在的点');
+      for(const step of s.steps??[])for(const pair of step.segments)if(pair.some(id=>!p.has(id)))problem('作图步骤引用不存在的点');
       for (const c of cs.values()) if (!p.has(c.center)) problem('圆心不存在');
       for (const [a, b] of s.segments)
         if (
@@ -282,7 +292,7 @@ export const semanticDiagramSchema = z
             problem('几何标记与坐标关系不符');
         }
         if (m.kind === 'angle' && ps.length !== 3) problem('角弧需要三个点');
-        if (m.kind === 'dimension' && ps.length !== 2)
+        if (m.kind === 'dimension' && (ps.length !== 2||Math.hypot(...vec(0,1))<1e-8))
           problem('尺寸线需要两个端点');
         if (m.kind === 'tangent') {
           const c = cs.get(m.circleId ?? ''),
@@ -294,6 +304,7 @@ export const semanticDiagramSchema = z
           const r = [ps[0].x - center.x, ps[0].y - center.y],
             v = vec(0, 1);
           if (
+            Math.hypot(...v)<1e-8 ||
             Math.abs(Math.hypot(...r) - c.r) / c.r > 0.001 ||
             Math.abs(r[0] * v[0] + r[1] * v[1]) / (c.r * Math.hypot(...v)) >
               0.001
@@ -353,8 +364,10 @@ export const semanticDiagramSchema = z
     )
       problem('物距或物高与焦距比例过大，请分图表示');
     if(s.kind==='optics'){
-      if((!s.opticalElement||s.opticalElement==='lens')&&(!s.lens||!s.focalLength||!s.objectDistance||!s.objectHeight))problem('透镜题必须提供类型、焦距、物距和物高');
-      if(s.opticalElement==='mirror'&&(!s.objectDistance||!s.objectHeight))problem('平面镜题必须提供物体位置和高度');
+      if((!s.opticalElement||s.opticalElement==='lens')&&(!s.lens||!s.focalLength||s.view!=='parallel'&&!s.objectDistance))problem('透镜需要类型、焦距、物距；平行光模式不需要物距');
+      if(s.mode==='quantitative'&&s.view!=='parallel'&&s.view!=='reflection'&&s.opticalElement!=='interface'&&!s.objectHeight)problem('定量成像需要物高；未知时使用 schematic 模式');
+      if(s.view==='reflection'&&s.incidenceAngle===undefined)problem('反射图需要入射角');
+      if(s.opticalElement==='mirror'&&s.view!=='reflection'&&!s.objectDistance)problem('平面镜成像需要物距');
       if(s.opticalElement==='interface'&&(s.refractiveIndex1===undefined||s.refractiveIndex2===undefined||s.incidenceAngle===undefined))problem('折射题必须提供两侧折射率和入射角');
     }
     if (s.kind === 'experiment') {

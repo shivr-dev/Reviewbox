@@ -26,7 +26,9 @@ test('inside focus and concave lens produce upright virtual images and backward 
     assert.ok(result.image?.virtual);
     close(result.image.tip.x, x);
     close(result.image.tip.y, y);
-    assert.equal(result.rays.flatMap(ray => ray.segments).filter(s => s.virtual).length, 2);
+    assert.equal(result.rays.length, 3);
+    assert.equal(result.rays.flatMap(ray => ray.segments).filter(s => s.virtual).length, result.rays.length);
+    close(result.rays.find(ray=>ray.id==='focal')!.segments[1].direction.y,0);
     for (const ray of result.rays) {
       assert.ok(ray.segments[1].direction.x > 0);
       assert.ok(ray.segments[2].direction.x < 0);

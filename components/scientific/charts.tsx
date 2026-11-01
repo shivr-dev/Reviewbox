@@ -1,0 +1,12 @@
+import type {SemanticDiagram} from '@/lib/diagram-spec';
+import {Plot,ScienceText} from './primitives';
+export function WaveDrawing({spec:s,id}:{spec:Extract<SemanticDiagram,{kind:'wave'}>;id:string}){
+ const scale=['ms','cm'].includes(s.xUnit)?s.xUnit==='ms'?.001:.01:1;
+ return <Plot id={id} xRange={s.xRange} yRange={s.yRange} xLabel={(s.view==='time'?'t':'x')+' / '+s.xUnit} yLabel={'y / '+s.yUnit} tickX={s.tickX} tickY={s.tickY} schematic={s.mode==='schematic'}>{({x,y})=>s.waves.map((w,i)=>{const frequency=s.view==='time'?w.frequency!:1/w.wavelength!,cycles=(s.xRange[1]-s.xRange[0])*scale*frequency,samples=Math.min(3000,Math.max(600,Math.ceil(cycles*60))),points=Array.from({length:samples+1},(_,k)=>{const at=s.xRange[0]+(s.xRange[1]-s.xRange[0])*k/samples;return `${x(at)},${y(w.amplitude*Math.sin(2*Math.PI*frequency*at*scale+w.phaseRadians))}`;});return <g key={w.id} data-wave-amplitude={w.amplitude} data-wave-frequency={w.frequency}><polyline points={points.join(' ')} strokeDasharray={i?'6 4':undefined}/>{w.label&&<ScienceText x={430} y={80+i*22}>{w.label}</ScienceText>}</g>;})}</Plot>;
+}
+export function MotionDrawing({spec:s,id}:{spec:Extract<SemanticDiagram,{kind:'motion'}>;id:string}){
+ const lines=s.series??[];
+ if(!lines.length){const values=s.positions.map(p=>p.x),lo=Math.min(...values),hi=Math.max(...values),p=(v:number)=>75+(v-lo)/Math.max(hi-lo,1)*440;return <><path d="M55 190H550"/>{s.positions.map((v,i)=><g key={i}><circle cx={p(v.x)} cy={165-i%2*35} r={9} fill="white"/><path d={`M${p(v.x)} 186v8`}/><ScienceText x={p(v.x)} y={225+i%2*28} anchor="middle">{v.label??`${v.time} ${s.timeUnit??'s'}`}</ScienceText></g>)}</>;}
+ const pts=lines.flatMap(l=>l.points),maxT=Math.max(...pts.map(p=>p.time)),minV=Math.min(0,...pts.map(p=>p.value)),maxV=Math.max(1,...pts.map(p=>p.value)),pad=(maxV-minV)*.1;
+ return <Plot id={id} xRange={[0,maxT*1.07||1]} yRange={[minV<0?minV-pad:0,maxV+pad]} xLabel={'t / '+s.timeUnit} yLabel={(s.chart==='velocity-time'?'v':'s')+' / '+s.valueUnit} tickX={s.tickX} tickY={s.tickY} schematic={s.mode==='schematic'}>{({x,y})=>lines.map((l,i)=><g key={l.id} data-series={l.id}><polyline points={l.points.map(p=>`${x(p.time)},${y(p.value)}`).join(' ')} strokeDasharray={i?'7 4':undefined}/>{l.points.map((p,j)=><circle key={j} data-time={p.time} data-value={p.value} cx={x(p.time)} cy={y(p.value)} r={2.5} fill="#222"/>)}{l.label&&<ScienceText x={440} y={80+i*23}>{l.label}</ScienceText>}</g>)}</Plot>;
+}
