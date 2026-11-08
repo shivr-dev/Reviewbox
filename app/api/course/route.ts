@@ -18,7 +18,7 @@ export async function POST(req: Request) {
     if (++rate.count > 15) throw new Error('课程请求较多，请稍后继续');
     limits.set(user.userId, rate);
     const b = await readBody(req, 1000000);
-    if(b.action==='tutor'){const {action,...input}=b;return Response.json(await naviConversation(input));}
+    if(b.action==='tutor'){const {membershipServerRequest}=await import('@/lib/membership-server');const {action,requestId,capability,trial,...input}=b;const response=await membershipServerRequest({action:'tutor',requestId:requestId??crypto.randomUUID(),capability:capability??'navi_basic',trial,input},req.signal);const result:any=await response.json();return Response.json(result,{status:response.status});}
     if (b.action === 'generate')
       return Response.json({ content: await generateCourseSection(b) });
     if (b.action === 'chat') return Response.json(await courseConversation(b));

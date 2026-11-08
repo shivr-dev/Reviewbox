@@ -1,4 +1,5 @@
 'use client';
+import {useScientificTargets} from './navi-diagram-control';
 import DiagramExport from './diagram-export';
 import {tr} from '@/lib/i18n';
 import {useEffect,useId,useRef,useState} from 'react';
@@ -12,6 +13,10 @@ import {diagramForStage,visiblePhase} from '@/lib/diagram-registry';
 /** Only schema-validated coordinates and safe expression callbacks reach JSXGraph. */
 export default function MathDiagram({spec,stage='question'}:{spec:MathSpec;stage?:DiagramStage}){
  const host=useRef<HTMLDivElement>(null),uid=useId().replace(/[^a-z0-9]/gi,''),[status,setStatus]=useState<'loading'|'ready'|'error'>('loading'),[error,setError]=useState(''),[retry,setRetry]=useState(0);
+ const visible=diagramForStage(spec,stage) as MathSpec;
+ const ids=visible.kind==='geometry'?[...visible.points.map(p=>'point:'+p.id),...(visible.circles??[]).map(c=>'circle:'+c.id)]:visible.functions.flatMap((f,i)=>visiblePhase(f.phase,stage)?['function:'+i]:[]);
+ const controls=useScientificTargets(ids),objects=useRef(new Map<string,any>());
+ useEffect(()=>{for(const [id,o] of objects.current){const active=controls.scientific?.highlights.includes(id);o.setAttribute(id.startsWith('point:')?{fillColor:active?'#1263a8':'#222',size:active?3:1.25,strokeWidth:0}:{strokeColor:active?'#1263a8':'#1c1c1c',strokeWidth:active?3:id.startsWith('function:')?1.65:1.55});}},[controls.scientific,status]);
  const signature=JSON.stringify(spec);
  const figureWidth=spec.kind==='function'?Math.max(360,Math.min(600,Math.round(302*(spec.xRange[1]-spec.xRange[0])/(spec.yRange[1]-spec.yRange[0])+78))):600;
  useEffect(()=>{
@@ -40,13 +45,13 @@ export default function MathDiagram({spec,stage='question'}:{spec:MathSpec;stage
    };
    const extra:string[]=[];
    const svgPath=(points:XY[],dashed=false)=>`<path d="${points.map((p,i)=>(i?'L':'M')+p.join(',')).join(' ')}" fill="none" stroke="#222" stroke-width="1.2" ${dashed?'stroke-dasharray="6 4"':''}/>`;
-   board.suspendUpdate();
+   objects.current.clear();board.suspendUpdate();
    if(spec.kind==='geometry'){
     const points=new Map(spec.points.map(p=>[p.id,[p.x,p.y] as XY]));
-    for(const p of spec.points){board.create('point',[p.x,p.y],{...common,name:'',size:1.25,strokeWidth:0,fillColor:'#222',fillOpacity:1});label([p.x,p.y],p.label??p.id);}
+    for(const p of spec.points){objects.current.set('point:'+p.id,board.create('point',[p.x,p.y],{...common,name:'',size:1.25,strokeWidth:0,fillColor:'#222',fillOpacity:1}));label([p.x,p.y],p.label??p.id);}
     for(const [a,b]of spec.segments)segment(points.get(a)!,points.get(b)!);
     for(const [a,b]of spec.auxiliary??[])segment(points.get(a)!,points.get(b)!,true);
-    for(const c of spec.circles??[]){const center=points.get(c.center)!;board.create('circle',[center,c.r],common);obstacles.push(Array.from({length:97},(_,i)=>project([center[0]+c.r*Math.cos(i*Math.PI/48),center[1]+c.r*Math.sin(i*Math.PI/48)])));}
+    for(const c of spec.circles??[]){const center=points.get(c.center)!;objects.current.set('circle:'+c.id,board.create('circle',[center,c.r],common));obstacles.push(Array.from({length:97},(_,i)=>project([center[0]+c.r*Math.cos(i*Math.PI/48),center[1]+c.r*Math.sin(i*Math.PI/48)])));}
     for(const m of spec.marks??[]){
      const ps=m.points.map(id=>project(points.get(id)!));
      if(m.kind==='right'||m.kind==='angle'){
@@ -91,6 +96,7 @@ export default function MathDiagram({spec,stage='question'}:{spec:MathSpec;stage
      const exclusive=shapes.some(s=>s.kind==='between'&&((typeof s.lower==='object'&&s.lower.function===i&&s.includeLower===false)||(typeof s.upper==='object'&&s.upper.function===i&&s.includeUpper===false)));
      const domain=f.domain??[xmin,xmax];
      const graph=board.create('functiongraph',[(x:number)=>{const y=evaluateExpression(f.expression,x);return Number.isFinite(y)?y:NaN;},domain[0],domain[1]],{...common,strokeWidth:1.65,dash:exclusive?2:0,numberPointsHigh:1200,numberPointsLow:600,doAdvancedPlot:true});
+     objects.current.set('function:'+i,graph);
      // Keep function traces inside the mathematical viewport, leaving margins for labels.
      const node=(graph as unknown as {rendNode:SVGElement}).rendNode;if(node)node.style.clipPath=`url(#rb${uid}-plot)`;
      let line:XY[]=[];for(let k=0;k<=600;k++){const x=xmin+(xmax-xmin)*k/600,y=evaluateExpression(f.expression,x);if(Number.isFinite(y)&&y>=ymin&&y<=ymax)line.push(project([x,y]));else if(line.length){obstacles.push(line);line=[];}}if(line.length)obstacles.push(line);

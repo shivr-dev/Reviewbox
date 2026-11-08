@@ -1,4 +1,6 @@
 'use client';
+import {permitMembership} from '@/lib/membership-client';
+
 import NaviWebSearch from './navi-web-search';
 import { safeNaviWebURL, parseNaviWebIntent } from '@/lib/navi-web-sources';
 import NaviConfigurationPreview from './navi-configuration-preview';
@@ -125,6 +127,7 @@ export default function NaviWorkspace() {
   const [consent, setConsent] = useState(false),
     [tutorMode, setTutorMode] = useState('auto'),
     [helpLevel, setHelpLevel] = useState(1),
+    [membershipMode,setMembershipMode]=useState<'navi_basic'|'navi_deep'|'agent'>('navi_basic'),[membershipTrial,setMembershipTrial]=useState<''|'plus'|'pro'>(''),
     [pendingNote, setPendingNote] = useState<NaviMessage | null>(null),
     [practice, setPractice] = useState(false),
     [receipt, setReceipt] = useState(''),
@@ -236,10 +239,11 @@ export default function NaviWorkspace() {
     setPendingUI(null);
     setMenu(false);
   }, [thread?.id, ns]);
-  function applyUI(
+  async function applyUI(
     actions: NaviUIAction[],
     questionId?: string,
     targetId?: string,
+    membershipReceipt?:string,
   ) {
     if (
       (targetId && currentNaviUI()?.target?.id !== targetId) ||
@@ -249,6 +253,7 @@ export default function NaviWorkspace() {
       setReceipt(t('live.error.unsupported'));
       return false;
     }
+    try{await permitMembership('workspace',membershipReceipt);}catch(e){setReceipt((e as Error).message);return false;}
     const result = executeNaviUI(actions);
     setReceipt(
       result.ok ? t('live.applied') : t('live.error.' + result.reason),
@@ -582,6 +587,7 @@ export default function NaviWorkspace() {
       const offlineAction =
         !check && !aiReady ? offlineConfigurationRequest(text) : undefined;
       if (offlineAction) {
+        await permitMembership('workflows');
         closeTool();
         const id = 'navi-message:' + crypto.randomUUID();
         setConfiguration({ action: offlineAction, id });
@@ -652,6 +658,7 @@ export default function NaviWorkspace() {
       }
       const commands = check ? undefined : parseNaviUICommand(text);
       if (commands) {
+        await permitMembership('workspace');
         const result = executeNaviUI(commands);
         const reply = result.ok
           ? t('live.applied')
@@ -740,15 +747,16 @@ export default function NaviWorkspace() {
           ),
           ui: live
             ? {
-                ...live.capabilities,
+                ...live.capabilities,scrollTargets:live.capabilities.scrollTargets?.slice(0,500),scientificIds:live.capabilities.scientificIds?.slice(0,100),
                 questionIds: live.capabilities.questionIds.slice(0, 30),
                 knowledgeIds: live.capabilities.knowledgeIds?.slice(0, 30),
                 state: live.snapshot(),
                 target: live.target,
               }
             : undefined,
-        },
+        },{capability:membershipMode,trial:membershipTrial||undefined},
       );
+      setMembershipTrial('');
       if (currentNamespace() !== owner) return;
       let autoApplied = false;
       if (
@@ -778,7 +786,7 @@ export default function NaviWorkspace() {
           role: 'assistant',
           text: answer.reply,
           at: new Date().toISOString(),
-          ui_actions: answer.ui_actions,
+          ui_actions: answer.ui_actions,membershipReceipt:answer.membershipReceipt,
           uiTargetId: boundTarget,
           uiQuestionId: live?.readEvidence?.().questionId,
         });
@@ -797,7 +805,7 @@ export default function NaviWorkspace() {
             citations: answer.citations,
             supplementary: answer.supplementary,
             privateEvidence: !!evidence,
-            ui_actions: answer.ui_actions,
+            ui_actions: answer.ui_actions,membershipReceipt:answer.membershipReceipt,
             tutor_actions: answer.tutor_actions,
             configuration_actions: answer.configuration_actions,
             uiQuestionId: live?.readEvidence?.().questionId,
@@ -1004,12 +1012,12 @@ export default function NaviWorkspace() {
           <NaviActionPreview
             key={pendingUI.id}
             actions={pendingUI.ui_actions!}
-            onAccept={() => {
+            onAccept={async() => {
               if (
-                applyUI(
+                await applyUI(
                   pendingUI.ui_actions!,
                   pendingUI.uiQuestionId,
-                  pendingUI.uiTargetId,
+                  pendingUI.uiTargetId,pendingUI.membershipReceipt,
                 )
               )
                 setPendingUI(null);
@@ -1244,7 +1252,7 @@ export default function NaviWorkspace() {
                 )}
               <details className="navi-tutor-settings">
                 <summary>{t('settings')}</summary>
-                <section className="navi-tutor-controls">
+                <section className="navi-tutor-controls"><label>{t('membership.level')}<select value={membershipMode} onChange={e=>setMembershipMode(e.target.value as any)}><option value="navi_basic">Navi · Free</option><option value="navi_deep">Navi Deep · Plus</option><option value="agent">Navi Agent · Pro</option></select></label><label>{t('membership.trial')}<select value={membershipTrial} onChange={e=>setMembershipTrial(e.target.value as any)}><option value="">{t('membership.noTrial')}</option><option value="plus">{t('membership.plusTrial')}</option><option value="pro">{t('membership.proPreview')}</option></select></label>
                   <label>
                     {t('modeLabel')}
                     <select

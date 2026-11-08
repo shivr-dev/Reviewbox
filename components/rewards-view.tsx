@@ -1,4 +1,5 @@
 'use client';
+import MembershipView from './membership-view';
 import {tr} from '@/lib/i18n';
 import { useEffect, useRef, useState } from 'react';
 import {
@@ -56,41 +57,8 @@ export function RewardsBridge() {
   }, [cloudUser?.id]);
   return null;
 }
-export function SuperPromo() {
-  const { data, navigate, refresh, notify } = useReview(),
-    g = learningGame(data);
-  if (g.superPlan.active || data.settings.superPromoDismissed) return null;
-  return (
-    <aside className="super-promo">
-      <Crown size={18} />
-      <span>
-        <b>SuperReview</b>{tr("workshop:· 专属动作、10 颗生命值与每周补给")}</span>
-      <button onClick={() => navigate('super')}>{tr("workshop:了解计划")}<ArrowRight size={14} />
-      </button>
-      <button
-        className="super-promo-close"
-        aria-label={tr("workshop:关闭 SuperReview 推广")}
-        onClick={() => {
-          const ns = currentNamespace();
-          void loadData(ns)
-            .then((d) =>
-              put(
-                'setting',
-                { ...d.settings, superPromoDismissed: true },
-                'settings',
-                false,
-                ns,
-              ),
-            )
-            .then(refresh)
-            .catch((e) => notify(e instanceof Error ? e.message : '保存失败'));
-        }}
-      >
-        <X size={16} />
-      </button>
-    </aside>
-  );
-}
+export function SuperPromo(){return null;}
+
 export default function RewardsView({
   mode = 'redeem',
 }: {
@@ -179,8 +147,8 @@ export default function RewardsView({
         <button className="quiet" onClick={() => navigate('shop')}>{tr("workshop:返回商店")}</button>
         <div>
           <button className="quiet" onClick={() => navigate('redeem')}>{tr("workshop:兑换码")}</button>
-          <button className="quiet" onClick={() => navigate('super')}>
-            SuperReview
+          <button className="quiet" onClick={() => navigate('membership')}>
+            Reviewbox Membership
           </button>
           <button className="quiet" onClick={() => navigate('admin')}>{tr("workshop:管理员")}</button>
         </div>
@@ -220,89 +188,7 @@ export default function RewardsView({
           </button>
         </section>
       )}
-      {mode === 'super' ? (
-        <section className="super-plan panel">
-          <div className="super-emblem">
-            <Crown />
-            SUPERREVIEW
-          </div>
-          <h1>{tr("workshop:让每一段冒险，都有特别的陪伴。")}</h1>
-          <Penguin
-            skin="skin-super"
-            action={motion}
-            actionKey={String(preview)}
-          />
-          <div className="super-motion-picker" aria-label={tr("workshop:专属动作预览")}>
-            {(
-              [
-                ['welcome', tr("workshop:欢迎登场")],
-                ['correct', tr("workshop:答对庆祝")],
-                ['thinking', tr("workshop:思考鼓励")],
-                ['combo', tr("workshop:连对大招")],
-                ['chest', tr("workshop:开箱惊喜")],
-                ['levelup', tr("workshop:升级飞跃")],
-              ] as [CompanionAction, string][]
-            ).map(([action, label]) => (
-              <button
-                key={action}
-                className={motion === action ? 'selected' : ''}
-                onClick={() => {
-                  setMotion(action);
-                  setPreview((v) => v + 1);
-                }}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          <div className="super-benefits">
-            <div>
-              <Heart />
-              <strong>{tr("workshop:10 颗生命值")}</strong>
-              <p>{tr("workshop:保留恢复练习与自动恢复")}</p>
-            </div>
-            <div>
-              <Snowflake />
-              <strong>{tr("workshop:每周三枚冻结")}</strong>
-              <p>{tr("workshop:每周联网自动领取，不重复发放")}</p>
-            </div>
-            <div>
-              <Crown />
-              <strong>{tr("workshop:极光披风与专属动作")}</strong>
-              <p>{tr("workshop:欢迎、庆祝、鼓励、连对、开箱与升级")}</p>
-            </div>
-          </div>
-          <p>
-            {game.superPlan.active
-              ? tr("common:会员有效至 {{v0}}",{v0:(new Date(game.superPlan.until!).toLocaleDateString('zh-CN'))})
-              : tr("workshop:使用兑换码激活，会员天数由兑换码设定。")}
-          </p>
-          <button className="primary" onClick={() => navigate('redeem')}>{tr("workshop:使用兑换码激活")}<Gift size={18} />
-          </button>
-          {game.superPlan.active && (
-            <button
-              className="secondary"
-              onClick={() => {
-                const ns = currentNamespace();
-                void loadData(ns)
-                  .then((d) =>
-                    put(
-                      'setting',
-                      { ...d.settings, gameSkin: 'skin-super' },
-                      'settings',
-                      false,
-                      ns,
-                    ),
-                  )
-                  .then(refresh)
-                  .catch((e) =>
-                    notify(e instanceof Error ? e.message : '保存失败'),
-                  );
-              }}
-            >{tr("workshop:使用专属企鹅")}</button>
-          )}
-        </section>
-      ) : !cloudUser ? (
+      {mode === 'super' ? <MembershipView/> : !cloudUser ? (
         <section className="panel redeem-card">
           <ShieldCheck className="reward-large-icon" />
           <h1>{mode === 'admin' ? tr("workshop:管理员登录") : tr("workshop:登录后兑换奖品")}</h1>
@@ -334,7 +220,7 @@ export default function RewardsView({
         <section className="panel redeem-card">
           <Gift className="reward-large-icon" />
           <h1>{tr("workshop:开启一份特别奖励")}</h1>
-          <p>{tr("workshop:输入兑换码，领取点数、服装或 SuperReview 权益。")}</p>
+          <p>{tr("workshop:输入兑换码，领取点数、服装或会员权益。")}</p>
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -382,7 +268,7 @@ export default function RewardsView({
                 rewards: {
                   coins: Number(f.get('coins')),
                   freezes: Number(f.get('freezes')),
-                  superDays: Number(f.get('superDays')),
+                  superDays: 0,
                   skin: f.get('skin') || null,
                   refill: f.get('refill') === 'on',
                 },
@@ -445,14 +331,7 @@ export default function RewardsView({
                   max={1000}
                 />
               </label>
-              <label>{tr("workshop:SuperReview 天数")}<input
-                  type="number"
-                  name="superDays"
-                  defaultValue={0}
-                  min={0}
-                  max={3650}
-                />
-              </label>
+              <button type="button" className="text-button" onClick={()=>navigate('membership')}>管理 Plus / Pro 会员码 →</button>
               <label>{tr("workshop:到期时间（可选）")}<input type="datetime-local" name="expiresAt" />
               </label>
               <label>{tr("workshop:服装或背景")}<select name="skin">

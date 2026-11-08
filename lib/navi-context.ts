@@ -74,6 +74,7 @@ export class NaviError extends Error {
       | 'format'
       | 'citation'
       | 'save'
+      | 'membership_upgrade' | 'membership_credits' | 'auth' | 'ai_unconfigured'
       | 'request',
     cause?: unknown,
   ) {

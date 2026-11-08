@@ -3,6 +3,7 @@ import { currentNamespace, put, allRecords } from './store';
 import { localDay } from './model';
 import { GAME_SHOP } from './learning-game';
 export type RewardContents = {
+  membershipPlan?:'plus'|'pro';membershipDays?:number;
   coins?: number;
   freezes?: number;
   skin?: string | null;
@@ -61,10 +62,12 @@ export async function rewardsRequest(
       );
   if (ns !== currentNamespace())
     throw new Error('账户已切换，请重新打开此页面');
+  if(result.membership)window.dispatchEvent(new Event('review:membership-updated'));
   return result;
 }
 export function describeReward(r: RewardContents) {
   return [
+    r.membershipPlan?`Reviewbox ${r.membershipPlan==='pro'?'Pro':'Plus'} · ${r.membershipDays??0} 天`:'',
     r.coins ? `${r.coins} 点数` : '',
     r.freezes ? `连胜冻结 × ${r.freezes}` : '',
     r.skin ? (GAME_SHOP.find((i) => i.id === r.skin)?.name ?? '专属皮肤') : '',

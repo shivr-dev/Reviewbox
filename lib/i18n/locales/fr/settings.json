@@ -230,5 +230,8 @@
   "口令不正确，或加密配置已更新": "La phrase est incorrecte ou la configuration chiffrée a changé.",
   "站点尚未发布加密配置文件": "La configuration chiffrée n’a pas encore été publiée.",
   "站点配置内容无效": "La configuration de connexion est invalide.",
-  "站点配置版本暂不支持": "Cette version de configuration n’est pas prise en charge."
+  "站点配置版本暂不支持": "Cette version de configuration n’est pas prise en charge.",
+  "账户与会员": "Compte et abonnement",
+  "会员与用量": "Abonnement et utilisation",
+  "查看方案": "Voir les offres"
 }

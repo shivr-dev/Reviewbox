@@ -1,0 +1,8 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {act} from 'react';import {createRoot} from 'react-dom/client';
+import {NaviUIController} from '../lib/navi-ui';import {NaviDiagramContext} from '../components/navi-diagram-control';import {ForceDrawing} from '../components/scientific/mechanics';
+test('force highlighting changes actual rendered SVG and removes stale targets on unmount',async()=>{
+ (globalThis as any).IS_REACT_ACT_ENVIRONMENT=true;const host=document.createElement('div');document.body.appendChild(host);const root=createRoot(host),c=new NaviUIController({panels:['diagram'],questionIds:[],molecule:false,protected:false});
+ const spec:any={type:'semantic',kind:'forces',body:'box',surface:'horizontal',forces:[{id:'G',label:'G',angle:-90,magnitude:10}]};
+ try{await act(async()=>root.render(<NaviDiagramContext.Provider value={{zoom:1,controller:c}}><svg><ForceDrawing spec={spec} id="qa"/></svg></NaviDiagramContext.Provider>));assert.ok(c.capabilities.scientificIds?.includes('force:G'));
+ await act(async()=>{c.execute([{type:'highlightTarget',ids:['force:G']}]);root.render(<NaviDiagramContext.Provider value={{zoom:1,controller:c,scientific:c.state.scientific}}><svg><ForceDrawing spec={spec} id="qa"/></svg></NaviDiagramContext.Provider>);});assert.equal((host.querySelector('[data-force-id="G"]') as SVGElement).style.stroke,'#1263a8');assert.equal(host.querySelector('[data-force-id="G"]')?.getAttribute('data-force-magnitude'),'10');await act(async()=>root.unmount());assert.ok(!c.capabilities.scientificIds?.includes('force:G'));}finally{host.remove();}
+});

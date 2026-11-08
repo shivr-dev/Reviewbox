@@ -39,6 +39,13 @@ export default function NaviActionPreview({
           : reduceNaviUI(before, actions, controller.capabilities);
   } catch {}
   const describe = (a: NaviUIAction) => {
+    if(a.type==='setFilter')return t('navi.live.describe.filter',{query:a.query??a.subject??''});
+    if(a.type==='setSort')return t('navi.live.describe.sort',{value:a.value});
+    if(a.type==='scrollToTarget')return t('navi.live.describe.scroll',{id:a.id});
+    if(a.type==='highlightTarget')return t('navi.live.describe.highlight',{ids:a.ids.join(', ')});
+    if(a.type==='clearHighlights')return t('navi.live.describe.clearHighlights');
+    if(a.type==='setMacromolecule')return t('navi.live.describe.macro',{model:a.model});
+    if(a.type==='setCamera')return t('navi.live.describe.camera',{command:a.command});
     if (a.type === 'setLayout')
       return t('navi.live.describe.layout', {
         mode: t('navi.live.mode.' + a.mode),

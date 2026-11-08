@@ -224,3 +224,12 @@ test('explicit tool requests only identify an existing review flow and negation 
   assert.equal(parseNaviUICommand('不要切换专注模式'), null);
   assert.equal(parseNaviUICommand('什么是专注模式？'), null);
 });
+
+test('Live UI collection, exact targets and science controls are atomic and reversible',()=>{
+ const c=new NaviUIController({...cap,collection:true,scrollTargets:['material:m1','question:q2'],scientificIds:['force:G','function:0'],macromolecule:true});
+ assert.equal(c.execute([{type:'setFilter',query:'momentum',subject:'physics'},{type:'setSort',value:'name'},{type:'scrollToTarget',id:'material:m1'},{type:'highlightTarget',ids:['force:G']},{type:'setMacromolecule',model:'surface'},{type:'setCamera',command:'zoom-in'}]).ok,true);
+ assert.equal(c.state.collection?.query,'');assert.equal(c.state.collectionFocus,'material:m1');assert.equal(c.state.collection?.sort,'name');assert.equal(c.state.scroll?.target,'material:m1');assert.deepEqual(c.state.scientific?.highlights,['force:G']);assert.equal(c.state.scientific?.macromolecule,'surface');
+ const before=c.snapshot();assert.equal(c.execute([{type:'setSort',value:'new'},{type:'highlightTarget',ids:['solution:hidden']}]).ok,false);assert.equal(c.snapshot(),before);
+ assert.equal(c.execute([{type:'restoreLayout',target:'undo'}]).ok,true);assert.equal(c.state.collection,undefined);
+ c.capabilities.protected=true;assert.equal(c.execute([{type:'setCamera',command:'reset'}]).ok,false);
+});

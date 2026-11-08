@@ -1,0 +1,2 @@
+import {authenticatedSession,env} from './server';
+export async function membershipServerRequest(body:unknown,signal?:AbortSignal){const identity=await authenticatedSession();return fetch(env('SUPABASE_URL')+'/functions/v1/review-membership',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+identity.access_token},body:JSON.stringify(body),signal:signal??AbortSignal.timeout(90000)});}

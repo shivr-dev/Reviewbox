@@ -36,7 +36,7 @@ export type NaviMessage = {
   checkResponseTo?: string;
   uiQuestionId?: string;
   uiTargetId?: string;
-  ui_actions?: NaviUIAction[];
+  ui_actions?: NaviUIAction[];membershipReceipt?:string;
   configuration_actions?: NaviConfigurationAction[];
   tutor_actions?: {
     type:
@@ -143,6 +143,7 @@ export async function requestNavi(
     ui?: unknown;
     configuration?: ReturnType<typeof configurationContext>;
   },
+  billing?:{capability:'navi_basic'|'navi_deep'|'agent';trial?:'plus'|'pro'},
 ) {
   try {
     let remaining = 18000;
@@ -163,7 +164,7 @@ export async function requestNavi(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        action: 'tutor',
+        action: 'tutor',requestId:crypto.randomUUID(),capability:billing?.capability??'navi_basic',trial:billing?.trial,
         message,
         contexts,
         history,
@@ -181,12 +182,13 @@ export async function requestNavi(
     if (!res.ok) {
       const code = (value as any)?.code;
       throw new NaviError(
-        ['context', 'timeout', 'format', 'citation', 'save'].includes(code)
+        ['context', 'timeout', 'format', 'citation', 'save','membership_upgrade','membership_credits','auth','ai_unconfigured'].includes(code)
           ? code
           : 'request',
       );
     }
-    return verifyNaviAnswer(value, contexts);
+    const {membership,...answer}=value as any;
+    return {...verifyNaviAnswer(answer, contexts),...(membership?.requestId?{membershipReceipt:String(membership.requestId)}:{})};
   } catch (e) {
     if (e instanceof NaviError) throw e;
     if (e instanceof Error && e.name === 'TimeoutError')

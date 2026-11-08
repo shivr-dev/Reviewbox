@@ -288,7 +288,7 @@ export default function YouView() {
       )}
       {view === 'home' && (
         <>
-          <button
+          <section className="profile-account-card" aria-label={tr("settings:账户与会员")}><button
             className="profile-identity"
             onClick={() => open('account')}
             aria-label={tr("settings:进入账户管理")}
@@ -305,6 +305,7 @@ export default function YouView() {
             </span>
             <ChevronRight size={20} />
           </button>
+          <button className="profile-membership-entry" onClick={()=>navigate('membership')}><span><strong>{tr("settings:会员与用量")}</strong><small>Free · Plus · Pro</small></span><span className="profile-membership-link">{tr("settings:查看方案")}<ChevronRight size={16} aria-hidden="true"/></span></button></section>
           <section className="settings-group">
             <h2>{tr("settings:学习与个性化")}</h2>
             <Entry

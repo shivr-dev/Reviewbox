@@ -1,4 +1,6 @@
 'use client';
+import {MembershipPromo} from './membership-view';
+
 import { tr } from '@/lib/i18n';
 import { useEffect, useState, type ReactNode } from 'react';
 import {
@@ -184,7 +186,7 @@ export function ProductHome() {
     fx = equipmentEffects(gear);
   return (
     <section className="alpha-home">
-      <HomeView direct />
+      <HomeView direct /><MembershipPromo/>
       <div className="alpha-home-strip">
         <button
           onClick={() => navigate('results')}

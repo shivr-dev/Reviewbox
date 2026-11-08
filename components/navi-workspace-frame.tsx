@@ -105,7 +105,7 @@ export default function NaviWorkspaceFrame({
   }
   return (
     <NaviDiagramContext.Provider
-      value={{ zoom: layout.zoom, molecule: layout.molecule }}
+      value={{ zoom: layout.zoom, molecule: layout.molecule,scientific:layout.scientific,controller }}
     >
       <section
         className={'navi-live-learning navi-layout-' + layout.mode}

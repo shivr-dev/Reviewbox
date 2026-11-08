@@ -577,5 +577,21 @@
   "navi.history.field.date": "Exam date",
   "navi.history.field.target": "Target score (%)",
   "navi.history.field.scope": "Exam scope",
-  "navi.history.field.scheduleStatus": "Change exam scheduling"
+  "navi.history.field.scheduleStatus": "Change exam scheduling",
+  "navi.membership.level": "Navi capability",
+  "navi.membership.trial": "One-time trial (counted on success)",
+  "navi.membership.noTrial": "Do not use a trial",
+  "navi.membership.plusTrial": "Plus trial",
+  "navi.membership.proPreview": "Pro Agent preview",
+  "navi.error.membership_upgrade": "This capability requires an upgrade or an explicit one-time trial in Navi settings.",
+  "navi.error.membership_credits": "AI Credits are used up for this cycle. Core learning remains available.",
+  "navi.error.auth": "Please sign in to your learning account.",
+  "navi.error.ai_unconfigured": "AI is not connected. Please check connection settings.",
+  "navi.live.describe.filter": "Filter materials: {{query}}",
+  "navi.live.describe.sort": "Sort materials: {{value}}",
+  "navi.live.describe.scroll": "Locate content: {{id}}",
+  "navi.live.describe.highlight": "Highlight visible objects: {{ids}}",
+  "navi.live.describe.clearHighlights": "Clear object highlights",
+  "navi.live.describe.macro": "Macromolecule representation: {{model}}",
+  "navi.live.describe.camera": "Macromolecule camera: {{command}}"
 }

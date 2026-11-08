@@ -16,7 +16,7 @@ const pages = new Set([
   'shop',
   'redeem',
   'admin',
-  'super',
+  'super','membership',
   'study',
   'assessment',
   'exam',
@@ -64,6 +64,7 @@ export const MAIN_NAV = [
   { id: 'workshop', label: '工坊' },
 ] as const;
 export function workspaceSection(page: string) {
+  if(['membership','super'].includes(page))return 'you';
   if (['subjects', 'library', 'course'].includes(page)) return 'subjects';
   if (['results', 'analytics', 'exam', 'assessment'].includes(page))
     return 'results';
@@ -83,5 +84,5 @@ export function workspaceSection(page: string) {
     return 'workshop';
   if (['plan', 'study', 'remedy', 'chest', 'onboarding'].includes(page))
     return 'plan';
-  return page === 'you' || page === 'devices' ? 'you' : 'home';
+  return page === 'you' || page === 'devices' || page==='membership'||page==='super' ? 'you' : 'home';
 }

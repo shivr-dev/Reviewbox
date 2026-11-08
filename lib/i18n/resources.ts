@@ -1,3 +1,4 @@
+import membership from './locales/zh-CN/membership.json';
 import r0 from './locales/zh-CN/common.json';
 import r1 from './locales/zh-CN/dashboard.json';
 import r2 from './locales/zh-CN/devices.json';
@@ -10,4 +11,4 @@ import r8 from './locales/zh-CN/settings.json';
 import r9 from './locales/zh-CN/study.json';
 import r10 from './locales/zh-CN/subjects.json';
 import r11 from './locales/zh-CN/workshop.json';
-export const resources={'zh-CN':{"common":r0,"dashboard":r1,"devices":r2,"grading":r3,"library":r4,"navigation":r5,"planner":r6,"results":r7,"settings":r8,"study":r9,"subjects":r10,"workshop":r11}};
+export const resources={'zh-CN':{membership,"common":r0,"dashboard":r1,"devices":r2,"grading":r3,"library":r4,"navigation":r5,"planner":r6,"results":r7,"settings":r8,"study":r9,"subjects":r10,"workshop":r11}};

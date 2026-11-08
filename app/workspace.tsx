@@ -1,4 +1,6 @@
 'use client';
+import MembershipView from '@/components/membership-view';
+
 import {useTranslation} from 'react-i18next';
 import {ProductLocale} from '@/components/product-locale';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -486,7 +488,7 @@ export default function Workspace() {
         'equipment',
         'shop',
         'redeem',
-        'super',
+        'super','membership',
         'admin',
         'you',
         'study',
@@ -552,7 +554,7 @@ export default function Workspace() {
             <div className="alpha-workspace">
               <YouView />
             </div>
-          ) : ['shop', 'redeem', 'super', 'admin'].includes(page) ? (
+          ) : page==='membership'||page==='super'?<MembershipView/> : ['shop', 'redeem', 'super', 'admin'].includes(page) ? (
             <div className="alpha-workspace">
               <nav className="alpha-secondary" aria-label="工坊功能">
                 {[

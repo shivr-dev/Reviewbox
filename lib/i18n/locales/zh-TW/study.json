@@ -577,5 +577,21 @@
   "navi.history.field.date": "考試日期",
   "navi.history.field.target": "目標得分率（%）",
   "navi.history.field.scope": "考試範圍",
-  "navi.history.field.scheduleStatus": "更改考試安排狀態"
+  "navi.history.field.scheduleStatus": "更改考試安排狀態",
+  "navi.membership.level": "Navi 智能等级",
+  "navi.membership.trial": "本次体验（成功后计次）",
+  "navi.membership.noTrial": "不使用体验次数",
+  "navi.membership.plusTrial": "Plus trial",
+  "navi.membership.proPreview": "Pro Agent preview",
+  "navi.error.membership_upgrade": "此能力需要升级会员，或在 Navi 设置中明确选择一次体验。",
+  "navi.error.membership_credits": "本周期 AI Credits 已用完，基础学习仍可继续。",
+  "navi.error.auth": "请先登录学习账户。",
+  "navi.error.ai_unconfigured": "智能服务尚未连接，请检查连接配置。",
+  "navi.live.describe.filter": "筛选资料：{{query}}",
+  "navi.live.describe.sort": "资料排序：{{value}}",
+  "navi.live.describe.scroll": "定位内容：{{id}}",
+  "navi.live.describe.highlight": "高亮已显示对象：{{ids}}",
+  "navi.live.describe.clearHighlights": "清除对象高亮",
+  "navi.live.describe.macro": "大分子表示：{{model}}",
+  "navi.live.describe.camera": "调整大分子视角：{{command}}"
 }

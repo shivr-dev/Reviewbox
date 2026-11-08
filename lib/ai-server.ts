@@ -123,13 +123,15 @@ export async function runJSON(
   responseOptions?: {
     parseResponse?: (body: unknown) => unknown;
     timeoutMs?: number;
+    environment?: (name: string) => string;
   },
 ) {
-  const account = env('CF_ACCOUNT_ID');
-  const tokens: string[] = JSON.parse(env('CF_AI_TOKENS') || '[]');
+  const readEnv = responseOptions?.environment ?? env;
+  const account = readEnv('CF_ACCOUNT_ID');
+  const tokens: string[] = JSON.parse(readEnv('CF_AI_TOKENS') || '[]');
   if (!account || !tokens.length)
     throw new Error('题目生成尚待配置 Cloudflare 账户 ID，可继续使用本地题目');
-  const accounts = (env('CF_ACCOUNT_IDS') || account).split(',');
+  const accounts = (readEnv('CF_ACCOUNT_IDS') || account).split(',');
   const accountId = accounts[slot % accounts.length];
   if (!/^[a-f0-9]{32}$/i.test(accountId))
     throw new Error('Cloudflare 账户配置不正确');

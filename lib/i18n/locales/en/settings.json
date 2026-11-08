@@ -243,5 +243,8 @@
   "口令不正确，或加密配置已更新": "The passphrase is incorrect, or the encrypted configuration has changed.",
   "站点尚未发布加密配置文件": "The encrypted connection configuration has not been published.",
   "站点配置内容无效": "The connection configuration is invalid.",
-  "站点配置版本暂不支持": "This configuration version is not supported."
+  "站点配置版本暂不支持": "This configuration version is not supported.",
+  "账户与会员": "Account and membership",
+  "会员与用量": "Membership and usage",
+  "查看方案": "View plans"
 }

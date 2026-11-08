@@ -1,4 +1,6 @@
 'use client';
+import {useScientificTargets} from './navi-diagram-control';
+
 import DiagramExport from './diagram-export';
 import {tr} from '@/lib/i18n';
 import {useId,useMemo,useRef} from 'react';
@@ -18,10 +20,12 @@ function clip(segment:OpticsSegment,b:[number,number,number,number]):[XY,XY]|nul
  for(const [p,q]of [[-dx,a.x-b[0]],[dx,b[2]-a.x],[-dy,a.y-b[1]],[dy,b[3]-a.y]]){if(p===0){if(q<0)return null;continue;}const t=q/p;if(p<0)lo=Math.max(lo,t);else hi=Math.min(hi,t);if(lo>hi)return null;}
  return [[a.x+lo*dx,a.y+lo*dy],[a.x+hi*dx,a.y+hi*dy]];
 }
-export function OpticsDrawing({spec,stage='question',id}:{spec:Spec;stage?:DiagramStage;id:string}){
- if(spec.view==='parallel'||spec.view==='reflection')return <OpticsSpecialDrawing spec={spec} stage={stage} id={id}/>;
+export function OpticsDrawing(props:{spec:Spec;stage?:DiagramStage;id:string}){return props.spec.view==='parallel'||props.spec.view==='reflection'?<OpticsSpecialDrawing {...props} stage={props.stage??'question'}/>:<TraceOpticsDrawing {...props}/>;}
+function TraceOpticsDrawing({spec,stage='question',id}:{spec:Spec;stage?:DiagramStage;id:string}){
+
  const f=spec.focalLength??1,u=spec.objectDistance??4,h=spec.objectHeight??f*.3;
  const trace=traceOptics({...spec,lens:spec.lens??'convex',focalLength:f,objectDistance:u,objectHeight:h}),visibility=opticsVisibility(spec,stage),isInterface=spec.opticalElement==='interface',isMirror=spec.opticalElement==='mirror';
+ const controls=useScientificTargets(visibility.rays?trace.rays.map(ray=>'ray:'+ray.id):[]);
  const known:XY[]=isInterface?[[-4,-2.8],[4,2.8]]:[[-u,0],[-u,h],[0,-h],[0,h]];
  if(!isInterface&&!isMirror)known.push([-2*f,0],[2*f,0]);
  if(visibility.image&&trace.image)known.push([trace.image.tip.x,trace.image.tip.y],[trace.image.base.x,trace.image.base.y]);
@@ -33,7 +37,7 @@ export function OpticsDrawing({spec,stage='question',id}:{spec:Spec;stage?:Diagr
  const arrow=(a:XY,b:XY,key:string,dashed=false)=>{const start=p(a),end=p(b);return <g key={key}>{line(a,b,dashed)}<line x1={start[0]} y1={start[1]} x2={end[0]} y2={end[1]} markerEnd={`url(#${id}-arrow)`} strokeDasharray={dashed?'6 4':undefined}/></g>;};
  const rays=visibility.rays?trace.rays.flatMap(ray=>ray.segments.map((s,i)=>{
   const clipped=clip(s,bounds);if(!clipped)return null;const [a,b]=clipped,start=p(a),end=p(b),dx=end[0]-start[0],dy=end[1]-start[1],len=Math.hypot(dx,dy),at=[start[0]+dx*.58,start[1]+dy*.58],angle=Math.atan2(dy,dx)*180/Math.PI;
-  return <g key={ray.id+i}>{line(a,b,s.virtual)}{!s.virtual&&len>24&&<path d="M-5 -3 L1 0 L-5 3" fill="none" transform={`translate(${at}) rotate(${angle})`}/>}</g>;
+  return <g key={ray.id+i} data-ray-id={ray.id} style={controls.scientific?.highlights.includes('ray:'+ray.id)?{stroke:'#1263a8',strokeWidth:2.8}:undefined}>{line(a,b,s.virtual)}{!s.virtual&&len>24&&<path d="M-5 -3 L1 0 L-5 3" fill="none" transform={`translate(${at}) rotate(${angle})`}/>}</g>;
  })):null;
  const elements=[];
  if(isInterface){

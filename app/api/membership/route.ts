@@ -1,0 +1,1 @@
+import {sameOrigin,readBody,fail} from '@/lib/server';import {membershipServerRequest} from '@/lib/membership-server';export async function POST(req:Request){try{sameOrigin(req);return await membershipServerRequest(await readBody(req,240000),req.signal);}catch(e){return fail(e,401);}}

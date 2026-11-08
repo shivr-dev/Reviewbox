@@ -4,7 +4,8 @@ import {NaviButton} from './navi-workspace';
 import NaviSourceWorkspace from './navi-source-workspace';
 import {subjectLabel as subjectName} from '@/lib/presentation';
 import {tr} from '@/lib/i18n';
-import {lazy,Suspense} from 'react';
+import {lazy,Suspense,useMemo,useSyncExternalStore,useLayoutEffect} from 'react';
+import {NaviUIController,registerNaviUI} from '@/lib/navi-ui';
 const BookletExport=lazy(()=>import('./booklet-export'));
 import type {watchRequest} from '@/lib/watch-client';
 import ManualImport from './manual-import';
@@ -70,14 +71,22 @@ export default function LibraryView({
   initialTab = 'materials',packageRequest,
 }: { initialTab?: string;packageRequest?:typeof watchRequest } = {}) {
   const { data, refresh, start, notify, navigate, subject: routeSubject } = useReview();
+  const collection=useMemo(()=>{const c=new NaviUIController({panels:[],questionIds:[],molecule:false,protected:false,collection:true});c.state.collection={query:'',subject:SUBJECTS.some(s=>s.id===routeSubject)?routeSubject as any:'all',sort:'new'};return c;},[routeSubject]);
+  const collectionState=useSyncExternalStore(collection.subscribe,collection.snapshot,collection.snapshot);
+  const search=collectionState.collection?.query??'',filter=collectionState.collection?.subject??(SUBJECTS.some(s=>s.id===routeSubject)?routeSubject:'all');
+  const setSearch=(query:string)=>collection.execute([{type:'setFilter',query}], 'user');
+  const setFilter=(subject:string)=>collection.execute([{type:'setFilter',subject:subject as any}], 'user');
+  const materialOrder=collectionState.collection?.sort??'new';
+  const setMaterialOrder=(value:string)=>collection.execute([{type:'setSort',value:value as any}], 'user');
+  useEffect(()=>registerNaviUI(collection,15),[collection]);
+  collection.target={type:'subject',id:routeSubject};
+  collection.capabilities.scrollTargets=[...data.materials.map(m=>'material:'+m.id),...data.questions.map(q=>'question:'+q.id)];
+  const rowRefs=useRef(new Map<string,HTMLElement>());
   const initialSubject = SUBJECTS.some((s) => s.id === routeSubject)
     ? (routeSubject as Subject)
     : 'chinese';
   const [tab, setTab] = useState(initialTab),
-    [search, setSearch] = useState(''),
-    [filter, setFilter] = useState(
-      SUBJECTS.some((s) => s.id === routeSubject) ? routeSubject : 'all',
-    ),
+
     [importOpen, setImportOpen] = useState(false),
     [bookletOpen,setBookletOpen]=useState(false),
     [editorOpen, setEditorOpen] = useState(false),
@@ -97,11 +106,12 @@ export default function LibraryView({
     [type, setType] = useState('recall'),
     [difficulty, setDifficulty] = useState('2'),
     [newNodeTitle, setNewNodeTitle] = useState('');
-  const [focusId,setFocusId]=useState(()=>parseWorkspaceRoute(location.hash).target??'');
+  const [routeFocus,setFocusId]=useState(()=>parseWorkspaceRoute(location.hash).target??'');
+  const focusId=collectionState.collectionFocus?.slice(collectionState.collectionFocus.indexOf(':')+1)??routeFocus;
   const focusFilter=useRef(search+'|'+filter);
   useEffect(()=>{const next=search+'|'+filter;if(next!==focusFilter.current){focusFilter.current=next;setFocusId('');}},[search,filter]);
   useEffect(()=>{const focus=(e:Event)=>{const value=(e as CustomEvent).detail;if(!value||!['question','material'].includes(value.type)||typeof value.id!=='string')return;focusFilter.current='|all';setSearch('');setFilter('all');setFocusId(value.id);setMaterialPage(0);setQuestionPage(0);};window.addEventListener('review:focus-source',focus);return()=>window.removeEventListener('review:focus-source',focus);},[]);
-  const [materialPage,setMaterialPage]=useState(0),[questionPage,setQuestionPage]=useState(0),[materialOrder,setMaterialOrder]=useState('new');
+  const [materialPage,setMaterialPage]=useState(0),[questionPage,setQuestionPage]=useState(0);
   useEffect(()=>{setMaterialPage(0);setQuestionPage(0);},[search,filter]);
   const materials=data.materials.filter(m=>(!focusId||m.id===focusId)&&(filter==='all'||m.subject===filter)&&m.name.toLowerCase().includes(search.toLowerCase())).sort((a,b)=>materialOrder==='name'?a.name.localeCompare(b.name,'zh-CN'):b.date.localeCompare(a.date));
   const fileInput = useRef<HTMLInputElement>(null);
@@ -109,13 +119,27 @@ export default function LibraryView({
   const visibleNodes = data.nodes.filter((n) => n.subject === subject);
   const questions = data.questions.filter(
     (q) =>
-      (filter === 'all' || q.subject === filter) &&
+      (!focusId||q.id===focusId) && (filter === 'all' || q.subject === filter) &&
       (q.prompt + q.answer + data.nodes.find((n) => n.id === q.nodeId)?.title)
         .toLowerCase()
         .includes(search.toLowerCase()),
   );
   const materialPages=Math.max(1,Math.ceil(materials.length/12)),questionPages=Math.max(1,Math.ceil(questions.length/20));
   const mp=Math.min(materialPage,materialPages-1),qp=Math.min(questionPage,questionPages-1);
+  useLayoutEffect(()=>{
+    const target=collectionState.scroll?.target;if(!target)return;
+    const question=target.startsWith('question:'),id=target.slice(target.indexOf(':')+1);
+    setTab(question?'questions':'materials');
+    const rows=question?data.questions:[...data.materials].sort((a,b)=>materialOrder==='name'?a.name.localeCompare(b.name,'zh-CN'):b.date.localeCompare(a.date));
+    const index=rows.findIndex(r=>r.id===id);if(index<0)return;
+    if(question)setQuestionPage(0);else setMaterialPage(0);
+  },[collectionState.scroll?.revision]);
+  useLayoutEffect(()=>{
+    const target=collectionState.scroll?.target;if(!target)return;
+    const row=rowRefs.current.get(target);if(!row)return;
+    if(row instanceof HTMLDetailsElement)row.open=true;
+    const frame=requestAnimationFrame(()=>{row.scrollIntoView({block:'center',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});row.tabIndex=-1;row.focus({preventScroll:true});});return()=>cancelAnimationFrame(frame);
+  },[collectionState.scroll,tab,mp,qp,search,filter,focusId]);
   const wrongQuestions = getWrongQuestions(data);
   const [editorAnswer,setEditorAnswer]=useState(''),[editorAnswerFormat,setEditorAnswerFormat]=useState<MathAnswerFormat>('text');
   const [repairs,setRepairs]=useState<JsonRepairResult[]>([]),[pendingStage,setPendingStage]=useState<typeof stage>(null);
@@ -365,7 +389,7 @@ export default function LibraryView({
           {materials.length ? (
             <div className="material-grid">
               {materials.slice(mp*12,mp*12+12).map((m) => (
-                <section className="panel" key={m.id}>
+                <section className="panel" key={m.id} ref={el=>{if(el)rowRefs.current.set("material:"+m.id,el);else rowRefs.current.delete("material:"+m.id);}}>
                   <FileText size={21} />
                   <h3>{m.name}</h3>
                   <p className="muted">
@@ -420,7 +444,7 @@ export default function LibraryView({
           <p className="inline-hint">{tr("library:共")}{questions.length}{tr("library:道题目 · 每道题都关联一个知识点与具体能力")}</p>
           <div className="panel question-list">
             {questions.slice(qp*20,qp*20+20).map((q) => (
-              <details key={q.id}>
+              <details key={q.id} ref={el=>{if(el)rowRefs.current.set("question:"+q.id,el);else rowRefs.current.delete("question:"+q.id);}}>
                 <summary>
                   <span className="grow">
                     <b>

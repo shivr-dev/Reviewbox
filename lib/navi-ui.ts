@@ -26,6 +26,8 @@ export const panelNames = [
   'material',
   'comparison',
 ] as const;
+export const collectionViewSchema=z.object({query:z.string().max(200).default(''),subject:z.enum(['all','chinese','math','english','ce','physics','chemistry','biology','history']).default('all'),sort:z.enum(['new','name']).default('new')}).strict();
+export const scientificViewSchema=z.object({highlights:z.array(z.string().min(1).max(200)).max(24).default([]),macromolecule:z.enum(['cartoon','ball-stick','surface']).optional(),camera:z.object({command:z.enum(['reset','zoom-in','zoom-out']),revision:z.number().int().nonnegative()}).optional()}).strict();
 const panel = z.enum(panelNames),
   id = z.string().min(1).max(200);
 export const workspaceLayoutSchema = z
@@ -51,10 +53,20 @@ export const workspaceLayoutSchema = z
       )
       .default({}),
     knowledgeIds: z.array(id).max(2).optional(),
+    collection:collectionViewSchema.optional(),collectionFocus:id.optional(),
+    scientific:scientificViewSchema.optional(),
+    scroll:z.object({target:id,revision:z.number().int().nonnegative()}).strict().optional(),
   })
   .strict();
 /** An intentionally finite protocol. Neither selectors nor executable code are accepted. */
 export const naviUIAction = z.discriminatedUnion('type', [
+  z.object({type:z.literal('setFilter'),query:z.string().max(200).optional(),subject:collectionViewSchema.shape.subject.optional()}).strict(),
+  z.object({type:z.literal('setSort'),value:z.enum(['new','name'])}).strict(),
+  z.object({type:z.literal('scrollToTarget'),id}).strict(),
+  z.object({type:z.literal('highlightTarget'),ids:z.array(id).min(1).max(24)}).strict(),
+  z.object({type:z.literal('clearHighlights')}).strict(),
+  z.object({type:z.literal('setMacromolecule'),model:z.enum(['cartoon','ball-stick','surface'])}).strict(),
+  z.object({type:z.literal('setCamera'),command:z.enum(['reset','zoom-in','zoom-out'])}).strict(),
   z
     .object({ type: z.literal('setLayout'), mode: z.enum(workspaceModes) })
     .strict(),
@@ -155,6 +167,10 @@ export type UICapabilities = {
   protected: boolean;
   knowledgeIds?: readonly string[];
   splitPanel?: (typeof panelNames)[number];
+  collection?:boolean;
+  scrollTargets?:readonly string[];
+  scientificIds?:readonly string[];
+  macromolecule?:boolean;
 };
 export type UIReceipt = {
   ok: boolean;
@@ -186,7 +202,22 @@ export function reduceNaviUI(
     if (!cap.panels.includes(p)) throw new Error('unsupported');
   };
   for (const a of actions) {
-    if (a.type === 'restoreLayout') {
+    if(a.type==='setFilter'||a.type==='setSort') {
+      if(!cap.collection)throw new Error('unsupported');
+      if(a.type==='setFilter')next.collectionFocus=undefined;
+      next.collection=collectionViewSchema.parse({...next.collection,...(a.type==='setSort'?{sort:a.value}:{...(a.query!==undefined?{query:a.query}:{}),...(a.subject!==undefined?{subject:a.subject}:{})})});
+    } else if(a.type==='scrollToTarget') {
+      if(!cap.scrollTargets?.includes(a.id))throw new Error('unsupported');
+      if(cap.collection){next.collection=collectionViewSchema.parse({...next.collection,query:'',subject:'all'});next.collectionFocus=a.id;}
+      next.scroll={target:a.id,revision:(next.scroll?.revision??0)+1};
+    } else if(a.type==='highlightTarget'||a.type==='clearHighlights') {
+      const ids=a.type==='clearHighlights'?[]:a.ids;
+      if(!cap.scientificIds||ids.some(id=>!cap.scientificIds!.includes(id)))throw new Error('unsupported');
+      next.scientific=scientificViewSchema.parse({...next.scientific,highlights:[...new Set(ids)]});
+    } else if(a.type==='setMacromolecule'||a.type==='setCamera') {
+      if(!cap.macromolecule)throw new Error('unsupported');
+      next.scientific=scientificViewSchema.parse({...next.scientific,...(a.type==='setMacromolecule'?{macromolecule:a.model}:{camera:{command:a.command,revision:(next.scientific?.camera?.revision??0)+1}})});
+    } else if (a.type === 'restoreLayout') {
       if (a.target !== 'default') throw new Error('unsupported');
       next = defaultLayout();
     } else if (a.type === 'restoreWorkspace') {
@@ -195,7 +226,7 @@ export function reduceNaviUI(
       if (
         (saved.questionId && !cap.questionIds.includes(saved.questionId)) ||
         saved.knowledgeIds?.some((id) => !cap.knowledgeIds?.includes(id)) ||
-        (saved.molecule && !cap.molecule)
+        (saved.molecule && !cap.molecule) || (saved.collection&&!cap.collection) || (saved.collectionFocus&&!cap.scrollTargets?.includes(saved.collectionFocus)) || (saved.scroll&&!cap.scrollTargets?.includes(saved.scroll.target)) || saved.scientific?.highlights.some(id=>!cap.scientificIds?.includes(id)) || ((saved.scientific?.macromolecule||saved.scientific?.camera)&&!cap.macromolecule)
       )
         throw new Error('unsupported');
       if (new Set(saved.panels).size !== saved.panels.length)
@@ -398,6 +429,7 @@ export function canAutoApplyNaviUI(
   return parsed.data.every((a) => {
     if (
       [
+        'setFilter','setSort','scrollToTarget','highlightTarget','clearHighlights','setMacromolecule','setCamera',
         'setZoom',
         'setFontSize',
         'setGrid',
@@ -515,6 +547,10 @@ export function parseNaviUICommand(text: string): NaviUIAction[] | null {
         model: 'ball-stick',
       },
     ];
+  if (/^(?:清除高亮|clear highlights)[。.!！]?$/.test(s))return [{type:'clearHighlights'}];
+  if (/^(?:按名称排序|sort by name)[。.!！]?$/.test(s))return [{type:'setSort',value:'name'}];
+  if (/^(?:按最新排序|sort by newest)[。.!！]?$/.test(s))return [{type:'setSort',value:'new'}];
+  const query=s.match(/^(?:筛选资料|搜索资料|search materials)[:： ]+(.+)$/);if(query)return [{type:'setFilter',query:query[1]}];
   if (/隐藏笔记|隱藏筆記|hide notes/.test(s))
     return [{ type: 'collapsePanel', panel: 'notes' }];
   if (

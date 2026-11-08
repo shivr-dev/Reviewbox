@@ -966,3 +966,21 @@
     font-size: 13px;
   }
 }
+
+/* Account and membership share one hierarchy; settings headings always precede rows. */
+.profile-page{max-width:820px}
+.profile-account-card{border:1px solid var(--ux-line);border-radius:var(--ux-radius-panel);background:var(--ux-surface)}
+.profile-account-card .profile-identity{border:0;background:transparent;padding:20px 22px;border-radius:var(--ux-radius-panel) var(--ux-radius-panel) 0 0;gap:16px}
+.profile-account-card .profile-identity-text>strong{font-size:18px}
+.profile-membership-entry{display:flex;align-items:center;justify-content:space-between;gap:16px;width:calc(100% - 44px);margin:0 22px;padding:13px 0;border:0;border-top:1px solid var(--ux-line);border-radius:0;background:transparent;box-shadow:none;text-align:left;color:var(--ux-ink);transform:none}
+.profile-membership-entry:hover{background:transparent;color:var(--ux-accent);box-shadow:none;transform:none}
+.profile-membership-entry>span:first-child{display:flex;align-items:center;gap:14px;min-width:0;flex-wrap:wrap}
+.profile-membership-entry strong{font-size:14px;font-weight:550}
+.profile-membership-entry small{font-size:12px;color:var(--ux-muted)}
+.profile-membership-link{display:inline-flex;align-items:center;gap:5px;flex-shrink:0;font-size:12px;color:var(--ux-muted)}
+.profile-page>.settings-group{margin-top:26px}
+.profile-page>.settings-group>h2{margin:0 8px 7px;font-size:12px;letter-spacing:.03em}
+.profile-page>.settings-group>.settings-entry{min-height:62px;padding:12px 8px}
+.profile-page>.settings-group>.settings-entry::after{inset-inline:8px}
+.profile-page .profile-heading{margin-bottom:18px}
+@media(max-width:600px){.profile-account-card .profile-identity{padding:18px 16px;gap:12px}.profile-membership-entry{margin:0 16px;width:calc(100% - 32px);padding:13px 0}.profile-membership-entry>span:first-child{gap:3px;display:grid}.profile-page>.settings-group{margin-top:24px}.profile-membership-link{font-size:11px}}

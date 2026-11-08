@@ -289,8 +289,8 @@ export async function pagesApi(
     }
     if (method === 'POST' && path === '/api/course') {
       if(body.action==='tutor'){
-        const {naviConversation}=await import('./navi-server');const {action,...input}=body;
-        try{return Response.json(await naviConversation(input));}catch(e){return Response.json({error:'Navi request failed',code:(e as any)?.name==='NaviError'?(e as any).code:'format'},{status:422});}
+        const {membershipRequest}=await import('./membership-client');const {action,requestId,capability,trial,...input}=body;
+        try{const result=await membershipRequest('tutor',{action:'tutor',requestId:requestId??crypto.randomUUID(),capability:capability??'navi_basic',trial,input},init?.signal??undefined);window.dispatchEvent(new Event('review:membership-updated'));return Response.json(result);}catch(e){return Response.json({error:(e as Error).message,code:(e as any).code??'request'},{status:422});}
       }
       const { generateCourseSection, courseConversation, reviseCourseSection } =
         await import('./course-server');
