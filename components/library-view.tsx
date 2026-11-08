@@ -1,4 +1,6 @@
 'use client';
+import {parseWorkspaceRoute} from '@/lib/workspace-route';
+import {NaviButton} from './navi-workspace';
 import {subjectLabel as subjectName} from '@/lib/presentation';
 import {tr} from '@/lib/i18n';
 import {lazy,Suspense} from 'react';
@@ -94,9 +96,13 @@ export default function LibraryView({
     [type, setType] = useState('recall'),
     [difficulty, setDifficulty] = useState('2'),
     [newNodeTitle, setNewNodeTitle] = useState('');
+  const [focusId,setFocusId]=useState(()=>parseWorkspaceRoute(location.hash).target??'');
+  const focusFilter=useRef(search+'|'+filter);
+  useEffect(()=>{const next=search+'|'+filter;if(next!==focusFilter.current){focusFilter.current=next;setFocusId('');}},[search,filter]);
+  useEffect(()=>{const focus=(e:Event)=>{const value=(e as CustomEvent).detail;if(!value||!['question','material'].includes(value.type)||typeof value.id!=='string')return;focusFilter.current='|all';setSearch('');setFilter('all');setFocusId(value.id);setMaterialPage(0);setQuestionPage(0);};window.addEventListener('review:focus-source',focus);return()=>window.removeEventListener('review:focus-source',focus);},[]);
   const [materialPage,setMaterialPage]=useState(0),[questionPage,setQuestionPage]=useState(0),[materialOrder,setMaterialOrder]=useState('new');
   useEffect(()=>{setMaterialPage(0);setQuestionPage(0);},[search,filter]);
-  const materials=data.materials.filter(m=>(filter==='all'||m.subject===filter)&&m.name.toLowerCase().includes(search.toLowerCase())).sort((a,b)=>materialOrder==='name'?a.name.localeCompare(b.name,'zh-CN'):b.date.localeCompare(a.date));
+  const materials=data.materials.filter(m=>(!focusId||m.id===focusId)&&(filter==='all'||m.subject===filter)&&m.name.toLowerCase().includes(search.toLowerCase())).sort((a,b)=>materialOrder==='name'?a.name.localeCompare(b.name,'zh-CN'):b.date.localeCompare(a.date));
   const fileInput = useRef<HTMLInputElement>(null);
   const chosenNode = data.nodes.find((n) => n.id === nodeId);
   const visibleNodes = data.nodes.filter((n) => n.subject === subject);
@@ -367,7 +373,7 @@ export default function LibraryView({
                   </p>
                   <details>
                     <summary>{tr("library:查看提取内容")}</summary>
-                    <p className="pre-wrap">{m.text}</p>
+                    <NaviButton target={{type:"material",id:m.id}}/><p className="pre-wrap">{m.text}</p>
                   </details>
                   <button
                     className="quiet"

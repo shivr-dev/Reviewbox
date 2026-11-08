@@ -348,6 +348,7 @@ export type Pack = {
     description: string;
     changelog: string;
     compatibility: string;
+    catalog?: import('./community-metadata').CatalogDeclaration;
     scoringPolicy?: import('./grading-rules').ScoringPolicy;
       /** Exact installed content membership; older manifests may need re-importing. */
       nodeIds?: string[];

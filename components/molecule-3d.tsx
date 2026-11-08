@@ -1,8 +1,12 @@
 'use client';
 import {useEffect,useRef,useState} from 'react';import {validateChemicalDiagram,type ChemicalSpec} from '@/lib/chemical-engine';import {tr} from '@/lib/i18n';
+import {useNaviDiagram} from './navi-diagram-control';
 export default function Molecule3D({spec}:{spec:ChemicalSpec}){
+ const control=useNaviDiagram();
  const host=useRef<HTMLDivElement>(null),viewer=useRef<any>(null),[error,setError]=useState(''),[snapshot,setSnapshot]=useState(''),[selected,setSelected]=useState(''),[style,setStyle]=useState(spec.style),[ready,setReady]=useState(false),[retry,setRetry]=useState(0);
  const signature=JSON.stringify(spec);
+ useEffect(()=>{if(control.molecule)setStyle(control.molecule);},[control.molecule]);
+ useEffect(()=>{const v=viewer.current;if(!v||!ready)return;v.zoomTo();v.zoom(control.zoom);v.render();try{setSnapshot(v.pngURI());}catch{}},[control.zoom,ready]);
  useEffect(()=>{let cancelled=false,ro:ResizeObserver|undefined,frame=0,v:any;setReady(false);setError('');setSnapshot('');
   void(async()=>{const checked=await validateChemicalDiagram(spec);const imported=await import('3dmol/build/3Dmol.js'),api=imported;if(cancelled||!host.current)return;
    v=api.createViewer(host.current,{backgroundColor:'white',antialias:true});if(!v)throw new Error('当前设备不能使用三维图形');viewer.current=v;const model=v.addModel(checked.record,'sdf',{keepH:true}),atoms=model.selectedAtoms({});if(!atoms.length||atoms.length>2000||atoms.some((a:any)=>![a.x,a.y,a.z].every(Number.isFinite)))throw new Error('分子坐标为空或无效');

@@ -25,6 +25,8 @@ export type GenerationJob = {
   transferFrom?: Question;
   transferConcept?: string;
   rejectedQuestions?: { prompt: string; reason: string }[];
+  /** Tutor previews run the same checks but do not install a question. */
+  previewOnly?: boolean;
 };
 async function call(body: any): Promise<any> {
   const r = await apiFetch('/api/ai', {
@@ -169,8 +171,8 @@ export async function resumeVerifiedJob(
           at: new Date().toISOString(),
         },
       };
-      await persist('question', ready);
-      job.status = 'ready';
+      if(!job.previewOnly)await persist('question', ready);
+      job.status = job.previewOnly?'preview':'ready';
       job.question = ready;
       await persist('job', job);
       return ready;
@@ -194,6 +196,7 @@ export async function generateVerified(
     questionType?: string;
     transferFrom?: Question;
     transferConcept?: string;
+    previewOnly?: boolean;
   } = {},
 ) {
   const job: GenerationJob = {

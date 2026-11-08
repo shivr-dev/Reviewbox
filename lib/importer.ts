@@ -1,5 +1,6 @@
 import { unzipSync, zipSync, strToU8, strFromU8 } from 'fflate';
 import { z } from 'zod';
+import {catalogDeclaration} from './community-metadata';
 import {
   SUBJECTS,
   uid,
@@ -200,6 +201,7 @@ export function validatePack(value: any): Pack {
       description: safeText.default(''),
       changelog: safeText.default(''),
       compatibility: z.string().max(200).default('Review 1.x'),
+      catalog: catalogDeclaration.optional(),
       scoringPolicy: scoringPolicySchema.optional(),
     })
     .safeParse(value.manifest);

@@ -94,7 +94,7 @@ export function ProductSubjects({
       ) : (
         <LibraryView
           key={selected + view}
-          initialTab={view === 'questions' ? 'questions' : 'materials'}
+          initialTab={view === 'questions' ? 'questions' : ['packs','discover'].includes(view)?'content':'materials'}
         />
       )}
     </section>

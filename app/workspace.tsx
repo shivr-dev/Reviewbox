@@ -22,6 +22,10 @@ import ExamRoom from '@/components/exam-room';
 import CourseRoom from '@/components/course-room';
 import RemediationCourse from '@/components/remediation-course';
 import HomeView from '@/components/home-view';
+import WebsiteView from '@/components/website-view';
+import WorkspaceLoading from '@/components/workspace-loading';
+import NaviWorkspace from '@/components/navi-workspace';
+import { hasLearningWorkspace } from '@/lib/visitor-entry';
 import StudyView from '@/components/study-view';
 import YouView from '@/components/you-view';
 import ProductInsights from '@/components/product-insights';
@@ -242,23 +246,9 @@ export default function Workspace() {
       history.pushState({ ...history.state, reviewRoute: next }, '', next);
     window.scrollTo({ top: 0, behavior: 'instant' });
   }, []);
-  useEffect(() => {
-    if (
-      ready &&
-      identityReady &&
-      page === 'home' &&
-      !data.settings.assistant?.onboardedAt &&
-      !data.events.length
-    )
-      navigate('onboarding');
-  }, [
-    ready,
-    identityReady,
-    page,
-    data.settings.assistant?.onboardedAt,
-    data.events.length,
-    navigate,
-  ]);
+  // Resolve the active account before choosing a visitor or returning-learner entry.
+  // Deep links (courses, pairing, settings, ongoing work) never pass through marketing.
+  const website = page === 'website' || (page === 'home' && !hasLearningWorkspace(data));
   const start = useCallback(
     (
       items: QueueItem[],
@@ -477,9 +467,10 @@ export default function Workspace() {
       }}
     >
       <ProductLocale locale={data.settings.locale} ready={ready}/>
-      {ready && <ProductInsights page={page} />}
-      {ready && <RewardsBridge />}
-      {ready &&
+      {ready && !website && <ProductInsights page={page} />}
+      {ready && !website && <RewardsBridge />}
+      {ready && identityReady && !website && !['exam','assessment','onboarding'].includes(page) && session?.mode!=='test' && <NaviWorkspace key={currentNamespace()}/>}
+      {page === 'website' || (ready && identityReady && website) ? <WebsiteView navigate={navigate} locale={data.settings.locale}/> : !ready || (page === 'home' && !identityReady) ? <WorkspaceLoading/> : ready &&
       [
         'home',
         'devices',

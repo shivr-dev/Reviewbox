@@ -39,6 +39,7 @@ import {
 } from '@/lib/course-model';
 import { type Question } from '@/lib/model';
 import MathText from './math-text';
+import {openNavi} from './navi-workspace';
 function ProcessExplorer({ content }: { content: CourseContent }) {
   const [step, setStep] = useState(0);
   return (
@@ -191,7 +192,7 @@ function Checkpoint({
   );
 }
 export default function CourseRoom({ courseId }: { courseId: string }) {
-  const { data, refresh, navigate, notify, start, aiReady } = useReview();
+  const { data, refresh, navigate, notify, start, aiReady, section: routeSection } = useReview();
   const initial = data.jobs?.find(
     (j) => j.id === courseId && j.kind === 'course',
   ) as Course | undefined;
@@ -269,6 +270,7 @@ export default function CourseRoom({ courseId }: { courseId: string }) {
       .querySelector('.lesson-article')
       ?.scrollIntoView({ block: 'start', behavior: 'smooth' });
   }
+  useEffect(()=>{if(!routeSection||!ref.current)return;const index=ref.current.sections.findIndex(s=>s.id===routeSection);if(index>=0&&index!==ref.current.current)select(index);},[routeSection,initial?.id]);
   async function result(q: Question, answer: string, at: number) {
     if (!ref.current || working) return;
     await recordCourseCheck(ref.current, q, answer, at, ns.current);
@@ -370,7 +372,7 @@ export default function CourseRoom({ courseId }: { courseId: string }) {
   function ask() {
     const selected = window.getSelection()?.toString().trim().slice(0, 1800);
     if (selected) setSelection(selected);
-    setChatOpen(true);
+    if(ref.current&&section)openNavi({type:'course',id:ref.current.id,sectionId:section.id,selectedText:selected});
   }
   async function send(mode: 'chat' | 'revise', overrideMessage?: string) {
     const c = ref.current;
@@ -893,15 +895,15 @@ export default function CourseRoom({ courseId }: { courseId: string }) {
           )}
         </main>
       </div>
-      <button className="course-chat-launcher" onClick={ask}>
+      <button className="course-chat-launcher" onClick={()=>setChatOpen(true)}>
         <MessageSquare size={20} />
-        <span>{tr("study:课程答疑")}</span>
+        <span>{tr("study:navi.courseEditor")}</span>
       </button>
       {chatOpen && (
         <aside className="course-chat" aria-label={tr("study:课程答疑")}>
           <header>
             <div>
-              <b>{tr("study:课程答疑")}</b>
+              <b>{tr("study:navi.courseEditor")}</b>
               <span>{content?.title ?? section?.title}</span>
             </div>
             <button

@@ -15,6 +15,8 @@ html,body{margin:0;min-height:100%;background:#f5faff}
 .watch-static a:active{transform:translateY(3px);box-shadow:0 1px #0b4d7c}
 .watch-static a:focus{outline:3px solid #16364f;outline-offset:4px}
 .review-booting #watch-download-fallback{display:none}
+#review-website-static{display:none}
+.review-booting #review-website-static{display:block}
 #review-boot-status{display:none;font:16px Arial,sans-serif;text-align:center;padding:40px;color:#16364f}
 .review-booting #review-boot-status{display:block}
 `;

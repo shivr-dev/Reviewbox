@@ -288,6 +288,10 @@ export async function pagesApi(
         });
     }
     if (method === 'POST' && path === '/api/course') {
+      if(body.action==='tutor'){
+        const {naviConversation}=await import('./navi-server');const {action,...input}=body;
+        try{return Response.json(await naviConversation(input));}catch(e){return Response.json({error:'Navi request failed',code:(e as any)?.name==='NaviError'?(e as any).code:'format'},{status:422});}
+      }
       const { generateCourseSection, courseConversation, reviseCourseSection } =
         await import('./course-server');
       if (body.action === 'generate')

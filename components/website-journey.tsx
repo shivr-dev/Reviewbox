@@ -1,0 +1,50 @@
+'use client';
+import {useEffect,useRef,useState} from 'react';
+import {ArrowRight,Check,FileText,Upload,CalendarDays,RotateCcw,ShieldCheck,BookOpen,Watch,Layers3} from 'lucide-react';
+import {assetPath} from '@/lib/runtime';
+
+export function WebsitePenguin({paused=false}:{paused?:boolean}){
+  const [playing,setPlaying]=useState(false);
+  const timer=useRef<ReturnType<typeof setTimeout>|undefined>(undefined);
+  const picture=useRef<HTMLImageElement|null>(null);
+  useEffect(()=>()=>{clearTimeout(timer.current);if(picture.current)picture.current.onload=null;},[]);
+  useEffect(()=>{if(paused)setPlaying(false);},[paused]);
+  function wave(){if(playing || paused || picture.current || window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;const image=new Image();picture.current=image;image.onload=()=>{picture.current=null;setPlaying(true);timer.current=setTimeout(()=>setPlaying(false),1440);};image.onerror=()=>{picture.current=null;};image.src=assetPath('learning-penguin-celebrate.png');}
+  return <button className={'web-mascot-button '+(playing?'is-waving':'')} aria-label="企鹅伙伴 / Penguin companion" onClick={wave} onMouseEnter={wave}><img src={assetPath('learning-penguin.png')} alt=""/>{playing&&<span className="web-mascot-sprite" style={{backgroundImage:`url("${assetPath('learning-penguin-celebrate.png')}")`}}/>}</button>;
+}
+
+const content={
+  zh:{kicker:'从资料到理解，再到记住',title:'让你看见，下一步怎样发生。',note:'可交互功能示意，所有选择仅用于演示，不写入学习记录。',steps:[['自己的资料，是起点。','把笔记、文档和学习包整理到一起。题目、答案与插图经过审核，再进入练习。','导入 · 编辑 · 分组审核'],['把“学什么”，交给计划。','学习证据、遗忘风险与考试目标，一起决定下一步。需要教学时先学，需要检验时再测。','课程 · 练习 · 测评'],['先试着想起，再翻开答案。','主动回忆，给自己的判断一点证据。不确定的内容，值得多看一眼。','回忆 · 反馈 · 错题巩固'],['今天理解，另一天验证。','同一道理换个情境再出现。隔天检验之后，再根据新的证据调整计划。','间隔复习 · 迁移 · 调整']],files:['课堂笔记.pdf','复习学习包.json'],import:'整理成自己的学习资料',review:'答案与插图仍需核验',plan:'今天的下一步',planItems:['基础课程','回忆练习','延迟验证'],card:'点击卡片，翻到背面',question:'为什么复习不只看答案？',answer:'先主动回忆，才能发现自己能独立想起什么。',verify:'换个场景，再认出它',q:'学完一个概念之后，下一步更适合？',options:['反复看同一段答案','隔一段时间，尝试新的应用'],correct:'把理解带到另一个情境，再检查是否能独立运用。',tryAgain:'再想想：熟悉感，和能够独立运用，是一回事吗？',timeline:['今天理解','另一天回忆','换个场景验证'],next:'开始自己的学习',devices:'书桌前学深入，抬腕间再想起。',deviceBody:'在网页组织资料，给已连接的手表添加离线学习包。离线作答在联网后同步，学习记录回到同一账户。',deviceTags:['学习包下载','离线练习','账户同步'],deviceNote:'手表能力依设备与系统版本而定；需要登录并授权连接。',local:'你的学习空间，由你掌控。',localBody:'可以先本地学习，也可以连接账户同步。资料导入需要核验，公开反馈需要确认，产品改进统计可以关闭。',privacy:'了解数据与隐私'},
+  en:{kicker:'MATERIALS → UNDERSTANDING → MEMORY',title:'See what your next step can look like.',note:'Interactive illustration only. These choices do not create learning records.',steps:[['Start with your own materials.','Bring notes, documents and learning packs together. Review questions, answers and figures before practice.','IMPORT · EDIT · REVIEW'],['Give your next step a purpose.','Learning evidence, forgetting risk and exam goals guide the plan. Teach when needed. Assess when worthwhile.','COURSES · PRACTICE · ASSESS'],['Recall first. Reveal second.','Active recall gives you evidence of understanding. Uncertain ideas deserve another look.','RECALL · REFLECT · CONSOLIDATE'],['Understand today. Verify later.','Meet the same idea in a new context. Use later evidence to adjust your plan.','SPACING · TRANSFER · ADJUST']],files:['Class notes.pdf','Learning pack.json'],import:'Organise your own study materials',review:'Answers and figures still need review',plan:'Your next worthwhile step',planItems:['Foundations course','Recall practice','Delayed verification'],card:'Tap the card to reveal',question:'Why recall before reading an answer?',answer:'Trying to recall reveals what you can retrieve independently.',verify:'A new context. The same idea.',q:'After learning a concept, what is a useful next step?',options:['Read the same answer repeatedly','Try a new application another day'],correct:'Bring the idea into a different context and check independent understanding.',tryAgain:'Consider whether familiarity and independent application are the same thing.',timeline:['Understand today','Recall another day','Verify in context'],next:'Start your own journey',devices:'Go deeper at your desk. Recall on your wrist.',deviceBody:'Organise materials on the web and add offline learning packs to a paired watch. Offline answers sync back to the same account when connected.',deviceTags:['Learning packs','Offline practice','Account sync'],deviceNote:'Watch capabilities depend on device and OS. Login and device approval are required.',local:'Your learning space. Your choices.',localBody:'Learn locally first, or connect an account to sync. Imported content needs review, public feedback needs confirmation, and improvement statistics can be switched off.',privacy:'About data & privacy'}
+};
+export default function WebsiteJourney({language,paused,navigate}:{language:'zh'|'en';paused:boolean;navigate:(p:string,s?:string,v?:string)=>void}){
+  const c=content[language],root=useRef<HTMLElement>(null);
+  const [step,setStep]=useState(0),[flipped,setFlipped]=useState(false),[choice,setChoice]=useState<number|null>(null);
+  const selected=useRef(0), lastSwitch=useRef(0), manualUntil=useRef(0);
+  function selectStep(value:number){manualUntil.current=Date.now()+1800;selected.current=value;lastSwitch.current=Date.now();setStep(value);}
+  useEffect(()=>{
+    let timer:ReturnType<typeof setTimeout>|undefined;
+    const update=()=>{
+      if(!root.current || Date.now()<manualUntil.current)return;
+      const center=window.innerHeight*.5;
+      const next=Array.from(root.current.querySelectorAll<HTMLElement>('[data-journey-step]')).map(el=>({el,distance:Math.abs(el.getBoundingClientRect().top+el.getBoundingClientRect().height*.5-center)})).sort((a,b)=>a.distance-b.distance)[0];
+      if(!next)return;
+      const bounds=root.current.getBoundingClientRect();
+      if(bounds.top>window.innerHeight || bounds.bottom<0)return;
+      const value=Number(next.el.dataset.journeyStep);
+      if(value===selected.current)return;
+      selected.current=value;lastSwitch.current=Date.now();setStep(value);
+    };
+    const schedule=()=>{clearTimeout(timer);timer=setTimeout(update,Math.max(240,1100-(Date.now()-lastSwitch.current),manualUntil.current-Date.now()));};
+    window.addEventListener('scroll',schedule,{passive:true});window.addEventListener('resize',schedule);
+    return()=>{clearTimeout(timer);window.removeEventListener('scroll',schedule);window.removeEventListener('resize',schedule);};
+  },[]);
+  return <>
+    <section ref={root} className={'web-journey web-section '+(paused?'motion-paused':'')} id="web-how"><div className="web-section-heading"><p className="web-kicker">{c.kicker}</p><h2>{c.title}</h2><p className="web-illustration-note">{c.note}</p></div><div className="web-journey-layout"><div className="web-journey-text">{c.steps.map(([title,body,tags],i)=><article key={i} data-journey-step={i} className={step===i?'active':''}><button className="web-journey-step" aria-label={title} aria-pressed={step===i} onClick={()=>selectStep(i)}>0{i+1}<ArrowRight size={18}/></button><h3>{title}</h3><p>{body}</p><small>{tags}</small></article>)}</div>
+      <div className="web-journey-sticky"><div className="web-journey-board"><div className="web-journey-top"><Layers3 size={18}/><span>REVIEWBOX / {['MATERIALS','PLAN','RECALL','VERIFY'][step]}</span><span>0{step+1} / 04</span></div><div className="web-journey-scene" key={step}>
+      {step===0?<div className="web-import-scene"><div className="web-upload-symbol"><Upload size={29}/></div><h3>{c.import}</h3>{c.files.map((f,i)=><div className="web-import-file" style={{animationDelay:i*130+'ms'}} key={f}><FileText size={22}/><span>{f}</span><Check size={17}/></div>)}<p><ShieldCheck size={15}/>{c.review}</p></div>:step===1?<div className="web-plan-scene"><CalendarDays size={32}/><h3>{c.plan}</h3>{c.planItems.map((v,i)=><div key={v} style={{animationDelay:i*120+'ms'}}><span>0{i+1}</span><strong>{v}</strong><span className="web-plan-mini-track"><i/></span></div>)}</div>:step===2?<div className="web-recall-scene"><BookOpen size={28}/><p>{c.card}</p><button className={'web-flashcard '+(flipped?'flipped':'')} aria-pressed={flipped} onClick={()=>setFlipped(!flipped)}><span className="web-flashcard-inner"><span className="web-flashcard-front" aria-hidden={flipped}>{c.question}<RotateCcw size={20}/></span><span className="web-flashcard-back" aria-hidden={!flipped}>{c.answer}<Check size={23}/></span></span></button></div>:<div className="web-verify-scene"><p className="web-kicker">{c.verify}</p><h3>{c.q}</h3>{c.options.map((v,i)=><button key={v} className={choice===i?(i===1?'correct':'retry'):''} onClick={()=>setChoice(i)} aria-pressed={choice===i}><span>{i===0?'A':'B'}</span>{v}{choice===i&&i===1&&<Check size={16}/>}</button>)}{choice!==null&&<p role="status" className="web-demo-explanation">{choice===1?c.correct:c.tryAgain}</p>}</div>}
+      </div><div className="web-journey-dots" aria-label={language==='zh'?'演示步骤':'Demo steps'}>{c.steps.map(([v],i)=><button key={v} aria-label={v} aria-pressed={step===i} onClick={()=>selectStep(i)}><span/></button>)}</div></div><div className="web-memory-timeline">{c.timeline.map((s,i)=><span key={s}><i/>{s}</span>)}</div></div></div></section>
+    <section className="web-devices-story web-section"><div className="web-device-art" aria-hidden="true"><div className="web-laptop"><div><Layers3 size={23}/><span>reviewbox.</span><div className="web-device-pack"><BookOpen size={29}/><i/><i/><i/></div></div><span/></div><div className="web-sync-orbit"><i/><i/><i/></div><div className="web-watch"><div><Watch size={21}/><strong>RECALL</strong><Check size={22}/></div></div></div><div><p className="web-kicker">A SMALLER SCREEN. THE SAME JOURNEY.</p><h2>{c.devices}</h2><p>{c.deviceBody}</p><div className="web-device-tags">{c.deviceTags.map(v=><span key={v}><Check size={13}/>{v}</span>)}</div><small>{c.deviceNote}</small></div></section>
+    <section className="web-trust-note web-section"><ShieldCheck size={34}/><div><h2>{c.local}</h2><p>{c.localBody}</p></div><button className="web-text-link" onClick={()=>navigate('you','all','data')}>{c.privacy}<ArrowRight size={17}/></button></section>
+  </>;
+}

@@ -1,4 +1,6 @@
 'use client';
+import {NaviButton,openNavi} from './navi-workspace';
+import NaviLearningWorkspace from './navi-learning-workspace';
 import {subjectLabel as subjectName} from '@/lib/presentation';
 import {tr} from '@/lib/i18n';
 import MathText from './math-text';
@@ -969,7 +971,7 @@ export default function StudyView({
           <span> / {sessionItems.length}</span>
         </b>
         {!isTest && (
-          <div className="study-view-controls">
+          <div className="study-view-controls"><NaviButton target={{type:"question",id:q.id}}/>
             <button
               className="quiet"
               onClick={() => setScratchOpen((v) => !v)}
@@ -1095,6 +1097,7 @@ export default function StudyView({
           <small>{tr("study:提示深度会记录；之后的无提示验证才用于确认独立掌握。")}</small>
         </details>
       )}
+      <NaviLearningWorkspace key={q.id} question={q} answer={answer} grade={grade} focused={focusMode} protected={isTest} onFocus={setFocusMode} onHelp={()=>openNavi({type:'question',id:q.id})} onAssistance={level=>setHintLevel(old=>{const levels=['light','method','step','answer'] as const;return levels[Math.max(level-1,old?levels.indexOf(old):0)];})}>
       <article className="question-card" key={q.id}>
         <p className="question-number">
           QUESTION {String(index + 1).padStart(2, '0')}
@@ -1427,6 +1430,7 @@ export default function StudyView({
             document.body,
           )}
       </article>
+      </NaviLearningWorkspace>
       {!isTest && <QuestionReviewButton question={q} />}
       {!isTest &&
         scratchOpen &&

@@ -43,9 +43,9 @@ export function createWatchGateway(options:GatewayOptions) {
   };
   return async(request:Request):Promise<Response>=>{
     const origin=request.headers.get('origin');
-    const headers={'Cache-Control':'no-store','Vary':'Origin',...(origin&&origins.has(origin)?{'Access-Control-Allow-Origin':origin,'Access-Control-Allow-Methods':'POST, OPTIONS','Access-Control-Allow-Headers':'authorization, content-type'}:{})};
+    const headers={'Cache-Control':'no-store','Vary':'Origin',...(origin&&(origins.has(origin)||/^http:\/\/(localhost|127\.0\.0\.1):\d{2,5}$/.test(origin))?{'Access-Control-Allow-Origin':origin,'Access-Control-Allow-Methods':'POST, OPTIONS','Access-Control-Allow-Headers':'authorization, content-type'}:{})};
     const json=(value:unknown,status=200)=>Response.json(value,{status,headers});
-    if(origin&&!origins.has(origin))return json({error:'请求来源不正确'},403);
+    if(origin&&!origins.has(origin)&&!/^http:\/\/(localhost|127\.0\.0\.1):\d{2,5}$/.test(origin))return json({error:'请求来源不正确'},403);
     if(request.method==='OPTIONS')return new Response(null,{status:204,headers});
     if(request.method!=='POST')return json({error:'不支持的请求'},405);
     try {
@@ -63,11 +63,11 @@ export function createWatchGateway(options:GatewayOptions) {
       let result:any;
       if(action==='pack-list') {
         const fields='id,title,description,version,question_count,updated_at';
-        result={packs:await rest('/rest/v1/review_public_packs?published=eq.true&select='+fields+'&order=updated_at.desc&limit=100'),
-          mine:await rest('/rest/v1/review_public_packs?owner=eq.'+actor+'&published=eq.true&select='+fields+'&order=updated_at.desc&limit=30')};
+        result={packs:await rest('/rest/v1/review_public_packs?published=eq.true&visibility=eq.public&review_status=neq.blocked&select='+fields+'&order=updated_at.desc&limit=100'),
+          mine:await rest('/rest/v1/review_public_packs?owner=eq.'+actor+'&published=eq.true&visibility=eq.public&review_status=neq.blocked&select='+fields+'&order=updated_at.desc&limit=30')};
       } else if(action==='pack-get') {
         if(!/^[a-f0-9-]{36}$/.test(body.id??''))throw new Error('学习包标识无效');
-        const rows=await rest('/rest/v1/review_public_packs?id=eq.'+body.id+'&published=eq.true&select=pack&limit=1');
+        const rows=await rest('/rest/v1/review_public_packs?id=eq.'+body.id+'&published=eq.true&visibility=eq.public&review_status=neq.blocked&select=pack&limit=1');
         if(!rows.length)throw new Error('学习包已撤回或不存在');result={pack:rows[0].pack};
       } else if(action==='pack-publish') {
         const pack=preparePublicPack(body.pack);
@@ -77,7 +77,7 @@ export function createWatchGateway(options:GatewayOptions) {
         for(const n of pack.knowledge){const original=n.id;n.id=nodeIds.get(original)!;n.prerequisites=n.prerequisites.filter(id=>nodeIds.has(id)).map(id=>nodeIds.get(id)!);n.relatedNodes=n.relatedNodes.filter(id=>nodeIds.has(id)).map(id=>nodeIds.get(id)!);n.dependencies=n.dependencies?.filter(d=>nodeIds.has(d.nodeId)).map(d=>({...d,nodeId:nodeIds.get(d.nodeId)!}));}
         for(const q of pack.questions){q.nodeId=nodeIds.get(q.nodeId)!;q.id=prefix+':q:'+(await deviceHash(q.id)).slice(0,20);q.source='公共学习包 · '+pack.manifest.title;}
         pack.manifest.id=prefix;
-        const existing=await rest('/rest/v1/review_public_packs?owner=eq.'+actor+'&published=eq.true&select=id,source_id&limit=31');
+        const existing=await rest('/rest/v1/review_public_packs?owner=eq.'+actor+'&published=eq.true&visibility=eq.public&review_status=neq.blocked&select=id,source_id&limit=31');
         if(existing.length>=30&&!existing.some((p:any)=>p.source_id===sourceId))throw new Error('每个账户最多发布 30 个学习包，请先撤回旧包');
         const rows=await rest('/rest/v1/review_public_packs?on_conflict=owner,source_id',{
           owner:actor,source_id:sourceId,title:pack.manifest.title,description:pack.manifest.description.slice(0,2000),
@@ -114,12 +114,12 @@ export function createWatchGateway(options:GatewayOptions) {
           result=watchStudyPlan(await ownedRecords(status.userId),body.actionId,Date.now(),status.deviceId);
         } else if(action==='public-pack-list') {
           await rpc('status',{accessHash});
-          result={packs:await rest('/rest/v1/review_public_packs?published=eq.true&select=id,title,description,version,question_count,updated_at&order=updated_at.desc&limit=100')};
+          result={packs:await rest('/rest/v1/review_public_packs?published=eq.true&visibility=eq.public&review_status=neq.blocked&select=id,title,description,version,question_count,updated_at&order=updated_at.desc&limit=100')};
         } else if(action==='download-pack'||action==='public-pack-download') {
           const status=await rpc('status',{accessHash});
           if(action==='public-pack-download') {
             if(!/^[a-f0-9-]{36}$/.test(body.publicId??''))throw new Error('学习包标识无效');
-            const published=await rest('/rest/v1/review_public_packs?id=eq.'+encodeURIComponent(body.publicId)+'&published=eq.true&select=pack&limit=1');
+            const published=await rest('/rest/v1/review_public_packs?id=eq.'+encodeURIComponent(body.publicId)+'&published=eq.true&visibility=eq.public&review_status=neq.blocked&select=pack&limit=1');
             if(!published[0]?.pack)throw new Error('学习包已撤回或不存在');
             const preview=await previewPack(published[0].pack,await ownedRecords(status.userId,true));
             if(preview.changes.some(c=>c.conflict)||(preview.manifest&&(preview.manifest.version!==published[0].pack.manifest.version||preview.changes.some(c=>c.action!=='same'))))throw new Error('此学习包需要确认版本差异，请先在资料库处理更新；手表原有下载与作答已保留');

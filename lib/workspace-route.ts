@@ -1,6 +1,7 @@
-export type WorkspaceRoute = { page: string; subject: string; section: string };
+export type WorkspaceRoute = { page: string; subject: string; section: string; target?:string };
 const pages = new Set([
   'home',
+  'website',
   'plan',
   'subjects',
   'library',
@@ -37,7 +38,7 @@ export function parseWorkspaceRoute(hash: string): WorkspaceRoute {
       }
     });
   const page = pages.has(parts[0]) ? parts[0] : 'home';
-  return { page, subject: parts[1] || 'all', section: parts[2] || '' };
+  return { page, subject: parts[1] || 'all', section: parts[2] || '', ...(parts[3]?{target:parts[3]}:{}) };
 }
 export function workspaceHash({
   page,

@@ -3,6 +3,8 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/postcss';
 import { fileURLToPath } from 'node:url';
 import {watchDownloadMarkup,watchDownloadStyle,watchBootstrap} from './scripts/watch-download-page.mjs';
+import {websiteMarkup} from './scripts/website-prerender.mjs';
+const website = await websiteMarkup();
 const project = fileURLToPath(new URL('.', import.meta.url));
 export default defineConfig({
   root: project + 'static-pages',
@@ -14,7 +16,7 @@ export default defineConfig({
       order: 'pre',
       handler(html) {
         return html.replace('<head>', '<head><script>'+watchBootstrap+'</script><style>'+watchDownloadStyle+'</style>')
-          .replace('<div id="root"></div>', '<div id="root">'+watchDownloadMarkup()+'<p id="review-boot-status" role="status">正在打开 Reviewbox…</p></div>');
+          .replace('<div id="root"></div>', '<div id="root">'+watchDownloadMarkup()+'<div id="review-website-static">'+website+'</div></div>');
       },
     },
   }],

@@ -1,5 +1,5 @@
 import { createRoot } from 'react-dom/client';
-import Workspace from '../app/workspace';
+import AppEntry from '../components/app-entry';
 import WatchDownload from '../components/watch-download';
 import {isWatchBrowser} from '../lib/watch-platform';
 import DeploymentStatus from '../components/deployment-status';
@@ -13,6 +13,6 @@ const watch=isWatchBrowser({userAgent:navigator.userAgent,screenWidth:window.scr
 if(!(window as any).__REVIEW_WATCH_STATIC__)createRoot(document.getElementById('root')!).render(watch?<WatchDownload/>:
   <>
     <DeploymentStatus />
-    <Workspace />
+    <AppEntry />
   </>,
 );

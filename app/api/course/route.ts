@@ -1,5 +1,7 @@
 import { sameOrigin, requireSiteUser, readBody, fail } from '@/lib/server';
 import { courseErrorMessage } from '@/lib/course-errors';
+import {naviConversation} from '@/lib/navi-server';
+import {NaviError} from '@/lib/navi-context';
 import {
   generateCourseSection,
   courseConversation,
@@ -16,6 +18,7 @@ export async function POST(req: Request) {
     if (++rate.count > 15) throw new Error('课程请求较多，请稍后继续');
     limits.set(user.userId, rate);
     const b = await readBody(req, 1000000);
+    if(b.action==='tutor'){const {action,...input}=b;return Response.json(await naviConversation(input));}
     if (b.action === 'generate')
       return Response.json({ content: await generateCourseSection(b) });
     if (b.action === 'chat') return Response.json(await courseConversation(b));
@@ -23,6 +26,7 @@ export async function POST(req: Request) {
       return Response.json({ content: await reviseCourseSection(b) });
     throw new Error('无效课程请求');
   } catch (e) {
+    if(e instanceof NaviError)return Response.json({error:'Navi request failed',code:e.code},{status:422});
     if (e instanceof Error && 'parts' in e)
       return Response.json(
         {
