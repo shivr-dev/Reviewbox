@@ -1832,3 +1832,209 @@ body:has(.alpha-product) .navi-launcher {
   background: transparent;
   padding-bottom: 0;
 }
+
+.navi-selection-entry {
+  position: fixed;
+  z-index: 2147483500;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 13px;
+  min-height: 40px;
+  border: 1px solid #c8ddea;
+  border-radius: 10px;
+  background: #fff;
+  color: #246c98;
+  box-shadow: 0 3px 12px #244c6418;
+  font-size: 13px;
+}
+.navi-selection-entry:focus-visible {
+  outline: 2px solid #318cbb;
+  outline-offset: 3px;
+}
+.navi-understanding-check,
+.navi-configuration-receipt {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--navi-line);
+  min-width: 0;
+}
+.navi-understanding-check > small {
+  color: var(--navi-blue);
+  font-weight: 600;
+}
+.navi-understanding-check .rich-text {
+  margin-block: 9px 12px;
+  font-size: 14px;
+  line-height: 1.8;
+}
+.navi-conversation .navi-understanding-check textarea {
+  width: 100%;
+  min-width: 0;
+  min-height: 90px;
+  resize: vertical;
+  padding: 11px;
+  border: 1px solid var(--navi-line);
+  border-radius: 9px;
+  background: var(--navi-paper);
+  color: var(--navi-ink);
+  font: inherit;
+}
+.navi-understanding-check footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 10px;
+}
+.navi-understanding-check footer small {
+  flex: 1;
+  color: var(--navi-muted);
+  font-size: 11px;
+  line-height: 1.6;
+}
+.navi-conversation .navi-understanding-check button,
+.navi-conversation .navi-configuration-receipt button {
+  font-size: 12px;
+  padding: 8px 11px;
+  border: 1px solid var(--navi-line);
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+.navi-conversation .navi-configuration-receipt header {
+  padding: 0;
+  min-height: 0;
+  height: auto;
+  display: grid;
+  gap: 5px;
+  border: 0;
+  background: transparent;
+}
+.navi-configuration-receipt header strong {
+  color: var(--navi-blue);
+  font-size: 13px;
+}
+.navi-configuration-receipt header span,
+.navi-configuration-receipt p {
+  color: var(--navi-muted);
+  font-size: 11px;
+  line-height: 1.7;
+}
+.navi-configuration-receipt dl {
+  display: grid;
+  gap: 13px;
+  margin: 17px 0;
+}
+.navi-configuration-receipt dt {
+  font-size: 11px;
+  color: var(--navi-muted);
+  margin-bottom: 6px;
+}
+.navi-configuration-receipt dd {
+  margin: 0;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+  line-height: 1.7;
+}
+.navi-configuration-receipt dd strong {
+  font-weight: 500;
+}
+.navi-selected-quote {
+  display: flex;
+  gap: 8px;
+  align-items: start;
+  min-width: 0;
+  margin-bottom: 10px;
+  border-left: 2px solid var(--navi-blue);
+  padding-left: 10px;
+}
+.navi-selected-quote details {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+}
+.navi-selected-quote summary {
+  cursor: pointer;
+  overflow-wrap: anywhere;
+  color: var(--navi-muted);
+}
+.navi-selected-quote blockquote {
+  margin: 8px 0;
+  max-height: 120px;
+  overflow: auto;
+  line-height: 1.7;
+}
+.navi-selected-quote button {
+  flex-shrink: 0;
+  padding: 3px;
+}
+.navi-web-search h3 {
+  font-size: 14px;
+  margin: 0 0 8px;
+}
+.navi-web-search p,
+.navi-web-search small {
+  font-size: 12px;
+  line-height: 1.75;
+  color: var(--navi-muted);
+}
+.navi-web-search form {
+  display: grid;
+  gap: 10px;
+}
+.navi-web-search label {
+  display: grid;
+  gap: 7px;
+  font-size: 12px;
+}
+.navi-web-search input {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  border: 1px solid var(--navi-line);
+  border-radius: 8px;
+  padding: 8px 10px;
+}
+.navi-web-search ul {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+}
+.navi-web-search li {
+  border-top: 1px solid var(--navi-line);
+  padding-block: 12px;
+}
+.navi-web-search h4 {
+  font-size: 13px;
+  margin: 0;
+}
+.navi-web-search a {
+  color: var(--navi-blue);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.navi-web-search button {
+  margin-top: 8px;
+  font-size: 12px;
+}
+.navi-web-search li small {
+  display: block;
+  font-size: 10px;
+}
+.navi-conversation .navi-web-entry {
+  font-size: 11px;
+  color: var(--navi-muted);
+  justify-self: start;
+  padding: 2px 0 8px;
+}
+.navi-conversation
+  :is(
+    .navi-understanding-check textarea,
+    .navi-web-search input
+  ):focus-visible {
+  outline: 2px solid #70b9e6;
+  outline-offset: 2px;
+}

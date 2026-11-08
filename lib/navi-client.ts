@@ -1,3 +1,4 @@
+import type { NaviCheckRequest } from './navi-understanding';
 import type {
   NaviConfigurationAction,
   configurationContext,
@@ -25,6 +26,14 @@ export type NaviMessage = {
   citations?: { source_id: string; source_version: string; quote: string }[];
   supplementary?: boolean;
   privateEvidence?: boolean;
+  external_sources?: {
+    source_id: string;
+    url: string;
+    title: string;
+    version: string;
+  }[];
+  understanding_check?: { question: string };
+  checkResponseTo?: string;
   uiQuestionId?: string;
   uiTargetId?: string;
   ui_actions?: NaviUIAction[];
@@ -130,6 +139,7 @@ export async function requestNavi(
   tutor?: {
     mode: string;
     helpLevel: number;
+    check?: NaviCheckRequest;
     ui?: unknown;
     configuration?: ReturnType<typeof configurationContext>;
   },

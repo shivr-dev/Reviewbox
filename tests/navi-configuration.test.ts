@@ -1,8 +1,13 @@
+import { localDay } from '../lib/model';
 import 'fake-indexeddb/auto';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { switchAccount, loadData, put } from '../lib/store';
-import { applyNaviConfiguration } from '../lib/navi-configuration-client';
+import {
+  applyNaviConfiguration,
+  undoNaviConfiguration,
+} from '../lib/navi-configuration-client';
+import { findConfigurationReceipt } from '../lib/navi-configuration-history';
 import { examGpa } from '../lib/exam-outcomes';
 import {
   configurationBaseline,
@@ -51,6 +56,125 @@ test('configuration capabilities exclude grades, deletion and unrelated private 
   });
   assert.equal(offlineConfigurationRequest('不要修改GPA'), undefined);
   assert.equal(offlineConfigurationRequest('怎么修改GPA'), undefined);
+});
+
+test('receipts undo only changed fields, preserve subsequent results, and reject stale or tampered restores', async () => {
+  const ns = 'navi-undo-guards';
+  await switchAccount(ns);
+  let data = await loadData();
+  const daily: NaviConfigurationAction = { type: 'setDailyTime', minutes: 35 };
+  await applyNaviConfiguration(
+    daily,
+    'navi-config:daily-undo',
+    configurationBaseline(data, daily),
+    ns,
+  );
+  data = await loadData();
+  assert.equal(
+    findConfigurationReceipt(data, 'navi-config:daily-undo')?.changes.length,
+    1,
+  );
+  await put('setting', { ...data.settings, name: 'Later name' }, 'settings');
+  await Promise.all([
+    undoNaviConfiguration('navi-config:daily-undo', ns),
+    undoNaviConfiguration('navi-config:daily-undo', ns),
+  ]);
+  data = await loadData();
+  assert.equal(data.settings.dailyMinutes, 20);
+  assert.equal(data.settings.name, 'Later name');
+  assert.ok(findConfigurationReceipt(data, 'navi-config:daily-undo')?.undoneAt);
+  await assert.rejects(
+    applyNaviConfiguration(
+      daily,
+      'navi-config:daily-undo',
+      configurationBaseline(data, daily),
+      ns,
+    ),
+    /changed/,
+  );
+  await applyNaviConfiguration(
+    daily,
+    'navi-config:daily-stale',
+    configurationBaseline(data, daily),
+    ns,
+  );
+  data = await loadData();
+  await put('setting', { ...data.settings, dailyMinutes: 40 }, 'settings');
+  await assert.rejects(
+    undoNaviConfiguration('navi-config:daily-stale', ns),
+    /changed/,
+  );
+  assert.equal((await loadData()).settings.dailyMinutes, 40);
+  const create: NaviConfigurationAction = {
+    type: 'createExam',
+    changes: {
+      title: 'Keep my score',
+      subject: 'math',
+      date: localDay(new Date()),
+      scope: [],
+      target: 85,
+      dailyMinutes: 20,
+    },
+  };
+  await applyNaviConfiguration(create, 'navi-config:exam-undo', 'new', ns);
+  data = await loadData();
+  const exam = data.exams[0],
+    result = {
+      score: 90,
+      maxScore: 100,
+      credits: 2,
+      recordedAt: '2029-12-10T12:00:00Z',
+    };
+  await put('exam', { ...exam, result }, exam.id);
+  await undoNaviConfiguration('navi-config:exam-undo', ns);
+  data = await loadData();
+  assert.equal(data.exams.length, 1);
+  assert.equal(data.exams[0].scheduleStatus, 'cancelled');
+  assert.deepEqual(data.exams[0].result, result);
+  const update: NaviConfigurationAction = {
+    type: 'updateExam',
+    examId: exam.id,
+    changes: { target: 95 },
+  };
+  await applyNaviConfiguration(
+    update,
+    'navi-config:target-undo',
+    configurationBaseline(data, update),
+    ns,
+  );
+  data = await loadData();
+  await put(
+    'exam',
+    { ...data.exams[0], result: { ...result, score: 92 } },
+    exam.id,
+  );
+  await undoNaviConfiguration('navi-config:target-undo', ns);
+  data = await loadData();
+  assert.equal(data.exams[0].target, 85);
+  assert.equal(data.exams[0].result?.score, 92);
+  const receipt = data.jobs!.find((j) => j.id === 'navi-config:target-undo');
+  await put(
+    'job',
+    {
+      ...receipt,
+      undoneAt: undefined,
+      changes: [
+        {
+          path: ['result'],
+          before: { exists: true, value: { score: 100 } },
+          after: { exists: true, value: result },
+        },
+      ],
+    },
+    receipt.id,
+  );
+  await assert.rejects(undoNaviConfiguration(receipt.id, ns), /invalid/);
+  assert.equal((await loadData()).exams[0].result?.score, 92);
+  await switchAccount('navi-another-undo');
+  await assert.rejects(
+    undoNaviConfiguration('navi-config:daily-undo', ns),
+    /account/,
+  );
 });
 test('confirmed configuration is atomic, account isolated, replay safe, and preserves real grades', async () => {
   const ns = 'navi-config-writes';
@@ -214,10 +338,18 @@ test('confirmed configuration is atomic, account isolated, replay safe, and pres
   assert.equal(data.exams[0].scheduleStatus, 'cancelled');
   assert.deepEqual(data.exams[0].result, exam.result);
   assert.equal(examGpa(data).value, beforeGpa.value);
-  assert.deepEqual(examGpa(data).rows.map(r=>[r.exam.id,r.point,r.weight]),beforeGpa.rows.map(r=>[r.exam.id,r.point,r.weight]));
-  const resume:NaviConfigurationAction={...cancel,enabled:true};
-  await applyNaviConfiguration(resume,'navi-config:resume',configurationBaseline(data,resume),ns);
-  assert.equal((await loadData()).exams[0].scheduleStatus,'active');
+  assert.deepEqual(
+    examGpa(data).rows.map((r) => [r.exam.id, r.point, r.weight]),
+    beforeGpa.rows.map((r) => [r.exam.id, r.point, r.weight]),
+  );
+  const resume: NaviConfigurationAction = { ...cancel, enabled: true };
+  await applyNaviConfiguration(
+    resume,
+    'navi-config:resume',
+    configurationBaseline(data, resume),
+    ns,
+  );
+  assert.equal((await loadData()).exams[0].scheduleStatus, 'active');
   await switchAccount('navi-config-other');
   await assert.rejects(
     applyNaviConfiguration(daily, 'navi-config:leak', 'null', ns),

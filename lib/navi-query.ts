@@ -48,6 +48,7 @@ export function queryNaviContexts(
   return contexts
     .filter((c) => c.provenance !== 'learning-evidence')
     .map((c) => {
+      if (c.context_type === 'web') return c;
       const target: NaviTarget = {
         type: c.context_type,
         id: c.source_id,

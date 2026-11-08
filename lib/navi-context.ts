@@ -1,3 +1,5 @@
+import { naviUnderstandingCheck } from './navi-understanding';
+import { naviQuoteMatches } from './navi-model-response';
 import { naviConfigurationAction } from './navi-configuration';
 import { z } from 'zod';
 import type { StudyData } from './model';
@@ -18,6 +20,7 @@ export const naviContextSchema = z
       'material',
       'plan',
       'subject',
+      'web',
     ]),
     source_id: z.string().min(1).max(200),
     source_version: z.string().max(120),
@@ -29,6 +32,7 @@ export const naviContextSchema = z
     source_location: z
       .object({
         page: z.number().int().positive().optional(),
+        external_url: z.string().url().max(1000).optional(),
         section_id: z.string().max(200).optional(),
         section_title: z.string().max(300).optional(),
         package_id: z.string().max(200).optional(),
@@ -42,12 +46,13 @@ export const naviContextSchema = z
       'question',
       'learning-evidence',
       'learning-plan',
+      'web-reference',
     ]),
   })
   .strict();
 export type NaviContext = z.infer<typeof naviContextSchema>;
 export type NaviTarget = {
-  type: NaviContext['context_type'];
+  type: Exclude<NaviContext['context_type'], 'web'>;
   id: string;
   sectionId?: string;
   selectedText?: string;
@@ -215,15 +220,13 @@ export function resolveNaviContext(
         ? {
             at: latest.at,
             selectedId: latest.selectedId,
-            candidates: latest.candidates
-              ?.slice(0, 3)
-              .map((c: any) => ({
-                id: c.id,
-                kind: c.kind,
-                reasons: c.reasons,
-                estimatedMinutes: c.estimatedMinutes,
-                rejection: c.rejection,
-              })),
+            candidates: latest.candidates?.slice(0, 3).map((c: any) => ({
+              id: c.id,
+              kind: c.kind,
+              reasons: c.reasons,
+              estimatedMinutes: c.estimatedMinutes,
+              rejection: c.rejection,
+            })),
           }
         : null,
       notice:
@@ -351,6 +354,7 @@ export const naviAnswerSchema = z
       )
       .max(8),
     supplementary: z.boolean(),
+    understanding_check: naviUnderstandingCheck.optional(),
     ui_actions: z.array(naviUIAction).max(12).optional(),
     tutor_actions: z.array(naviTutorAction).max(5).optional(),
     configuration_actions: z.array(naviConfigurationAction).max(1).optional(),
@@ -365,7 +369,7 @@ export function verifyNaviAnswer(input: unknown, contexts: NaviContext[]) {
         c.source_id === citation.source_id &&
         c.source_version === citation.source_version,
     );
-    if (!source || !source.relevant_content.includes(citation.quote))
+    if (!source || !naviQuoteMatches(source.relevant_content, citation.quote))
       throw new NaviError('citation');
   }
   if (!parsed.data.citations.length) parsed.data.supplementary = true;

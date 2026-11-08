@@ -8,6 +8,9 @@ import {
   NaviSurface,
 } from '../components/navi-presentation';
 import NaviResponse from '../components/navi-response';
+import NaviUnderstandingCheck from '../components/navi-understanding-check';
+import NaviSelectionEntry from '../components/navi-selection-entry';
+import { NaviUIController, registerNaviUI } from '../lib/navi-ui';
 
 test('Navi escapes clipped page containers, restores focus, and removes request activity on completion', async () => {
   (globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
@@ -58,6 +61,124 @@ test('Navi escapes clipped page containers, restores focus, and removes request 
     assert.equal(document.activeElement, launcher);
   } finally {
     host.remove();
+  }
+});
+
+test('an understanding answer requires an explicit submission and becomes read only after feedback', async () => {
+  const mount = document.createElement('div');
+  document.body.appendChild(mount);
+  const root = createRoot(mount);
+  const answers: string[] = [];
+  try {
+    await act(async () =>
+      root.render(
+        <NaviUnderstandingCheck
+          question="Why both sides?"
+          busy={false}
+          answered={false}
+          onAnswer={(a) => answers.push(a)}
+        />,
+      ),
+    );
+    assert.equal(
+      (mount.querySelector('button') as HTMLButtonElement).disabled,
+      true,
+    );
+    assert.equal(answers.length, 0);
+    const textarea = mount.querySelector('textarea')!;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(
+        window.HTMLTextAreaElement.prototype,
+        'value',
+      )!.set!.call(textarea, 'To keep them equal.');
+      textarea.dispatchEvent(new window.Event('input', { bubbles: true }));
+    });
+    assert.equal(answers.length, 0);
+    await act(async () =>
+      mount
+        .querySelector('form')!
+        .dispatchEvent(
+          new window.Event('submit', { bubbles: true, cancelable: true }),
+        ),
+    );
+    assert.deepEqual(answers, ['To keep them equal.']);
+    await act(async () =>
+      root.render(
+        <NaviUnderstandingCheck
+          question="Why both sides?"
+          busy={false}
+          answered
+          onAnswer={(a) => answers.push(a)}
+        />,
+      ),
+    );
+    assert.equal(mount.querySelector('textarea'), null);
+  } finally {
+    await act(async () => root.unmount());
+    mount.remove();
+  }
+});
+test('selection follow-ups quote the actual learning canvas and are unavailable in protected exams', async () => {
+  const app = document.createElement('main');
+  app.className = 'review-application';
+  app.innerHTML = '<p>Preserve the equality.</p>';
+  document.body.appendChild(app);
+  const mount = document.createElement('div');
+  document.body.appendChild(mount);
+  const root = createRoot(mount),
+    chosen: any[] = [];
+  const controller = new NaviUIController({
+    panels: ['question'],
+    questionIds: ['q1'],
+    molecule: false,
+    protected: false,
+  });
+  controller.target = { type: 'question', id: 'q1' };
+  const unregister = registerNaviUI(controller, 100);
+  const original = Object.getOwnPropertyDescriptor(
+    window.Range.prototype,
+    'getBoundingClientRect',
+  );
+  Object.defineProperty(window.Range.prototype, 'getBoundingClientRect', {
+    configurable: true,
+    value: () => ({ left: 20, bottom: 60 }),
+  });
+  try {
+    await act(async () =>
+      root.render(
+        <NaviSelectionEntry onChoose={(target) => chosen.push(target)} />,
+      ),
+    );
+    const range = document.createRange();
+    range.selectNodeContents(app.querySelector('p')!);
+    window.getSelection()!.removeAllRanges();
+    window.getSelection()!.addRange(range);
+    await act(async () =>
+      document.dispatchEvent(new window.Event('pointerup', { bubbles: true })),
+    );
+    assert.ok(mount.querySelector('button'));
+    await act(async () => mount.querySelector('button')!.click());
+    assert.deepEqual(chosen, [
+      { type: 'question', id: 'q1', selectedText: 'Preserve the equality.' },
+    ]);
+    controller.capabilities.protected = true;
+    await act(async () =>
+      document.dispatchEvent(new window.Event('pointerup', { bubbles: true })),
+    );
+    assert.equal(mount.querySelector('button'), null);
+  } finally {
+    unregister();
+    await act(async () => root.unmount());
+    app.remove();
+    mount.remove();
+    window.getSelection()?.removeAllRanges();
+    if (original)
+      Object.defineProperty(
+        window.Range.prototype,
+        'getBoundingClientRect',
+        original,
+      );
+    else delete (window.Range.prototype as any).getBoundingClientRect;
   }
 });
 

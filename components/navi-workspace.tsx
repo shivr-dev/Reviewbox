@@ -1,5 +1,12 @@
 'use client';
+import NaviWebSearch from './navi-web-search';
+import { safeNaviWebURL, parseNaviWebIntent } from '@/lib/navi-web-sources';
 import NaviConfigurationPreview from './navi-configuration-preview';
+import NaviConfigurationReceipt from './navi-configuration-receipt';
+import NaviUnderstandingCheck from './navi-understanding-check';
+import NaviSelectionEntry from './navi-selection-entry';
+import { findConfigurationReceipt } from '@/lib/navi-configuration-history';
+import type { NaviCheckRequest } from '@/lib/navi-understanding';
 import {
   configurationContext,
   offlineConfigurationRequest,
@@ -109,6 +116,8 @@ export default function NaviWorkspace() {
   const { data, states, refresh, navigate, notify, aiReady, cloudUser } =
       useReview(),
     ns = currentNamespace();
+  const [research, setResearch] = useState(false),
+    [researchQuery, setResearchQuery] = useState('');
   const [configuration, setConfiguration] = useState<{
     action: NaviConfigurationAction;
     id: string;
@@ -154,6 +163,7 @@ export default function NaviWorkspace() {
     }
   }
   function closeTool() {
+    setResearch(false);
     setConfiguration(null);
     setPendingUI(null);
     setPendingNote(null);
@@ -218,6 +228,7 @@ export default function NaviWorkspace() {
   }, [open]);
   useEffect(() => {
     setConsent(false);
+    setResearch(false);
     setConfiguration(null);
     setPractice(false);
     setPendingNote(null);
@@ -513,7 +524,11 @@ export default function NaviWorkspace() {
     window.addEventListener('keydown', key, true);
     return () => window.removeEventListener('keydown', key, true);
   }, [open]);
-  async function send(input = draft) {
+  async function send(
+    input = draft,
+    check?: NaviCheckRequest,
+    responseTo?: string,
+  ) {
     if (gate.current || !input.trim()) return;
     gate.current = true;
     follow.current = true;
@@ -529,6 +544,7 @@ export default function NaviWorkspace() {
       kind: 'navi-message',
       threadId: current.id,
       role: 'user',
+      checkResponseTo: responseTo,
       text,
       at,
     };
@@ -540,9 +556,31 @@ export default function NaviWorkspace() {
     try {
       await saveNavi(next, [user], owner);
       await refresh();
-      const offlineAction = !aiReady
-        ? offlineConfigurationRequest(text)
-        : undefined;
+      const webQuery = check ? undefined : parseNaviWebIntent(text);
+      if (webQuery !== undefined) {
+        closeTool();
+        setResearchQuery(webQuery);
+        setResearch(true);
+        await saveNavi(
+          next,
+          [
+            {
+              id: 'navi-message:' + crypto.randomUUID(),
+              kind: 'navi-message',
+              threadId: next.id,
+              role: 'assistant',
+              text: t('web.privacy'),
+              at: new Date().toISOString(),
+            },
+          ],
+          owner,
+        );
+        setDraft('');
+        await refresh();
+        return;
+      }
+      const offlineAction =
+        !check && !aiReady ? offlineConfigurationRequest(text) : undefined;
       if (offlineAction) {
         closeTool();
         const id = 'navi-message:' + crypto.randomUUID();
@@ -567,7 +605,7 @@ export default function NaviWorkspace() {
         await refresh();
         return;
       }
-      const tool = parseNaviToolIntent(text);
+      const tool = check ? undefined : parseNaviToolIntent(text);
       if (
         tool &&
         (tool === 'practice'
@@ -612,7 +650,7 @@ export default function NaviWorkspace() {
         await refresh();
         return;
       }
-      const commands = parseNaviUICommand(text);
+      const commands = check ? undefined : parseNaviUICommand(text);
       if (commands) {
         const result = executeNaviUI(commands);
         const reply = result.ok
@@ -689,6 +727,7 @@ export default function NaviWorkspace() {
         {
           mode: tutorMode,
           helpLevel,
+          check,
           configuration: configurationContext(
             data,
             text +
@@ -781,6 +820,11 @@ export default function NaviWorkspace() {
     const context = thread?.contexts.find((c) => c.source_id === id);
     if (!context) return;
     setOpen(false);
+    if (context.context_type === 'web') {
+      const url = safeNaviWebURL(context.source_location.external_url ?? '');
+      if (url) window.open(url, '_blank', 'noopener,noreferrer');
+      return;
+    }
     if (context.context_type === 'plan') {
       navigate('plan');
       return;
@@ -882,7 +926,8 @@ export default function NaviWorkspace() {
         !pendingNote &&
         !practice &&
         !editorRequested &&
-        !configuration
+        !configuration &&
+        !research
       }
       aria-label={t('tool.title')}
     >
@@ -893,6 +938,58 @@ export default function NaviWorkspace() {
         </button>
       </header>
       <div className="navi-tool-body">
+        {research && (
+          <NaviWebSearch
+            key={researchQuery}
+            initialQuery={researchQuery}
+            onChoose={async (context) => {
+              const next = thread ?? newNaviThread();
+              const updated = {
+                ...next,
+                contexts: [
+                  ...next.contexts
+                    .filter((c) => c.source_id !== context.source_id)
+                    .slice(-2),
+                  context,
+                ],
+              };
+              await saveNavi(
+                updated,
+                [
+                  {
+                    id: 'navi-message:' + crypto.randomUUID(),
+                    kind: 'navi-message',
+                    threadId: next.id,
+                    role: 'assistant',
+                    text: t('web.added') + '\n' + context.title,
+                    at: new Date().toISOString(),
+                    citations: [
+                      {
+                        source_id: context.source_id,
+                        source_version: context.source_version,
+                        quote: context.title,
+                      },
+                    ],
+                    external_sources: [
+                      {
+                        source_id: context.source_id,
+                        url: context.source_location.external_url!,
+                        title: context.title,
+                        version: context.source_version,
+                      },
+                    ],
+                  },
+                ],
+                ns,
+              );
+              if (currentNamespace() !== ns) return;
+              setThread(updated);
+              await refresh();
+              notify(t('web.added'));
+              setResearch(false);
+            }}
+          />
+        )}
         {configuration && (
           <NaviConfigurationPreview
             key={configuration.id}
@@ -951,6 +1048,14 @@ export default function NaviWorkspace() {
   );
   return (
     <NaviLayer>
+      <NaviSelectionEntry
+        onChoose={(target) => {
+          openNavi({
+            ...target,
+            draft: t('selection.request'),
+          } as NaviTarget & { draft: string });
+        }}
+      />
       <button
         className="navi-launcher"
         onClick={openCurrentPage}
@@ -1291,94 +1396,156 @@ export default function NaviWorkspace() {
                 <small>{t('tool.intro')}</small>
               </div>
             )}
-            {messages.map((m) => (
-              <article key={m.id} className={m.role}>
-                <small>{m.role === 'user' ? t('you') : 'Navi'}</small>
-                <div className="navi-message-body">
-                  {m.role === 'assistant' ? (
-                    <NaviResponse text={m.text} />
-                  ) : (
-                    <MathText>{m.text}</MathText>
-                  )}
-                </div>
-                {m.supplementary && (
-                  <small className="navi-supplement">{t('supplement')}</small>
-                )}
-                {!!m.citations?.length && (
-                  <details className="navi-source-details">
-                    <summary>
-                      {t('source')} · {m.citations.length}
-                    </summary>
-                    {m.citations.map((c, i) => (
-                      <button
-                        type="button"
-                        className="navi-citation"
-                        key={i}
-                        onClick={() =>
-                          c.source_id.startsWith('evidence:')
-                            ? setReceipt(t('evidenceScope'))
-                            : sourceGo(c.source_id)
-                        }
-                      >
-                        {t('source')} {i + 1} · {c.source_id}
-                        <blockquote>{c.quote}</blockquote>
-                      </button>
-                    ))}
-                  </details>
-                )}
-                {m.role === 'assistant' && (
-                  <div className="navi-message-actions">
-                    <button
-                      type="button"
-                      className="text-button"
-                      onClick={() => {
-                        closeTool();
-                        setPendingNote(m);
-                      }}
-                    >
-                      {t('saveNote')}
-                    </button>
-                    {!!m.ui_actions?.length && (
-                      <button
-                        type="button"
-                        className="text-button"
-                        onClick={() => {
-                          closeTool();
-                          setPendingUI(m);
-                        }}
-                      >
-                        {t('tool.view')}
-                      </button>
+            {messages.map((m) => {
+              const operationId =
+                'navi-config:' + m.id.replace('navi-message:', '');
+              const savedConfiguration = m.configuration_actions?.length
+                ? findConfigurationReceipt(data, operationId)
+                : null;
+              return (
+                <article key={m.id} className={m.role}>
+                  <small>{m.role === 'user' ? t('you') : 'Navi'}</small>
+                  <div className="navi-message-body">
+                    {m.role === 'assistant' ? (
+                      <NaviResponse text={m.text} />
+                    ) : (
+                      <MathText>{m.text}</MathText>
                     )}
-                    {m.configuration_actions?.[0] && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          closeTool();
-                          setConfiguration({
-                            action: m.configuration_actions![0],
-                            id: m.id,
-                          });
-                        }}
-                      >
-                        {t('config.review')}
-                      </button>
-                    )}
-                    {m.tutor_actions?.map((a, i) => (
-                      <button
-                        type="button"
-                        className="text-button"
-                        key={i}
-                        onClick={() => openAction(a)}
-                      >
-                        {t('action.' + a.type)}
-                      </button>
-                    ))}
                   </div>
-                )}
-                {m.id === toolMessageId && inlineTool}
-              </article>
-            ))}
+                  {m.supplementary && (
+                    <small className="navi-supplement">{t('supplement')}</small>
+                  )}
+                  {!!m.citations?.length && (
+                    <details className="navi-source-details">
+                      <summary>
+                        {t('source')} · {m.citations.length}
+                      </summary>
+                      {m.citations.map((c, i) => (
+                        <button
+                          type="button"
+                          className="navi-citation"
+                          aria-label={
+                            m.external_sources?.find(
+                              (s) => s.source_id === c.source_id,
+                            )?.title ?? t('source') + ' ' + (i + 1)
+                          }
+                          key={i}
+                          onClick={() =>
+                            c.source_id.startsWith('evidence:')
+                              ? notify(t('evidenceScope'))
+                              : (() => {
+                                  const source = m.external_sources?.find(
+                                      (s) => s.source_id === c.source_id,
+                                    ),
+                                    url = source && safeNaviWebURL(source.url);
+                                  if (url)
+                                    window.open(
+                                      url,
+                                      '_blank',
+                                      'noopener,noreferrer',
+                                    );
+                                  else sourceGo(c.source_id);
+                                })()
+                          }
+                        >
+                          {m.external_sources?.find(
+                            (s) => s.source_id === c.source_id,
+                          )?.title ?? t('source')}{' '}
+                          {i + 1} ·{' '}
+                          {m.external_sources?.find(
+                            (s) => s.source_id === c.source_id,
+                          )
+                            ? 'Wikipedia · ' + c.source_version
+                            : t('source')}
+                          <blockquote>{c.quote}</blockquote>
+                        </button>
+                      ))}
+                    </details>
+                  )}
+                  {m.role === 'assistant' && (
+                    <div className="navi-message-actions">
+                      <button
+                        type="button"
+                        className="text-button"
+                        onClick={() => {
+                          closeTool();
+                          setPendingNote(m);
+                        }}
+                      >
+                        {t('saveNote')}
+                      </button>
+                      {!!m.ui_actions?.length && (
+                        <button
+                          type="button"
+                          className="text-button"
+                          onClick={() => {
+                            closeTool();
+                            setPendingUI(m);
+                          }}
+                        >
+                          {t('tool.view')}
+                        </button>
+                      )}
+                      {m.configuration_actions?.[0] && !savedConfiguration && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            closeTool();
+                            setConfiguration({
+                              action: m.configuration_actions![0],
+                              id: m.id,
+                            });
+                          }}
+                        >
+                          {t('config.review')}
+                        </button>
+                      )}
+                      {m.tutor_actions?.map((a, i) => (
+                        <button
+                          type="button"
+                          className="text-button"
+                          key={i}
+                          onClick={() => openAction(a)}
+                        >
+                          {t('action.' + a.type)}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {savedConfiguration && (
+                    <NaviConfigurationReceipt receipt={savedConfiguration} />
+                  )}
+                  {m.understanding_check && (
+                    <NaviUnderstandingCheck
+                      key={m.id}
+                      question={m.understanding_check.question}
+                      busy={busy || !aiReady}
+                      answered={messages.some(
+                        (other) =>
+                          other.role === 'assistant' &&
+                          other.checkResponseTo === m.id,
+                      )}
+                      onAnswer={(answer) =>
+                        void send(
+                          t('check.response') +
+                            '\n' +
+                            m.understanding_check!.question +
+                            '\n\n' +
+                            answer,
+                          {
+                            phase: 'review',
+                            question: m.understanding_check!.question,
+                            answer,
+                          },
+                          m.id,
+                        )
+                      }
+                    />
+                  )}
+                  {m.id === toolMessageId && !savedConfiguration && inlineTool}
+                </article>
+              );
+            })}
             {!toolMessageId && inlineTool}
             {busy && (
               <NaviActivity
@@ -1386,9 +1553,18 @@ export default function NaviWorkspace() {
               />
             )}
             {error && (
-              <p role="alert" className="settings-error">
-                {error}
-              </p>
+              <div role="alert" className="settings-error">
+                <p>{error}</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    closeTool();
+                    setResearch(true);
+                  }}
+                >
+                  {t('web.title')}
+                </button>
+              </div>
             )}
           </div>
           {receipt && (
@@ -1430,6 +1606,7 @@ export default function NaviWorkspace() {
               !draft.trim() &&
               messages.at(-1)?.role === 'assistant' &&
               !configuration &&
+              !research &&
               !pendingUI &&
               !pendingNote &&
               !practice &&
@@ -1438,6 +1615,15 @@ export default function NaviWorkspace() {
                   className="navi-followups"
                   aria-label={t('followup.title')}
                 >
+                  <button
+                    type="button"
+                    disabled={!aiReady}
+                    onClick={() =>
+                      void send(t('check.request'), { phase: 'ask' })
+                    }
+                  >
+                    {t('check.start')}
+                  </button>
                   {['rephrase', 'example'].map((kind) => (
                     <button
                       type="button"
@@ -1452,6 +1638,49 @@ export default function NaviWorkspace() {
                   ))}
                 </nav>
               )}
+            {thread?.contexts.some((c) => c.selected_text) && (
+              <div className="navi-selected-quote">
+                <details>
+                  <summary>
+                    {t('selection.quoted')} ·{' '}
+                    {thread.contexts
+                      .find((c) => c.selected_text)!
+                      .selected_text.slice(0, 70)}
+                  </summary>
+                  <blockquote>
+                    {
+                      thread.contexts.find((c) => c.selected_text)!
+                        .selected_text
+                    }
+                  </blockquote>
+                </details>
+                <button
+                  type="button"
+                  aria-label={t('selection.clear')}
+                  onClick={() =>
+                    setThread({
+                      ...thread,
+                      contexts: thread.contexts.map((c) => ({
+                        ...c,
+                        selected_text: '',
+                      })),
+                    })
+                  }
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            )}
+            <button
+              type="button"
+              className="navi-web-entry"
+              onClick={() => {
+                closeTool();
+                setResearch(true);
+              }}
+            >
+              {t('web.title')}
+            </button>
             <div className="navi-input-shell">
               <textarea
                 ref={field}
@@ -1481,7 +1710,8 @@ export default function NaviWorkspace() {
                     (!aiReady &&
                       !parseNaviUICommand(draft) &&
                       !parseNaviToolIntent(draft) &&
-                      !offlineConfigurationRequest(draft)) ||
+                      !offlineConfigurationRequest(draft) &&
+                      parseNaviWebIntent(draft) === undefined) ||
                     !draft.trim()
                   }
                 >

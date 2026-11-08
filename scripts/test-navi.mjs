@@ -5,7 +5,8 @@ await build({entryPoints:['tests/navi-storage.test.ts'],outfile:'work/navi-stora
 await build({entryPoints:['tests/navi-ui.test.ts'],outfile:'work/navi-ui.test.mjs',bundle:true,platform:'node',format:'esm',packages:'external'});
 await build({entryPoints:['tests/navi-retrieval.test.ts'],outfile:'work/navi-retrieval.test.mjs',bundle:true,platform:'node',format:'esm',packages:'external'});
 await build({entryPoints:['tests/navi-configuration.test.ts'],outfile:'work/navi-configuration.test.mjs',bundle:true,platform:'node',format:'esm',packages:'external'});
-const core=spawnSync(process.execPath,['--test','work/navi-context.test.mjs','work/navi-storage.test.mjs','work/navi-ui.test.mjs','work/navi-retrieval.test.mjs','work/navi-configuration.test.mjs'],{stdio:'inherit'}).status??1;
+await build({entryPoints:['tests/navi-reliability.test.ts'],outfile:'work/navi-reliability.test.mjs',bundle:true,platform:'node',format:'esm',packages:'external'});
+const core=spawnSync(process.execPath,['--test','work/navi-context.test.mjs','work/navi-storage.test.mjs','work/navi-ui.test.mjs','work/navi-retrieval.test.mjs','work/navi-configuration.test.mjs','work/navi-reliability.test.mjs'],{stdio:'inherit'}).status??1;
 await build({entryPoints:['tests/navi-presentation.test.tsx'],outfile:'work/navi-presentation.test.mjs',bundle:true,platform:'node',format:'esm',packages:'external',jsx:'automatic'});
 const presentation=spawnSync(process.execPath,['--import','./tests/repair-dom-preload.mjs','--test','work/navi-presentation.test.mjs'],{stdio:'inherit'}).status??1;
 process.exitCode=core||presentation;

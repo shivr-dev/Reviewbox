@@ -113,6 +113,7 @@ export default function NaviConfigurationPreview({
       if (currentNamespace() !== owner.current) return;
       await refresh();
       setDone(true);
+      onClose();
     } catch (e) {
       setError(
         t(
