@@ -1,5 +1,5 @@
 'use client';
-import {tr} from '@/lib/i18n';
+import { tr } from '@/lib/i18n';
 import { useEffect, useState, type ReactNode } from 'react';
 import {
   BookOpen,
@@ -9,6 +9,8 @@ import {
   Home,
   Layers3,
   LibraryBig,
+  Compass,
+  ArrowUpRight,
 } from 'lucide-react';
 import {
   MAIN_NAV,
@@ -23,6 +25,7 @@ import { examGpa } from '@/lib/exam-outcomes';
 import { equipmentState, equipmentEffects } from '@/lib/equipment';
 import { EQUIPMENT_TEMPLATES } from '@/lib/equipment-catalog';
 import { learningGame } from '@/lib/learning-game';
+import { openPageNavi, composeNavi } from './navi-workspace';
 
 const icons = {
   home: Home,
@@ -79,15 +82,15 @@ export default function ProductShell({
       : (MAIN_NAV.find((n) => n.id === active)?.label ?? 'Reviewbox');
   return (
     <div className={'alpha-product rb-brand-studio alpha-page-' + page}>
-      <aside className="alpha-rail" aria-label={tr("common:主要功能")}>
+      <aside className="alpha-rail" aria-label={tr('common:主要功能')}>
         <button
           className="alpha-logo"
-          aria-label={tr("common:Reviewbox 首页")}
+          aria-label={tr('common:Reviewbox 首页')}
           onClick={() => navigate('home')}
         >
           <Layers3 size={24} />
         </button>
-        <nav aria-label={tr("common:五个主功能")}>
+        <nav aria-label={tr('common:五个主功能')}>
           {MAIN_NAV.map(({ id, label }) => {
             const Icon = icons[id];
             return (
@@ -98,7 +101,7 @@ export default function ProductShell({
                   (active === id ? 'selected' : '') +
                   (id === 'workshop' ? ' game-group' : '')
                 }
-                aria-label={tr("navigation:"+label)}
+                aria-label={tr('navigation:' + label)}
                 aria-current={active === id ? 'page' : undefined}
                 aria-describedby={'alpha-tip-' + id}
                 onClick={() => go(id)}
@@ -109,7 +112,7 @@ export default function ProductShell({
                   role="tooltip"
                   id={'alpha-tip-' + id}
                 >
-                  {tr('navigation:'+label)}
+                  {tr('navigation:' + label)}
                 </span>
               </button>
             );
@@ -117,7 +120,7 @@ export default function ProductShell({
         </nav>
         <button
           className={'alpha-profile ' + (active === 'you' ? 'selected' : '')}
-          aria-label={tr("navigation:我的")}
+          aria-label={tr('navigation:我的')}
           aria-current={active === 'you' ? 'page' : undefined}
           onClick={() => navigate('you')}
         >
@@ -133,21 +136,37 @@ export default function ProductShell({
             className="alpha-mobile-menu"
             onClick={() => setMenu((v) => !v)}
             aria-expanded={menu}
-            aria-label={tr("common:打开页面导航")}
+            aria-label={tr('common:打开页面导航')}
           >
-            {tr('navigation:'+label)}
+            {tr('navigation:' + label)}
             <ChevronDown size={15} />
           </button>
-          <span className="alpha-desktop-location">{tr('navigation:'+label)}</span>
+          <span className="alpha-desktop-location">
+            {tr('navigation:' + label)}
+          </span>
           <span className="product-version">2.0</span>
+          <button
+            type="button"
+            className="navi-header-entry"
+            onClick={openPageNavi}
+            aria-controls="navi-workspace"
+          >
+            <Compass size={18} />
+            <span>Navi</span>
+          </button>
           {menu && (
-            <nav className="alpha-touch-menu" aria-label={tr("common:触摸页面导航")}>
+            <nav
+              className="alpha-touch-menu"
+              aria-label={tr('common:触摸页面导航')}
+            >
               {MAIN_NAV.map((n) => (
                 <button key={n.id} onClick={() => go(n.id)}>
-                  {tr('navigation:'+n.label)}
+                  {tr('navigation:' + n.label)}
                 </button>
               ))}
-              <button onClick={() => navigate('you')}>{tr("common:我的 · 个人中心")}</button>
+              <button onClick={() => navigate('you')}>
+                {tr('common:我的 · 个人中心')}
+              </button>
             </nav>
           )}
         </header>
@@ -157,6 +176,7 @@ export default function ProductShell({
   );
 }
 export function ProductHome() {
+  const [question, setQuestion] = useState('');
   const { data, navigate } = useReview(),
     gpa = examGpa(data),
     gear = equipmentState(data, learningGame(data).accepted),
@@ -168,22 +188,49 @@ export function ProductHome() {
       <div className="alpha-home-strip">
         <button
           onClick={() => navigate('results')}
-          aria-label={tr("common:查看真实考试 GPA")}
-        >{tr("common:真实 GPA")}{' '}
+          aria-label={tr('common:查看真实考试 GPA')}
+        >
+          {tr('common:真实 GPA')}{' '}
           <b>
             {gpa.value === null
-              ? tr("common:尚无成绩")
+              ? tr('common:尚无成绩')
               : `${gpa.value.toFixed(2)} / ${gpa.config.scale}`}
           </b>
         </button>
         <span aria-hidden="true">·</span>
         <button onClick={() => navigate('equipment')}>
           {item
-            ? tr('workshop:'+(EQUIPMENT_TEMPLATES.find((t) => t.id === item.templateId)?.name??''))
-            : tr("common:未装配装备")}
-          {fx.synergies[0] ? ' · ' + tr('workshop:'+fx.synergies[0].name) : ''}
+            ? tr(
+                'workshop:' +
+                  (EQUIPMENT_TEMPLATES.find((t) => t.id === item.templateId)
+                    ?.name ?? ''),
+              )
+            : tr('common:未装配装备')}
+          {fx.synergies[0]
+            ? ' · ' + tr('workshop:' + fx.synergies[0].name)
+            : ''}
         </button>
       </div>
+      <form
+        className="navi-home-entry"
+        onSubmit={(e) => {
+          e.preventDefault();
+          composeNavi(question);
+          setQuestion('');
+        }}
+      >
+        <Compass size={21} aria-hidden="true" />
+        <input
+          value={question}
+          onChange={(e) => setQuestion(e.target.value)}
+          maxLength={2500}
+          aria-label={tr('study:navi.message')}
+          placeholder={tr('study:navi.home.placeholder')}
+        />
+        <button type="submit" aria-label={tr('study:navi.home.open')}>
+          <ArrowUpRight size={19} />
+        </button>
+      </form>
     </section>
   );
 }

@@ -39,7 +39,9 @@ import {
 } from '@/lib/course-model';
 import { type Question } from '@/lib/model';
 import MathText from './math-text';
-import {openNavi} from './navi-workspace';
+import {openNavi,openNaviEditor} from './navi-workspace';
+import {createPortal} from 'react-dom';
+import NaviSourceWorkspace from './navi-source-workspace';
 function ProcessExplorer({ content }: { content: CourseContent }) {
   const [step, setStep] = useState(0);
   return (
@@ -200,6 +202,7 @@ export default function CourseRoom({ courseId }: { courseId: string }) {
     [navOpen, setNavOpen] = useState(true),
     [bookmarksOnly, setBookmarksOnly] = useState(false),
     [chatOpen, setChatOpen] = useState(false),
+    [editorHost,setEditorHost]=useState<HTMLElement|null>(null),
     [message, setMessage] = useState(''),
     [selection, setSelection] = useState(''),
     [working, setWorking] = useState(''),
@@ -233,6 +236,8 @@ export default function CourseRoom({ courseId }: { courseId: string }) {
   );
   const section = course?.sections[course.current],
     content = section?.content;
+  useEffect(()=>{const open=(event:Event)=>{const detail=(event as CustomEvent).detail;if(detail?.courseId!==courseId||detail.sectionId!==ref.current?.sections[ref.current.current]?.id)return;const host=document.getElementById('navi-course-editor-host');if(host){setEditorHost(host);setChatOpen(true);}};const close=()=>setChatOpen(false);window.addEventListener('review:navi-course-editor',open);window.addEventListener('review:navi-close',close);return()=>{window.removeEventListener('review:navi-course-editor',open);window.removeEventListener('review:navi-close',close);};},[courseId]);
+
   function update(next: Course) {
     if (currentNamespace() !== ns.current)
       return Promise.reject(new Error('账户已切换，请重新打开课程'));
@@ -374,86 +379,19 @@ export default function CourseRoom({ courseId }: { courseId: string }) {
     if (selected) setSelection(selected);
     if(ref.current&&section)openNavi({type:'course',id:ref.current.id,sectionId:section.id,selectedText:selected});
   }
-  async function send(mode: 'chat' | 'revise', overrideMessage?: string) {
-    const c = ref.current;
-    if (
-      !c ||
-      !section?.content ||
-      !(overrideMessage ?? message).trim() ||
-      lock.current
-    )
-      return;
-    const currentSection = section,
-      requestMessage = overrideMessage ?? message;
-    lock.current = true;
-    setWorking(mode === 'chat' ? '正在组织解释' : '正在准备修改预览');
-    setError('');
+  async function send(mode: 'revise', overrideMessage?: string) {
+    const c=ref.current,currentSection=c?.sections[c.current],requestMessage=(overrideMessage??message).trim();
+    if(!c||!currentSection?.content||!requestMessage||lock.current)return;
+    lock.current=true;setWorking(tr('study:正在准备修改预览'));setError('');
     try {
       await flush();
-      const response = await courseCall({
-        action: mode,
-        subject: c.subject,
-        title: c.title,
-        source: currentSection.source,
-        content: currentSection.content,
-        message: requestMessage,
-        selection,
-        history: c.chat
-          .filter((m) => m.sectionId === currentSection.id)
-          .slice(-8)
-          .map(({ role, text }) => ({ role, text })),
-      });
-      if (currentNamespace() !== ns.current) return;
-      const current = ref.current!;
-      if (mode === 'revise') {
-        const revised = validateCourseContent(
-          response.content,
-          currentSection.source,
-        );
-        const verification = await verifyCourseQuestions(
-          current,
-          {
-            ...currentSection,
-            content: revised,
-            revision: currentSection.revision + 1,
-          },
-          setWorking,
-          ns.current,
-        );
-        setProposal({
-          content: revised,
-          sectionId: currentSection.id,
-          revision: currentSection.revision,
-          verification,
-        });
-      } else {
-        const at = new Date().toISOString();
-        await update({
-          ...current,
-          chat: [
-            ...current.chat,
-            {
-              role: 'user' as const,
-              text: requestMessage,
-              sectionId: currentSection.id,
-              at,
-            },
-            {
-              role: 'assistant' as const,
-              text: response.reply,
-              sectionId: currentSection.id,
-              at,
-            },
-          ].slice(-60),
-        });
-        setMessage('');
-      }
-    } catch (e) {
-      setError(courseErrorMessage(e));
-    } finally {
-      lock.current = false;
-      setWorking('');
-    }
+      const response=await courseCall({action:'revise',subject:c.subject,title:c.title,source:currentSection.source,content:currentSection.content,message:requestMessage,selection,history:[]});
+      if(currentNamespace()!==ns.current||ref.current?.id!==c.id)return;
+      const revised=validateCourseContent(response.content,currentSection.source);
+      const verification=await verifyCourseQuestions(ref.current,{...currentSection,content:revised,revision:currentSection.revision+1},setWorking,ns.current);
+      if(currentNamespace()!==ns.current)return;
+      setProposal({content:revised,sectionId:currentSection.id,revision:currentSection.revision,verification});
+    }catch(e){setError(courseErrorMessage(e));}finally{lock.current=false;setWorking('');}
   }
   async function apply() {
     if (!ref.current || !proposal) return;
@@ -611,6 +549,7 @@ export default function CourseRoom({ courseId }: { courseId: string }) {
             )}
           </aside>
         )}
+        <NaviSourceWorkspace key={section?.id} target={{type:'course',id:course.id,sectionId:section?.id}} subject={course.subject} priority={30}>
         <main
           className="lesson-article"
           key={section?.id + ':' + section?.revision}
@@ -683,7 +622,7 @@ export default function CourseRoom({ courseId }: { courseId: string }) {
                   }}
                   onAsk={(text) => {
                     setSelection(text);
-                    setChatOpen(true);
+                    openNavi({type:'course',id:course.id,sectionId:section?.id,selectedText:text});
                   }}
                 />
               ) : (
@@ -692,7 +631,7 @@ export default function CourseRoom({ courseId }: { courseId: string }) {
                     className="quiet"
                     disabled={!!working || !aiReady}
                     onClick={() => {
-                      setChatOpen(true);
+                      openNaviEditor({type:'course',id:course.id,sectionId:section?.id});
                       void send(
                         'revise',
                         '将此课件升级为自由布局的互动 HTML 教件。根据知识特点设计可操作的演示和解释动画，保留全部教材内容与练习衔接。',
@@ -894,66 +833,12 @@ export default function CourseRoom({ courseId }: { courseId: string }) {
             </>
           )}
         </main>
+        </NaviSourceWorkspace>
       </div>
-      <button className="course-chat-launcher" onClick={()=>setChatOpen(true)}>
-        <MessageSquare size={20} />
-        <span>{tr("study:navi.courseEditor")}</span>
-      </button>
-      {chatOpen && (
-        <aside className="course-chat" aria-label={tr("study:课程答疑")}>
-          <header>
-            <div>
-              <b>{tr("study:navi.courseEditor")}</b>
-              <span>{content?.title ?? section?.title}</span>
-            </div>
-            <button
-              aria-label={tr("study:关闭课程答疑")}
-              onClick={() => setChatOpen(false)}
-            >
-              <X size={18} />
-            </button>
-          </header>
-          <div className="course-chat-messages">
-            {selection && (
-              <div className="course-chat-selection">
-                <b>{tr("study:选中的内容")}</b>
-                <p>
-                  <MathText>{selection}</MathText>
-                </p>
-                <button onClick={() => setSelection('')}>{tr("study:取消引用")}</button>
-              </div>
-            )}
-            {!course.chat.some((m) => m.sectionId === section?.id) && (
-              <p className="muted">{tr("study:可以引用页面中的一段内容，要求解释原理、补充例题或调整当前课件。修改将先显示预览。")}</p>
-            )}
-            {course.chat
-              .filter((m) => m.sectionId === section?.id)
-              .map((m, i) => (
-                <article key={i} className={m.role}>
-                  <small>{m.role === 'user' ? tr("study:提问") : tr("study:解释")}</small>
-                  <p>
-                    <MathText>{m.text}</MathText>
-                  </p>
-                  {m.role === 'assistant' && (
-                    <button
-                      className="quiet"
-                      onClick={() =>
-                        void put('note', {
-                          id: crypto.randomUUID(),
-                          nodeId: 'lesson-node:' + section?.id,
-                          subject: course.subject,
-                          title: '课程答疑 · ' + section?.title,
-                          body: m.text,
-                          updatedAt: new Date().toISOString(),
-                        }).then(() => {
-                          notify(tr("study:答疑内容已加入学科笔记"));
-                          return refresh();
-                        })
-                      }
-                    >{tr("study:保存至笔记")}</button>
-                  )}
-                </article>
-              ))}
+      {chatOpen&&editorHost&&createPortal(<section className="navi-course-editor" aria-label={tr('study:navi.editor.title')}>
+        <header><h3>{tr('study:navi.editor.title')}</h3><button type="button" onClick={()=>{setChatOpen(false);window.dispatchEvent(new Event('review:navi-tool-close'));}} aria-label={tr('study:navi.close')}>×</button></header>
+        <p>{tr('study:navi.editor.description')}</p>
+        {selection&&<blockquote><MathText>{selection}</MathText><button type="button" onClick={()=>setSelection('')}>{tr('study:取消引用')}</button></blockquote>}
             {proposal && (
               <section className="course-edit-preview">
                 <b>{tr("study:课件修改预览")}</b>
@@ -1003,44 +888,11 @@ export default function CourseRoom({ courseId }: { courseId: string }) {
                 </div>
               </section>
             )}
-            {working && (
-              <p className="muted" role="status">
-                {working}
-              </p>
-            )}
-            {error && <p role="alert">{error}</p>}
-          </div>
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              void send('chat');
-            }}
-          >
-            <textarea
-              aria-label={tr("study:课程答疑问题")}
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              maxLength={2500}
-              rows={3}
-              placeholder={tr("study:说明需要解释或修改的内容")}
-            />
-            <div>
-              <button
-                type="button"
-                className="quiet"
-                disabled={!message.trim() || !!working || !content || !aiReady}
-                onClick={() => void send('revise')}
-              >{tr("study:修改当前课件")}</button>
-              <button
-                type="submit"
-                className="primary"
-                disabled={!message.trim() || !!working || !content || !aiReady}
-              >
-                <Send size={15} />{tr("study:发送")}</button>
-            </div>
-          </form>
-        </aside>
-      )}
+
+        {working&&<p role="status">{working}</p>}{error&&<p role="alert">{error}</p>}
+        <form onSubmit={e=>{e.preventDefault();void send('revise');}}><textarea aria-label={tr('study:navi.editor.request')} value={message} onChange={e=>setMessage(e.target.value)} maxLength={2500} rows={3}/><button className="primary" disabled={!message.trim()||!!working||!content||!aiReady}>{tr('study:navi.editor.preview')}</button></form>
+        {!!section?.history.length&&<button type="button" disabled={!!working} onClick={()=>void undo()}>{tr('study:恢复上一版本')}</button>}
+      </section>,editorHost)}
     </div>
   );
 }

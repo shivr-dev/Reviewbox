@@ -51,3 +51,11 @@ Staged practice: `components/navi-practice-preview.tsx`, preview-only option in
 `lib/ai-client.ts` (the existing scoring/generation logic is unchanged).
 Private conversation/layout storage reuses the existing `job` record and sync
 namespace. No new public permission or private history endpoint is introduced.
+
+## Conversation-integrated controls (2026-11-08)
+
+- Navi uses the right-hand dock and fullscreen mode in the existing application. Immersive practice leaves room for the dock.
+- GPA rules, exam create/edit, daily time, subject weights, learning mode, and cancel/resume exam scheduling use validated proposals and explicit confirmation. Cancelling a schedule preserves the exam record and real result.
+- Configuration, note, UI action and practice previews are embedded in the conversation scroll, under their originating assistant message where available. The tool body has no independent scrolling or sticky confirmation footer. Switching conversations clears pending configuration previews.
+- Persistence uses account-scoped atomic records/queue writes, stale-preview rejection and operation receipts. Learning algorithms and real grades remain protected.
+- Type checking and production build passed after this integration. Live cloud-language interpretation remains unverified in the unconfigured local environment.

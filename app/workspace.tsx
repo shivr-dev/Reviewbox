@@ -470,6 +470,7 @@ export default function Workspace() {
       {ready && !website && <ProductInsights page={page} />}
       {ready && !website && <RewardsBridge />}
       {ready && identityReady && !website && !['exam','assessment','onboarding'].includes(page) && session?.mode!=='test' && <NaviWorkspace key={currentNamespace()}/>}
+      <div className="review-application">
       {page === 'website' || (ready && identityReady && website) ? <WebsiteView navigate={navigate} locale={data.settings.locale}/> : !ready || (page === 'home' && !identityReady) ? <WorkspaceLoading/> : ready &&
       [
         'home',
@@ -583,6 +584,7 @@ export default function Workspace() {
           )}
         </ProductShell>
       ) : page === 'course' && ready ? <CourseRoom key={subject+currentNamespace()} courseId={subject}/> : page === 'remedy' && ready ? <RemediationCourse key={subject+currentNamespace()} courseId={subject}/> : page === 'onboarding' && ready ? <OnboardingView key={currentNamespace()}/> : page === 'exam' && ready ? <ExamRoom key={subject+currentNamespace()} runId={subject}/> : page === 'assessment' && ready ? (()=>{const draft=data.jobs?.find(j=>j.id===subject&&j.kind==='assessment');return draft?.session?<AssessmentRoom key={subject+currentNamespace()} session={draft.session} finish={()=>navigate('results')}/>:<div role="status">此测试尚未同步完整<button onClick={()=>void sync()}>同步后重试</button></div>})() : <div role="status">正在读取学习记录…</div>}
+      </div>
       {message && (
         <div className="toast" role="status">
           <span>{message}</span>

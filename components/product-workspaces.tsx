@@ -1,4 +1,5 @@
 'use client';
+import NaviSourceWorkspace from './navi-source-workspace';
 import {subjectLabel as subjectName} from '@/lib/presentation';
 import {tr} from '@/lib/i18n';
 import { lazy,Suspense,useRef, useState } from 'react';
@@ -34,7 +35,7 @@ export function ProductSubjects({
   if(view==='studio')return <Suspense fallback={<p role="status">制作台加载中…</p>}><LearningPackStudio key={selected}/></Suspense>;
   if(view==='publish')return <Suspense fallback={<p role="status">排版工作台加载中…</p>}><ExamPublishingStudio key={selected}/></Suspense>;
   return (
-    <section className="alpha-workspace">
+    <NaviSourceWorkspace target={{type:'subject',id:selected}} subject={selected} priority={1}><section className="alpha-workspace">
       {view === 'courses' && (
         <div className="alpha-workspace-heading">
           <h1>{tr("library:课程")}</h1>
@@ -97,7 +98,7 @@ export function ProductSubjects({
           initialTab={view === 'questions' ? 'questions' : ['packs','discover'].includes(view)?'content':'materials'}
         />
       )}
-    </section>
+    </section></NaviSourceWorkspace>
   );
 }
 export function ProductResults({

@@ -1,6 +1,7 @@
 'use client';
 import {parseWorkspaceRoute} from '@/lib/workspace-route';
 import {NaviButton} from './navi-workspace';
+import NaviSourceWorkspace from './navi-source-workspace';
 import {subjectLabel as subjectName} from '@/lib/presentation';
 import {tr} from '@/lib/i18n';
 import {lazy,Suspense} from 'react';
@@ -373,7 +374,7 @@ export default function LibraryView({
                   </p>
                   <details>
                     <summary>{tr("library:查看提取内容")}</summary>
-                    <NaviButton target={{type:"material",id:m.id}}/><p className="pre-wrap">{m.text}</p>
+                    <NaviSourceWorkspace target={{type:'material',id:m.id}} subject={m.subject}><NaviButton target={{type:'material',id:m.id}}/><p className="pre-wrap">{m.text}</p></NaviSourceWorkspace>
                   </details>
                   <button
                     className="quiet"
