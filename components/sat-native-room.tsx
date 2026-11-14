@@ -61,7 +61,6 @@ export default function SatExamRoom({run:initial,paper}:{run:ExamRun;paper:ExamP
   },[connection,paper.id]);
   return <main className="map-native-host sat-native-host">
     <iframe key={connection} ref={frame} title={tr("common:SAT 英语专项模拟")} src={assetPath('sat-player/index.html')} sandbox="allow-scripts allow-same-origin allow-forms allow-modals allow-popups" allow="fullscreen" onLoad={()=>send('ping')} />
-    <button className="native-exam-exit" aria-label={tr("common:保存并返回 CE")} onClick={()=>send('request-exit')}>×</button>
     {loading&&<div className="map-native-error" role="status">{tr("common:正在打开 SAT 界面…")}</div>}
     {error&&<div className="map-native-error" role="alert">{error}<button aria-label={tr("common:关闭错误提示")} onClick={()=>setError('')}>×</button><button onClick={()=>{setError('');setConnection(c=>c+1);}}>{tr("common:重新连接")}</button><button onClick={()=>navigate('subjects','ce')}>{tr("common:返回 CE")}</button></div>}
   </main>;

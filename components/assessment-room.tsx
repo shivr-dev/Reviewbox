@@ -321,7 +321,7 @@ export default function AssessmentRoom({
     });
   return (
     <div className="assessment-room">
-      <header>
+      {!session.sprint && <header>
         <button onClick={() => void exit()}>
           <ArrowLeft size={16} />{tr("study:保存并退出")}</button>
         <div>
@@ -331,7 +331,7 @@ export default function AssessmentRoom({
         <b>
           {draft.index + 1} / {session.items.length}
         </b>
-      </header>
+      </header>}
       {error && (
         <p role="alert">
           {error}

@@ -162,15 +162,6 @@ export default function NativeExamRoom({
         src={'./exam-simulator/index.html?channel=' + channel}
         allow="microphone; autoplay; clipboard-write"
       />
-      <button
-        className="native-exam-exit"
-        onClick={() =>
-          frame.current?.contentWindow?.postMessage(
-            { type: 'exam-request-exit', channel },
-            location.origin,
-          )
-        }
-      >{tr("results:保存并返回")}</button>
     </main>
   );
 }

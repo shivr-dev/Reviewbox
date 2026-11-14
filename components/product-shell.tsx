@@ -148,7 +148,7 @@ export default function ProductShell({
             {tr('navigation:' + label)}
           </span>
           <span className="product-version">2.0</span>
-          <button
+          {page !== 'sprint' && <button
             type="button"
             className="navi-header-entry"
             onClick={openPageNavi}
@@ -156,7 +156,7 @@ export default function ProductShell({
           >
             <Compass size={18} />
             <span>Navi</span>
-          </button>
+          </button>}
           {menu && (
             <nav
               className="alpha-touch-menu"

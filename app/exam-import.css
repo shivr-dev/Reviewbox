@@ -17,6 +17,40 @@ textarea {
   margin: 22px 0;
   padding: 20px;
 }
+.exam-cleanup-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: .45rem;
+  margin-top: .45rem;
+}
+.exam-cleanup-dialog {
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+}
+.exam-cleanup-dialog fieldset {
+  display: grid;
+  gap: .65rem;
+  min-inline-size: 0;
+}
+.exam-cleanup-dialog legend {
+  margin-bottom: .35rem;
+  font-weight: 650;
+}
+.exam-cleanup-dialog fieldset label {
+  display: flex;
+  align-items: center;
+  gap: .6rem;
+  min-height: 2.75rem;
+  padding: .45rem .7rem;
+  border: 1px solid var(--border);
+  border-radius: .65rem;
+  cursor: pointer;
+}
+.exam-cleanup-dialog input[type='radio'] {
+  margin: 0;
+  flex: none;
+}
+.exam-cleanup-dialog .button-row { justify-content: flex-end; }
 .exam-import summary,
 .toefl-practice summary {
   cursor: pointer;
@@ -64,18 +98,6 @@ textarea {
   width: 100%;
   height: 100%;
   display: block;
-}
-.native-exam-exit {
-  position: absolute;
-  right: 12px;
-  bottom: 82px;
-  z-index: 3;
-  border: 1px solid #ddd;
-  border-radius: 5px;
-  padding: 6px 9px;
-  background: #fffffff0;
-  font-size: 11px;
-  color: #555;
 }
 .native-exam-error {
   position: absolute;
@@ -255,9 +277,6 @@ textarea {
   .periodic-panel .section-head {
     flex-direction: column;
     align-items: stretch;
-  }
-  .native-exam-exit {
-    bottom: 100px;
   }
   .element-detail {
     gap: 12px;

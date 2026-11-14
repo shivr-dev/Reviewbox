@@ -973,8 +973,8 @@ export default function StudyView({
       <RewardFlash reward={reward} />
       <ComboCelebration reward={reward} />
       <div className="session-top">
-        <button className="quiet" onClick={() => { trackProductEvent('study_saved_exit', 'study'); savedExit(); }}>
-          <ArrowLeft size={16} />{tr("study:保存并退出")}</button>
+        {!sprint && <button className="quiet" onClick={() => { trackProductEvent('study_saved_exit', 'study'); savedExit(); }}>
+          <ArrowLeft size={16} />{tr("study:保存并退出")}</button>}
         <span>
           {isTest
             ? session.title

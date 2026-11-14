@@ -15,6 +15,7 @@ import {
 } from '@/lib/exam-model';
 import { put, currentNamespace } from '@/lib/store';
 import ExamImportPanel from './exam-import-panel';
+import ExamRunCleanup from './exam-run-cleanup';
 import { createMapRun } from '@/lib/map-model';
 export function FullExamHub({
   initialExam = 'SAT',
@@ -114,6 +115,10 @@ export function FullExamHub({
     }
   }
   async function enter(p: ExamPaper) {
+    if (lock.current) return;
+    lock.current = true;
+    setBusy(true);
+    const ns = currentNamespace();
     try {
       if (!paperReady(p, data.questions))
         throw new Error('本地试题尚未齐全，请先同步或继续准备');
@@ -129,11 +134,15 @@ export function FullExamHub({
         (p.exam === 'MAP'
           ? createMapRun(p, data.questions, mapPractice)
           : createRun(p));
-      await put('job', run);
+      await put('job', run, run.id, false, ns);
+      if (ns !== currentNamespace()) return;
       await refresh();
-      navigate('exam', run.id);
+      if (ns === currentNamespace()) navigate('exam', run.id);
     } catch (e) {
       notify(e instanceof Error ? e.message : '无法开始');
+    } finally {
+      setBusy(false);
+      lock.current = false;
     }
   }
   return (
@@ -279,6 +288,7 @@ export function FullExamHub({
         )}
       </div>
       <p className="muted exam-reuse-note">{tr("results:同一试卷可以重复测试。开始测试会建立新的作答记录，无需重新生成题目。")}</p>
+      <ExamRunCleanup disabled={busy} />
       {exam !== 'TOEFL' && (
         <details className="exam-about">
           <summary>{tr("results:试卷生成设置")}</summary>

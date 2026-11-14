@@ -4,6 +4,7 @@ import { openDB, type IDBPDatabase } from 'idb';
 
 import { projectRecords } from './record-projection';
 import { courseCompletionRecords } from './course-lifecycle';
+import { clearedExamRunId, simulationRunId } from './exam-run-cleanup';
 import {previewPackRemoval,removalRecords,type PackRemovalPreview} from './pack-removal';
 import {
   type LocalRecord,
@@ -36,9 +37,19 @@ export async function saveRecords(
   if (clearing.has(ns)) throw new Error('学习数据正在清理，请等待页面刷新');
   const db = await database();
   const tx = db.transaction(['records', 'queue'], 'readwrite');
+  const recordStore = tx.objectStore('records');
+  const cleared = new Map<string, boolean>();
   for (const r of records) {
     const item = { ...r, key: ns + '/' + r.id, namespace: ns };
-    const previous = await tx.objectStore('records').get(item.key);
+    const runId = !r.deleted && simulationRunId(r);
+    if (runId) {
+      if (!cleared.has(runId)) {
+        const marker = await recordStore.get(ns + '/' + clearedExamRunId(runId));
+        cleared.set(runId, !!marker && !marker.deleted && marker.payload?.kind === 'exam-run-cleared');
+      }
+      if (cleared.get(runId)) continue;
+    }
+    const previous = await recordStore.get(item.key);
     if (previous?.kind === 'event') continue;
     if (
       previous &&
@@ -47,7 +58,7 @@ export async function saveRecords(
       JSON.stringify(previous.payload) === JSON.stringify(item.payload)
     )
       continue;
-    await tx.objectStore('records').put(item);
+    await recordStore.put(item);
     if (sync) await tx.objectStore('queue').put(item);
   }
   await tx.done;

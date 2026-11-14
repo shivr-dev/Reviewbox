@@ -1,11 +1,17 @@
 import { projectQuality } from './question-quality';
 import type { LocalRecord, StudyData } from './model';
 import {blockedPackRecord,packRemovalGuards} from './pack-removal';
+import { clearedExamRuns, simulationRunId } from './exam-run-cleanup';
 
 /** Shared web/native projection, including course hydration and quality exclusions. */
 export function projectRecords(input: LocalRecord[]): StudyData {
   const guards=packRemovalGuards(input);
-  const records = input.filter((r) => !r.deleted&&!blockedPackRecord(r,guards));
+  const clearedRuns = clearedExamRuns(input);
+  const records = input.filter((r) => {
+    if (r.deleted || blockedPackRecord(r, guards)) return false;
+    const runId = simulationRunId(r);
+    return !runId || !clearedRuns.has(runId);
+  });
   const get = (kind: string) =>
     records.filter((r) => r.kind === kind).map((r) => r.payload);
   // Legacy web sessions use an active-session storage alias. A later canonical

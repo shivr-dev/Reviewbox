@@ -203,5 +203,17 @@
   "ACT 英语专项模拟": "Examen blanc ciblé d’anglais ACT",
   "保存并返回 CE": "Enregistrer et revenir à CE",
   "正在打开考试界面…": "Ouverture de l'interface d'examen...",
-  "重新连接": "Reconnecter"
+  "重新连接": "Reconnecter",
+  "simulationCleanup.open": "Effacer les données des simulations",
+  "simulationCleanup.description": "Efface la progression, les rapports et les enregistrements audio. Les sujets enregistrés et les notes scolaires sont conservés.",
+  "simulationCleanup.scope": "Choisir les données à effacer",
+  "simulationCleanup.unfinished": "Simulations non terminées uniquement ({{count}})",
+  "simulationCleanup.all": "Tout l’historique des simulations ({{count}})",
+  "simulationCleanup.permanent": "Ces éléments disparaîtront de l’historique et des analyses. Les autres appareils seront mis à jour après synchronisation.",
+  "simulationCleanup.confirm": "Confirmer la suppression",
+  "simulationCleanup.busy": "Suppression en cours…",
+  "simulationCleanup.done": "{{count}} simulations effacées.",
+  "simulationCleanup.changed": "De nouvelles sessions sont apparues. Vérifiez le nombre puis confirmez à nouveau.",
+  "simulationCleanup.account": "Le compte a changé. Rouvrez cette boîte de dialogue.",
+  "simulationCleanup.error": "Impossible d’effacer les sessions. Réessayez."
 }
