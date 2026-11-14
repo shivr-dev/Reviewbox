@@ -12,6 +12,8 @@ import ExamResults from './exam-results';
 import { FullExamHub } from './exam-hub';
 import {SUBJECTS,type Subject} from '@/lib/model';
 import { examGpa } from '@/lib/exam-outcomes';
+import { completedExams, validResult } from '@/lib/exam-outcomes';
+import ExamReviewReport from './exam-review-report';
 import { weeklyLearningGpa } from '@/lib/study-assistant';
 import { currentNamespace } from '@/lib/store';
 import { EQUIPMENT_SUPPLIES } from '@/lib/equipment-catalog';
@@ -107,7 +109,11 @@ export function ProductResults({
   const { data, section, navigate } = useReview();
   const view = section || initialView,
     real = examGpa(data),
-    weekly = weeklyLearningGpa(data);
+    weekly = weeklyLearningGpa(data),
+    scores = completedExams(data).filter(e=>validResult(e.result)),
+    points = new Map(real.rows.map(r=>[r.exam.id,r]));
+  const scoreId=view.startsWith('score:')?view.slice(6):undefined;
+  const reportId=view.startsWith('report:')?view.slice(7):undefined;
   return (
     <section className="alpha-workspace">
       <div className="alpha-workspace-heading">
@@ -123,18 +129,18 @@ export function ProductResults({
         ].map(([id, label]) => (
           <button
             key={id}
-            aria-current={view === id ? 'page' : undefined}
+            aria-current={view === id || (id==='scores' && (scoreId || reportId)) ? 'page' : undefined}
             onClick={() => navigate('results', 'all', id)}
           >
             {label}
           </button>
         ))}
       </nav>
-      {view === 'scores' ? (
+      {reportId ? <ExamReviewReport id={reportId}/> : view === 'scores' || scoreId ? (
         <>
           <div className="alpha-gpa-summary">
             <div>
-              <span>{tr("common:真实考试 GPA")}</span>
+              <span>{tr('dashboard:examReview.'+(real.configured?'academicGpa':'estimatedGpa'))}</span>
               <strong>
                 {real.value === null ? '—' : real.value.toFixed(2)}{' '}
                 <small>/ {real.config.scale}</small>
@@ -144,7 +150,8 @@ export function ProductResults({
                   ? tr("common:基于 {{v0}} 场已录入真实考试",{v0:(real.rows.length)})
                   : tr("common:还没有真实成绩；考试结束后录入。")}
               </p>
-              <ExamResults />
+              <ExamResults key={scoreId??'scores'} initialExamId={scoreId} autoOpen={!!scoreId} reviewOnSave
+                onClosed={scoreId?()=>navigate('results','all','scores'):undefined}/>
             </div>
             <div>
               <span>{tr("common:每周学习 GPA · 非官方成绩")}</span>
@@ -160,30 +167,33 @@ export function ProductResults({
               <small>{tr("common:知识掌握情况单独见「学习分析」。")}</small>
             </div>
           </div>
-          {real.rows.length > 0 && (
+          {scores.length > 0 && (
             <div className="alpha-table-scroll">
               <table className="alpha-results-table">
-                <caption>{tr("common:真实成绩历史")}</caption>
+                <caption>{tr('dashboard:examReview.performance')}</caption>
                 <thead>
                   <tr>
                     <th>{tr("common:考试 / 学科")}</th>
                     <th>{tr("common:日期")}</th>
                     <th>{tr("common:真实分数")}</th>
-                    <th>{tr("common:GPA 点数")}</th>
+                    <th>{tr('dashboard:examReview.target')}</th>
+                    <th>{tr('dashboard:sprint.report')}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {real.rows.map((r) => (
-                    <tr key={r.exam.id}>
+                  {scores.map(exam => (
+                    <tr key={exam.id}>
                       <td>
-                        {r.exam.title}
-                        <small>{subjectName(r.exam.subject)}</small>
+                        {exam.title}
+                        <small>{subjectName(exam.subject)}</small>
                       </td>
-                      <td>{r.exam.date}</td>
+                      <td>{exam.date}</td>
                       <td>
-                        {r.exam.result!.score} / {r.exam.result!.maxScore}
+                        {exam.result!.score} / {exam.result!.maxScore}
+                        {points.get(exam.id)?.grade && <small>{points.get(exam.id)?.grade}</small>}
                       </td>
-                      <td>{r.point.toFixed(2)}</td>
+                      <td>{exam.target}%</td>
+                      <td><button className="quiet" onClick={()=>navigate('results','all','report:'+exam.id)}>{tr('dashboard:sprint.report')}</button></td>
                     </tr>
                   ))}
                 </tbody>

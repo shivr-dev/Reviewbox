@@ -6,6 +6,7 @@ export type GpaConfig = {
   weighted: boolean;
   from?: string;
   to?: string;
+  bands?: { minimum: number; points: number; label?: string }[];
 };
 export const DEFAULT_GPA: GpaConfig = {
   scale: 4,
@@ -141,8 +142,9 @@ export function validateGpaConfig(raw: GpaConfig): GpaConfig {
     weighted: raw.weighted !== false,
     from: raw.from || undefined,
     to: raw.to || undefined,
+    ...(raw.bands?.length ? {bands: validateGpaBands(raw.bands, raw.scale)} : {}),
   };
-  for (const maxScore of [100, 150])
+  if (!config.bands) for (const maxScore of [100, 150])
     for (let p = 0; p <= 100; p += 1)
       gradePoint(config.formula, {
         ratio: p / 100,
@@ -153,12 +155,36 @@ export function validateGpaConfig(raw: GpaConfig): GpaConfig {
       });
   return config;
 }
+function validateGpaBands(bands: NonNullable<GpaConfig['bands']>, scale: number) {
+  const sorted = [...bands].sort((a,b) => b.minimum-a.minimum);
+  if (sorted.length > 25 || sorted.at(-1)?.minimum !== 0 ||
+    sorted.some(({minimum,points,label},i) => !Number.isFinite(minimum) ||
+      minimum < 0 || minimum > 100 || !Number.isFinite(points) || points < 0 ||
+      points > scale || sorted[i-1]?.minimum === minimum ||
+      (label !== undefined && (typeof label !== 'string' || label.length > 12))))
+    throw new Error('GPA_BANDS');
+  return sorted;
+}
 export function gpaConfig(data: StudyData): GpaConfig {
   try {
     return validateGpaConfig(data.settings.examGpa ?? DEFAULT_GPA);
   } catch {
     return { ...DEFAULT_GPA };
   }
+}
+export function gpaIsConfigured(data: StudyData) {
+  if (!data.settings.examGpa) return false;
+  try {
+    const config=validateGpaConfig(data.settings.examGpa);
+    return !!config.bands || config.formula.replace(/\s/g,'') !== 'ratio*scale';
+  }
+  catch { return false; }
+}
+export function examGradePoint(config:GpaConfig, score:number,maxScore:number) {
+  const ratio=score/maxScore,percent=ratio*100;
+  const raw=config.bands?.find(b=>percent>=b.minimum)?.points ??
+    gradePoint(config.formula,{ratio,percent,score,maxScore,scale:config.scale});
+  return Math.max(0,Math.min(config.scale,raw));
 }
 export function completedExams(data: StudyData, now = Date.now()) {
   const today = localDay(new Date(now));
@@ -171,6 +197,7 @@ export function pendingExamScores(data: StudyData, now = Date.now()) {
   return completedExams(data, now).filter(
     (e) =>
       isExamScheduled(e) &&
+      e.scoreReminderEnabled !== false &&
       e.date < today &&
       !validResult(e.result) &&
       (!e.scoreReminderAfter ||
@@ -194,23 +221,13 @@ export function examGpa(data: StudyData, now = Date.now()) {
     seen.add(e.id);
     try {
       const percent = (e.result.score / e.result.maxScore) * 100;
-      const point = Math.max(
-        0,
-        Math.min(
-          config.scale,
-          gradePoint(config.formula, {
-            ratio: percent / 100,
-            percent,
-            score: e.result.score,
-            maxScore: e.result.maxScore,
-            scale: config.scale,
-          }),
-        ),
-      );
+      const band = config.bands?.find(b=>percent>=b.minimum);
+      const point = examGradePoint(config,e.result.score,e.result.maxScore);
       return [
         {
           exam: e,
           percent,
+          grade: band?.label,
           point,
           weight: config.weighted ? e.result.credits : 1,
         },
@@ -223,6 +240,7 @@ export function examGpa(data: StudyData, now = Date.now()) {
   const weight = rows.reduce((s, r) => s + r.weight, 0);
   return {
     config,
+    configured: gpaIsConfigured(data),
     rows,
     excluded,
     value: weight
@@ -258,7 +276,8 @@ export function examFeedback(
     target,
     gap: Math.max(0, target - percent) / 100,
     boost:
-      Math.min(0.35, (Math.max(0, target - percent) / 100) * 0.7) *
+      Math.min(0.35, (Math.max(0, target - percent) / 100) * 0.7 +
+        (latest.review?.followUp && nodeId && latest.review.nodeIds.includes(nodeId) ? .08 : 0)) *
       (1 - age / 90),
     reason:
       latest.title +

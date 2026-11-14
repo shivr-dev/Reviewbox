@@ -107,7 +107,8 @@ export async function applyNaviConfiguration(
     if (action.type === 'setGpaRule')
       await write('setting', 'settings', {
         ...settings,
-        examGpa: validateGpaConfig({ ...gpaConfig(data), ...action.changes }),
+        examGpa: validateGpaConfig({ ...gpaConfig(data),
+          ...(action.changes.formula === undefined ? {} : {bands:undefined}), ...action.changes }),
       });
     else if (action.type === 'setDailyTime')
       await write('setting', 'settings', {

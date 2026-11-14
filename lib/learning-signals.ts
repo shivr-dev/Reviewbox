@@ -9,7 +9,7 @@ import {
 import { effectiveAnswerTime } from './learning-evidence';
 import {
   gpaConfig,
-  gradePoint,
+  examGradePoint,
   validExamDate,
   validResult,
 } from './exam-outcomes';
@@ -504,20 +504,7 @@ export function examImpact(
         step = policy.signals.examMarginalStep;
       let gpaMarginal = 0;
       try {
-        const point = (r: number) =>
-          Math.max(
-            0,
-            Math.min(
-              config.scale,
-              gradePoint(config.formula, {
-                ratio: r,
-                percent: r * 100,
-                score: r * maxScore,
-                maxScore,
-                scale: config.scale,
-              }),
-            ),
-          );
+        const point = (r: number) => examGradePoint(config,r*maxScore,maxScore);
         gpaMarginal =
           bounded(
             (point(Math.min(1, ratio + step)) - point(ratio)) / config.scale,

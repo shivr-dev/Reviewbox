@@ -18,6 +18,7 @@ export type AssessmentSession = {
   items: QueueItem[];
   mode: 'review' | 'test';
   title: string;
+  sprint?: boolean;
 };
 export type AssessmentDraft = {
   id: string;
@@ -57,7 +58,10 @@ export async function scoreAssessment(
   const snapshot = await loadData(ns);
   const existing = new Set(snapshot.events.map((e) => e.id));
   let error: unknown;
-  for (const { question: q } of s.items) {
+  const items = s.sprint
+    ? s.items.filter(({question}) => d.answers[question.id]?.trim())
+    : s.items;
+  for (const { question: q } of items) {
     const id = assessmentEventId(s.id, q);
     if (existing.has(id)) continue;
     const pinyin = isPinyin(q);
@@ -137,7 +141,7 @@ export async function scoreAssessment(
       error = e;
     }
   }
-  const complete = s.items.every(({ question: q }) =>
+  const complete = items.every(({ question: q }) =>
     existing.has(assessmentEventId(s.id, q)),
   );
   const next = {
@@ -146,7 +150,7 @@ export async function scoreAssessment(
     status: complete ? 'complete' : 'grading',
   } as AssessmentDraft;
   await put('job', next, next.id, false, ns);
-  await put(
+  if (!s.sprint) await put(
     'test',
     {
       id: 'test:' + s.id,
@@ -167,7 +171,7 @@ export async function scoreAssessment(
     false,
     ns,
   );
-  if (complete) await completeActiveSession(s.id, ns);
+  if (complete && !s.sprint) await completeActiveSession(s.id, ns);
   if (error) throw error;
   return next;
 }

@@ -22,12 +22,13 @@ import {
 import { currentNamespace } from '@/lib/store';
 import { useReview } from './review-context';
 import { Penguin } from './learning-game';
-import HomeView from './home-view';
+import ExamHome from './exam-home';
 import { examGpa } from '@/lib/exam-outcomes';
 import { equipmentState, equipmentEffects } from '@/lib/equipment';
 import { EQUIPMENT_TEMPLATES } from '@/lib/equipment-catalog';
 import { learningGame } from '@/lib/learning-game';
 import { openPageNavi, composeNavi } from './navi-workspace';
+import { sprintJobs } from '@/lib/exam-sprint';
 
 const icons = {
   home: Home,
@@ -186,13 +187,14 @@ export function ProductHome() {
     fx = equipmentEffects(gear);
   return (
     <section className="alpha-home">
-      <HomeView direct /><MembershipPromo/>
+      {!sprintJobs(data).some(s=>s.status!=='complete')&&<MembershipPromo/>}
+      <ExamHome />
       <div className="alpha-home-strip">
         <button
           onClick={() => navigate('results')}
-          aria-label={tr('common:查看真实考试 GPA')}
+          aria-label={tr('dashboard:examReview.'+(gpa.configured?'academicGpa':'estimatedGpa'))}
         >
-          {tr('common:真实 GPA')}{' '}
+          {tr('dashboard:examReview.'+(gpa.configured?'academicGpa':'estimatedGpa'))}{' '}
           <b>
             {gpa.value === null
               ? tr('common:尚无成绩')

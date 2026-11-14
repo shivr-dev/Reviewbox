@@ -41,6 +41,7 @@ import {
   ProductShop,
 } from '@/components/product-workspaces';
 import OnboardingView from '@/components/onboarding-view';
+import ExamSprintView from '@/components/exam-sprint-view';
 import StudyPlanView from '@/components/study-plan-view';
 import RewardsView, {
   RewardsBridge,
@@ -471,7 +472,7 @@ export default function Workspace() {
       <ProductLocale locale={data.settings.locale} ready={ready}/>
       {ready && !website && <ProductInsights page={page} />}
       {ready && !website && <RewardsBridge />}
-      {ready && identityReady && !website && !['exam','assessment','onboarding'].includes(page) && session?.mode!=='test' && <NaviWorkspace key={currentNamespace()}/>}
+      {ready && identityReady && !website && !['exam','assessment','sprint','onboarding'].includes(page) && session?.mode!=='test' && <NaviWorkspace key={currentNamespace()}/>}
       <div className="review-application">
       {page === 'website' || (ready && identityReady && website) ? <WebsiteView navigate={navigate} locale={data.settings.locale}/> : !ready || (page === 'home' && !identityReady) ? <WorkspaceLoading/> : ready &&
       [
@@ -492,6 +493,7 @@ export default function Workspace() {
         'admin',
         'you',
         'study',
+        'sprint',
         'chest',
       ].includes(page) ? (
         <ProductShell key={currentNamespace()} page={page}>
@@ -499,6 +501,8 @@ export default function Workspace() {
             <ProductHome />
           ) : page === 'plan' ? (
             <StudyPlanView key={currentNamespace()} />
+          ) : page === 'sprint' ? (
+            <ExamSprintView key={currentNamespace()+'-'+subject}/>
           ) : page === 'study' ? (
             session?.mode === 'test' ? (
               <AssessmentRoom

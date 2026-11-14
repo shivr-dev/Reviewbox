@@ -420,6 +420,7 @@ export default function YouView() {
       )}
       {view === 'preferences' && (
         <div className="settings-detail">
+          <Entry title={tr('dashboard:checkin.edit')} onClick={()=>navigate('onboarding','all','preferences')}/>
           <label className="settings-field">{tr("settings:每日目标时间")}<select
               aria-label={tr("settings:每日目标时间")}
               value={minutes}
@@ -438,7 +439,7 @@ export default function YouView() {
                 }, tr("common:每日学习时间已保存"));
               }}
             >
-              {[10, 15, 20, 30, 45, 60, 90, 120].map((v) => (
+              {[...new Set([5, 10, 15, 20, 30, 45, 60, 90, 120, Number(minutes)])].filter(Number.isFinite).sort((a,b)=>a-b).map((v) => (
                 <option value={v} key={v}>
                   {v}{tr("settings:分钟")}</option>
               ))}

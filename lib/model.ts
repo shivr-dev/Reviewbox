@@ -310,6 +310,14 @@ export type Exam = {
     recordedAt: string;
   };
   scoreReminderAfter?: string;
+  scoreReminderEnabled?: boolean;
+  review?: {
+    expectation: 'below' | 'met' | 'above' | '';
+    causes: ('concept' | 'calculation' | 'timing' | 'format' | 'reading')[];
+    nodeIds: string[];
+    followUp: boolean;
+    updatedAt: string;
+  };
   simulation?: {
     exam: import('./exam-model').ExamKind;
     mapSection?: 'Reading' | 'Language Usage';
@@ -404,6 +412,9 @@ export type StudyData = {
     assistantAi?: boolean;
     studyMode?: 'auto' | 'guided' | 'manual';
     studyAutoStart?: { enabled: boolean; acknowledgedAt: string };
+    learningProfile?: import('./learning-check-in').LearningProfile;
+    learningCheckIn?: import('./learning-check-in').CheckInDraft;
+    sprintPreferences?: { minutes: number; goal: import('./exam-sprint').SprintGoal };
     studyPolicy?: { id: string; previousId?: string; changedAt?: string };
     examGpa?: {
       scale: number;
@@ -411,6 +422,7 @@ export type StudyData = {
       weighted: boolean;
       from?: string;
       to?: string;
+      bands?: { minimum: number; points: number; label?: string }[];
     };
     assistant?: {
       version: 1;

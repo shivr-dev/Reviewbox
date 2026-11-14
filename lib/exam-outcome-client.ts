@@ -36,8 +36,22 @@ export async function deferExamScore(id: string, ns = currentNamespace()) {
     ns,
   );
 }
-export async function saveGpaConfig(raw: GpaConfig, ns = currentNamespace()) {
-  const config = validateGpaConfig(raw),
+export const EXAM_REVIEW_CAUSES = ['concept','calculation','timing','format','reading'] as const;
+type ExamReview = NonNullable<Exam['review']>;
+export async function saveExamReview(id: string, review: Omit<ExamReview,'updatedAt'>, ns = currentNamespace()) {
+  const data = await loadData(ns);
+  await updateExamRecord(id, exam => {
+    if (!validResult(exam.result) || exam.date > localDay()) throw new Error('EXAM_REVIEW_MISSING_SCORE');
+    const allowed = new Set(data.nodes.filter(n => n.subject === exam.subject &&
+      (!exam.scope.length || exam.scope.includes(n.id))).map(n => n.id));
+    if (review.nodeIds.some(node => !allowed.has(node)) ||
+      review.causes.some(c => !EXAM_REVIEW_CAUSES.includes(c)) ||
+      !['','below','met','above'].includes(review.expectation)) throw new Error('EXAM_REVIEW_SCOPE');
+    return {...exam, review: {...review, nodeIds:[...new Set(review.nodeIds)], causes:[...new Set(review.causes)], updatedAt:new Date().toISOString()}};
+  }, ns);
+}
+export async function saveGpaConfig(raw: GpaConfig | undefined, ns = currentNamespace()) {
+  const config = raw ? validateGpaConfig(raw) : undefined,
     data = await loadData(ns);
   if (ns !== currentNamespace()) throw new Error('学习账户已切换');
   await put(
@@ -49,8 +63,8 @@ export async function saveGpaConfig(raw: GpaConfig, ns = currentNamespace()) {
   );
 }
 export async function saveDailyTime(minutes: number, ns = currentNamespace()) {
-  if (!Number.isFinite(minutes) || minutes < 10 || minutes > 120)
-    throw new Error('每日时间应为 10–120 分钟');
+  if (!Number.isFinite(minutes) || minutes < 5 || minutes > 120)
+    throw new Error('每日时间应为 5–120 分钟');
   const data = await loadData(ns);
   if (ns !== currentNamespace()) throw new Error('学习账户已切换');
   await put(
@@ -58,6 +72,9 @@ export async function saveDailyTime(minutes: number, ns = currentNamespace()) {
     {
       ...data.settings,
       dailyMinutes: minutes,
+      learningProfile: data.settings.learningProfile ? {
+        ...data.settings.learningProfile, minutes,
+      } : undefined,
       assistant: data.settings.assistant
         ? { ...data.settings.assistant, dailyMinutes: minutes }
         : undefined,

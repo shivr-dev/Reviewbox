@@ -126,7 +126,9 @@ export default function NaviWorkspace() {
   } | null>(null);
   const [consent, setConsent] = useState(false),
     [tutorMode, setTutorMode] = useState('auto'),
-    [helpLevel, setHelpLevel] = useState(1),
+    [helpLevel, setHelpLevel] = useState(() =>
+      data.settings.learningProfile?.independent !== false ? 1 :
+        data.settings.learningProfile?.help === 'steps' ? 3 : 1),
     [membershipMode,setMembershipMode]=useState<'navi_basic'|'navi_deep'|'agent'>('navi_basic'),[membershipTrial,setMembershipTrial]=useState<''|'plus'|'pro'>(''),
     [pendingNote, setPendingNote] = useState<NaviMessage | null>(null),
     [practice, setPractice] = useState(false),

@@ -26,9 +26,11 @@ import { RemediationLauncher } from './remediation-course';
 export default function AssessmentRoom({
   session,
   finish,
+  savedExit = finish,
 }: {
   session: AssessmentSession;
   finish: () => void;
+  savedExit?: () => void;
 }) {
   const { data, refresh, notify } = useReview();
   const [draft, setDraft] = useState<AssessmentDraft>(() => ({
@@ -153,19 +155,21 @@ export default function AssessmentRoom({
     try {
       await flush();
       await refresh();
-      finish();
+      if (ref.current.status === 'complete') finish();
+      else savedExit();
     } catch {}
   }
   if (!q) return null;
   if (draft.status !== 'answering') {
     const pending = session.items.filter(
       ({ question: q }) =>
+        (!session.sprint || draft.answers[q.id]?.trim()) &&
         !events.some((e) => e.id === assessmentEventId(session.id, q)),
     );
     return (
       <div className="assessment-result">
         <button className="quiet" onClick={() => void exit()}>
-          <ArrowLeft size={16} />{tr("study:返回工作台")}</button>
+          <ArrowLeft size={16} />{session.sprint && draft.status==='complete' ? tr('dashboard:sprint.next') : tr("study:返回工作台")}</button>
         <p className="eyebrow">ASSESSMENT REVIEW</p>
         <h1>{pending.length ? tr("study:测试已交卷，完成最后的检查") : tr("study:测试已完成")}</h1>
         <p className="muted">
@@ -202,7 +206,7 @@ export default function AssessmentRoom({
             {busy ? tr("study:正在按评分标准批改…") : tr("study:继续批改")}
           </button>
         )}
-        {!pending.length && (
+        {!session.sprint && !pending.length && (
           <RemediationLauncher sessionId={session.id} title={session.title} />
         )}
         {session.items.map(({ question: q }, i) => {
@@ -435,7 +439,7 @@ export default function AssessmentRoom({
       <Dialog open={confirm} onOpenChange={setConfirm}>
         <DialogContent>
           <DialogTitle>{tr("study:交卷并开始检查？")}</DialogTitle>
-          <DialogDescription>{tr("study:交卷后不能修改原作答。拼音写字题将在交卷后对照标准答案手动检查。")}</DialogDescription>
+          <DialogDescription>{session.sprint ? tr('dashboard:sprint.checkSubmit') : tr("study:交卷后不能修改原作答。拼音写字题将在交卷后对照标准答案手动检查。")}</DialogDescription>
           <div className="button-row">
             <button className="secondary" onClick={() => setConfirm(false)}>{tr("study:继续作答")}</button>
             <button className="primary" onClick={() => void submit()}>{tr("study:确认交卷")}</button>

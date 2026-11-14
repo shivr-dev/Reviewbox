@@ -95,6 +95,7 @@ export default function OnboardingAccount({
         'setting',
         {
           ...fresh.settings,
+          learningCheckIn: fresh.settings.learningCheckIn ?? localSettings.learningCheckIn,
           termsAcceptance: localSettings.termsAcceptance,
           productDataCollection: {
             enabled:
@@ -102,14 +103,14 @@ export default function OnboardingAccount({
               fresh.settings.productDataCollection?.enabled !== false,
             updatedAt: new Date().toISOString(),
           },
-          assistant: {
+          ...(localSettings.learningCheckIn ? {} : {assistant: {
             ...profile,
             version: 1,
             onboardingVersion: 3,
             onboardingStep: 9,
             weights: profile?.weights ?? {},
             dailyMinutes: profile?.dailyMinutes ?? fresh.settings.dailyMinutes,
-          },
+          }}),
         },
         'settings',
         false,

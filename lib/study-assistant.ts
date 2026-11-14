@@ -94,7 +94,7 @@ export function assistantSettings(data: StudyData): AssistantSettings {
     weights,
     dailyMinutes:
       typeof minutes === 'number' && Number.isFinite(minutes)
-        ? clamp(minutes, 10, 120)
+        ? clamp(minutes, 5, 120)
         : 20,
   };
 }

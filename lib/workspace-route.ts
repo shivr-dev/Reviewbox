@@ -18,6 +18,7 @@ const pages = new Set([
   'admin',
   'super','membership',
   'study',
+  'sprint',
   'assessment',
   'exam',
   'course',
@@ -82,7 +83,7 @@ export function workspaceSection(page: string) {
     ].includes(page)
   )
     return 'workshop';
-  if (['plan', 'study', 'remedy', 'chest', 'onboarding'].includes(page))
+  if (['plan', 'study', 'sprint', 'remedy', 'chest', 'onboarding'].includes(page))
     return 'plan';
   return page === 'you' || page === 'devices' || page==='membership'||page==='super' ? 'you' : 'home';
 }

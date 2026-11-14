@@ -1,0 +1,288 @@
+.onboarding-check-in {
+  --guide-line: var(--ux-line, #e2e7eb);
+  --guide-muted: var(--ux-muted, #56646c);
+  --guide-blue: var(--ux-accent, #187eac);
+  --guide-content: 35rem;
+  font-family: var(--font-sans);
+}
+
+.onboarding-check-in .onboarding-coach {
+  width: min(100%, var(--guide-content));
+  margin: 4px auto 28px;
+  animation: onboarding-arrive 260ms ease-out both;
+}
+
+.onboarding-check-in .onboarding-coach > div:last-child {
+  flex: 1;
+  min-width: 0;
+  border-color: var(--guide-line);
+}
+
+.onboarding-check-in .onboarding-coach > div:last-child::before {
+  border-color: var(--guide-line);
+}
+
+.onboarding-check-in .onboarding-coach h1 {
+  margin: 0;
+  font-family: inherit;
+  font-size: clamp(1.17rem, 3vw, 1.5rem);
+  font-weight: 750;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.onboarding-check-in .onboarding-coach p {
+  margin-top: 0.35rem;
+  color: var(--guide-muted);
+}
+
+.onboarding-check-in .check-in-body,
+.onboarding-check-in .onboarding-agreement {
+  width: min(100%, var(--guide-content));
+  margin-inline: auto;
+  min-width: 0;
+}
+
+.onboarding-check-in .check-in-body {
+  display: grid;
+  align-content: start;
+  gap: 1.2rem;
+}
+
+.onboarding-check-in .check-in-body > :is(p, dl, fieldset, details, section),
+.onboarding-check-in .check-in-body .check-in-fields,
+.onboarding-check-in .check-in-body .onboarding-time-options {
+  margin: 0;
+}
+
+.onboarding-check-in .check-in-body .onboarding-time-options {
+  max-width: none;
+  gap: 0.85rem;
+}
+
+.onboarding-check-in .onboarding-time-options button {
+  min-width: 0;
+  min-height: 4.5rem;
+  padding: 0.68rem 0.35rem;
+  gap: 0.35rem;
+}
+
+.onboarding-check-in .onboarding-time-options button strong {
+  line-height: 1.1;
+}
+
+.onboarding-check-in .onboarding-time-options button span,
+.onboarding-check-in .check-in-body small {
+  color: var(--guide-muted);
+}
+
+.onboarding-check-in .check-in-body small {
+  text-align: start;
+}
+
+.onboarding-check-in .check-in-custom-time,
+.onboarding-check-in .check-in-body label:has(> select),
+.onboarding-check-in .check-in-fields > label {
+  display: grid;
+  align-content: end;
+  gap: 0.4rem;
+  min-width: 0;
+  font-size: 0.875rem;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
+.onboarding-check-in .check-in-custom-time {
+  grid-column: 1 / -1;
+  align-content: center;
+  grid-template-columns: minmax(0, 1fr) minmax(4rem, 6rem);
+  align-items: center;
+}
+
+.onboarding-check-in
+  .check-in-body
+  :is(input[type='number'], input[type='date'], input:not([type]), select) {
+  inline-size: 100%;
+  min-inline-size: 0;
+  min-height: 2.7rem;
+  margin: 0;
+  padding: 0.46rem 0.7rem;
+  border: 1px solid var(--guide-line);
+  border-radius: 0.65rem;
+  background-color: var(--card, #fff);
+  color: var(--foreground);
+  font: inherit;
+}
+
+.onboarding-check-in .check-in-fields {
+  align-items: end;
+  gap: 1rem;
+}
+
+.onboarding-check-in .learning-group legend {
+  margin-bottom: 0.2rem;
+  font-size: 0.94rem;
+  line-height: 1.45;
+}
+
+.onboarding-check-in .learning-group > .learning-chips {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.onboarding-check-in .learning-chips label {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 2.7rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--guide-line);
+  border-radius: 0.7rem;
+  background-color: var(--card, #fff);
+  font-size: 0.88rem;
+  line-height: 1.4;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.onboarding-check-in .learning-chips label:has(input:checked) {
+  background-color: color-mix(in srgb, var(--guide-blue) 9%, var(--card, #fff));
+  border-color: color-mix(in srgb, var(--guide-blue) 50%, var(--guide-line));
+}
+
+.onboarding-check-in .learning-chips input[type='checkbox'] {
+  inline-size: 1rem;
+  block-size: 1rem;
+  margin: 0;
+  flex: none;
+  accent-color: var(--guide-blue);
+}
+
+.onboarding-check-in .check-in-body > .assistant-weights {
+  margin: 0;
+}
+.onboarding-check-in .check-in-subsection > :is(h2, p) {
+  margin: 0;
+}
+.onboarding-check-in .check-in-subsection > button {
+  justify-self: start;
+}
+.onboarding-check-in .check-in-subsection h2 {
+  font-size: 1.06rem;
+}
+.onboarding-check-in .check-in-options {
+  display: grid;
+  gap: 0.8rem;
+  min-width: 0;
+}
+.onboarding-check-in .check-in-options-compact {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+.onboarding-check-in .check-in-options .check-in-option {
+  position: relative;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 0.8rem;
+  min-width: 0;
+  min-height: 3.7rem;
+  padding: 0.75rem 1rem;
+  text-align: start;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  font: inherit;
+}
+.onboarding-check-in .check-in-options-compact .check-in-option {
+  min-height: 2.8rem;
+  padding: 0.55rem 0.75rem;
+}
+.onboarding-check-in .check-in-option[aria-pressed='true'] {
+  background: #eaf6ff;
+  color: #155e87;
+  border-color: #86c9ef;
+  box-shadow: 0 3px 0 #86c9ef;
+}
+.onboarding-check-in .check-in-option-copy {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 0.22rem;
+  padding-inline-end: 1rem;
+}
+.onboarding-check-in .check-in-option-copy strong {
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+.onboarding-check-in .check-in-option-copy > span {
+  font-size: 0.83rem;
+  color: var(--guide-muted);
+  line-height: 1.5;
+}
+.onboarding-check-in .check-in-option-mark {
+  position: absolute;
+  inset-inline-end: 0.65rem;
+  flex: none;
+  color: #1879ac;
+}
+.onboarding-check-in .onboarding-optional-choice {
+  width: min(100%, var(--guide-content));
+  margin-inline: auto;
+}
+.onboarding-check-in .onboarding-optional-choice .check-in-options {
+  grid-template-columns: minmax(0, 1fr);
+}
+.onboarding-check-in .onboarding-beta-section {
+  border-top: 1px solid var(--guide-line);
+  padding-top: 1rem;
+}
+.onboarding-check-in .onboarding-beta-section h2 {
+  font-size: 1.1rem;
+  margin: 0;
+}
+.onboarding-check-in .onboarding-beta {
+  margin: 0.75rem 0 0;
+}
+.onboarding-check-in .onboarding-beta p {
+  font-size: 0.92rem;
+  margin: 0.85rem 0;
+}
+.onboarding-check-in .settings-error {
+  margin: 0.75rem 0 0;
+}
+.onboarding-check-in .onboarding-footer {
+  flex-wrap: wrap;
+}
+.onboarding-check-in .onboarding-footer > button:last-child {
+  margin-inline-start: auto;
+}
+.onboarding-check-in .onboarding-final-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.7rem;
+}
+
+@media (min-width: 601px) {
+  .onboarding-check-in .check-in-body .onboarding-time-options {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .onboarding-check-in .onboarding-coach {
+    margin-bottom: 22px;
+  }
+  .onboarding-check-in .onboarding-footer > button {
+    min-width: 0;
+  }
+  .onboarding-check-in .onboarding-final-actions {
+    align-items: stretch;
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .onboarding-check-in .onboarding-coach {
+    animation: none;
+  }
+}

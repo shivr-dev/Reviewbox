@@ -65,6 +65,8 @@ import { Heart, Zap, Volume2, VolumeX } from 'lucide-react';
 export default function StudyView({
   session,
   finish,
+  sprint = false,
+  savedExit = finish,
 }: {
   session: {
     id: string;
@@ -73,6 +75,8 @@ export default function StudyView({
     title: string;
   } | null;
   finish: () => void;
+  sprint?: boolean;
+  savedExit?: () => void;
 }) {
   const { data, start, refresh, notify, aiReady, navigate } = useReview();
   const [processHint, setProcessHint] = useState(false);
@@ -86,7 +90,7 @@ export default function StudyView({
     return () => clearInterval(t);
   }, []);
   const [index, setIndex] = useState(0),
-    [focusMode, setFocusMode] = useState(true),
+    [focusMode, setFocusMode] = useState(!sprint),
     [scratchOpen, setScratchOpen] = useState(false),
     [revealed, setRevealed] = useState(false),
     [answerPanelOpen, setAnswerPanelOpen] = useState(false),
@@ -118,9 +122,10 @@ export default function StudyView({
     visible: true,
   });
   useEffect(() => {
-    setFocusMode(localStorage.getItem('review-focus-mode') !== 'classic');
-  }, []);
+    setFocusMode(!sprint && localStorage.getItem('review-focus-mode') !== 'classic');
+  }, [sprint]);
   const toggleFocus = () => {
+    if (sprint) return;
     setFocusMode((current) => {
       localStorage.setItem('review-focus-mode', current ? 'classic' : 'focus');
       return !current;
@@ -165,8 +170,15 @@ export default function StudyView({
     const saved = data.events
       .filter((e) => e.sessionId === session?.id)
       .sort((a, b) => a.occurredAt.localeCompare(b.occurredAt));
-    setIndex(saved.length);
-    setDone(!!session && saved.length >= restoredItems.length);
+    if (sprint) {
+      const answered = new Set(saved.map(e => e.questionId));
+      const next = restoredItems.findIndex(i => !answered.has(i.question.id));
+      setIndex(Math.max(0, next));
+      setDone(next < 0);
+    } else {
+      setIndex(saved.length);
+      setDone(!!session && saved.length >= restoredItems.length);
+    }
     setResults(saved);
     originNamespace.current = currentNamespace();
     reset();
@@ -289,7 +301,7 @@ export default function StudyView({
       }
       const schedule = learningSchedule(data, q);
       const e: AnswerEvent = {
-        id: 'answer:' + session.id + ':' + index,
+        id: 'answer:' + session.id + ':' + (sprint ? q.id : index),
         questionId: q.id,
         nodeId: q.nodeId,
         skillId: q.skillId,
@@ -385,6 +397,7 @@ export default function StudyView({
         throw new Error('这道题已暂停，请保存退出后重新安排练习');
       const beforeGame = learningGame(fresh);
       if (
+        !sprint &&
         fresh.settings.gameHearts !== false &&
         session.mode === 'review' &&
         !item.gameRecovery &&
@@ -420,7 +433,7 @@ export default function StudyView({
       setResults(all);
       let nextItems = sessionItems;
       const verifying = sessionItems.some((x) => x.verificationOf);
-      if (session.mode !== 'test' && signals.length && !verifying) {
+      if (!sprint && session.mode !== 'test' && signals.length && !verifying) {
         const variant = verificationCandidate(
           { ...data, events: [...data.events, e] },
           e,
@@ -473,7 +486,7 @@ export default function StudyView({
             false,
             originNamespace.current,
           );
-        await completeActiveSession(session.id, originNamespace.current);
+        if (!sprint) await completeActiveSession(session.id, originNamespace.current);
         trackProductEvent('practice_complete', 'study');
         setAnswerPanelOpen(false);
         setRevealed(false);
@@ -897,19 +910,20 @@ export default function StudyView({
           className="primary"
           onClick={() => {
             finish();
-            if (session.mode !== 'test') navigate(chest.eligible?'chest':'plan',chest.eligible?session.id:undefined);
+            if (!sprint && session.mode !== 'test') navigate(chest.eligible?'chest':'plan',chest.eligible?session.id:undefined);
           }}
         >
-          {session.mode === 'test' ? tr("study:回到学习工作台") : chest.eligible?tr("common:打开练习宝箱"):tr("common:返回学习安排")}
+          {sprint ? tr("dashboard:sprint.next") : session.mode === 'test' ? tr("study:回到学习工作台") : chest.eligible?tr("common:打开练习宝箱"):tr("common:返回学习安排")}
           <ArrowRight size={16} />
         </button>
-        {session.mode!=='test'&&!chest.eligible&&<p className="muted" role="status">{chest.reason}</p>}
+        {!sprint&&session.mode!=='test'&&!chest.eligible&&<p className="muted" role="status">{chest.reason}</p>}
       </div>
     );
   }
   if (!q) return null;
   const isTest = session.mode === 'test';
   if (
+    !sprint &&
     !isTest &&
     data.settings.gameHearts !== false &&
     game.hearts === 0 &&
@@ -959,7 +973,7 @@ export default function StudyView({
       <RewardFlash reward={reward} />
       <ComboCelebration reward={reward} />
       <div className="session-top">
-        <button className="quiet" onClick={() => { trackProductEvent('study_saved_exit', 'study'); finish(); }}>
+        <button className="quiet" onClick={() => { trackProductEvent('study_saved_exit', 'study'); savedExit(); }}>
           <ArrowLeft size={16} />{tr("study:保存并退出")}</button>
         <span>
           {isTest
@@ -971,20 +985,20 @@ export default function StudyView({
           <span> / {sessionItems.length}</span>
         </b>
         {!isTest && (
-          <div className="study-view-controls"><NaviButton target={{type:"question",id:q.id}}/>
+          <div className="study-view-controls">{!sprint&&<NaviButton target={{type:"question",id:q.id}}/>}
             <button
               className="quiet"
               onClick={() => setScratchOpen((v) => !v)}
               aria-expanded={scratchOpen}
             >
               <PencilLine size={15} />{tr("study:草稿纸")}</button>
-            <button
+            {!sprint&&<button
               className="quiet"
               onClick={toggleFocus}
               aria-pressed={focusMode}
             >
               {focusMode ? tr("study:退出沉浸") : tr("study:沉浸模式")}
-            </button>
+            </button>}
           </div>
         )}
       </div>
@@ -992,7 +1006,7 @@ export default function StudyView({
         value={(index / sessionItems.length) * 100}
         className="session-progress"
       />
-      {!isTest && (
+      {!isTest && !sprint && (
         <div className="game-session-hud">
           <span className="game-gems">
             <Zap size={18} />
@@ -1097,7 +1111,7 @@ export default function StudyView({
           <small>{tr("study:提示深度会记录；之后的无提示验证才用于确认独立掌握。")}</small>
         </details>
       )}
-      <NaviLearningWorkspace key={q.id} question={q} answer={answer} grade={grade} focused={focusMode} protected={isTest} onFocus={setFocusMode} onHelp={()=>openNavi({type:'question',id:q.id})} onAssistance={level=>setHintLevel(old=>{const levels=['light','method','step','answer'] as const;return levels[Math.max(level-1,old?levels.indexOf(old):0)];})}>
+      <NaviLearningWorkspace key={q.id} question={q} answer={answer} grade={grade} focused={focusMode} protected={isTest||sprint} onFocus={setFocusMode} onHelp={()=>openNavi({type:'question',id:q.id})} onAssistance={level=>setHintLevel(old=>{const levels=['light','method','step','answer'] as const;return levels[Math.max(level-1,old?levels.indexOf(old):0)];})}>
       <article className="question-card" key={q.id}>
         <p className="question-number">
           QUESTION {String(index + 1).padStart(2, '0')}

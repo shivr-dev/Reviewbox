@@ -16,7 +16,6 @@ import {
   completedExams,
   examGpa,
   pendingExamScores,
-  DEFAULT_GPA,
 } from '@/lib/exam-outcomes';
 import {
   saveExamScore,
@@ -28,19 +27,23 @@ export default function ExamResults({
   autoOpen = false,
   initialExamId,
   onClosed,
+  reviewOnSave = false,
 }: {
   compact?: boolean;
   autoOpen?: boolean;
   initialExamId?: string;
   onClosed?: () => void;
+  reviewOnSave?: boolean;
 }) {
-  const { data, refresh, notify } = useReview();
+  const { data, refresh, notify, navigate } = useReview();
+  const reviewText = (key:string) => tr('dashboard:examReview.'+key);
   const report = examGpa(data),
     eligible = completedExams(data),
     pending = pendingExamScores(data);
   const [open, setOpen] = useState(false),
     [tab, setTab] = useState('scores'),
     [examId, setExamId] = useState(''),
+    [gpaMethod, setGpaMethod] = useState<'formula'|'bands'>(report.config.bands?'bands':'formula'),
     [busy, setBusy] = useState(false);
   const lock = useRef(false),
     openNamespace = useRef(currentNamespace());
@@ -53,6 +56,7 @@ export default function ExamResults({
         : (pending[0]?.id ?? eligible[0]?.id ?? ''),
     );
     setTab('scores');
+    setGpaMethod(report.config.bands?'bands':'formula');
     setOpen(true);
   }
   const opened = useRef(false);
@@ -70,8 +74,11 @@ export default function ExamResults({
       await fn();
       await refresh();
       notify(message);
+      return true;
     } catch (e) {
-      notify(e instanceof Error ? e.message : '未能保存，请重试');
+      notify(e instanceof Error && e.message==='GPA_BANDS' ? reviewText('bandsError') :
+        e instanceof Error ? tr('results:'+e.message) : reviewText('saveError'));
+      return false;
     } finally {
       lock.current = false;
       setBusy(false);
@@ -88,7 +95,7 @@ export default function ExamResults({
           ? pending.length + ' 场考试待录入成绩'
           : report.value === null
             ? tr("common:录入考试成绩")
-            : '考试 GPA ' +
+            : reviewText(report.configured?'academicGpa':'estimatedGpa')+' '+
               report.value.toFixed(2) +
               ' / ' +
               report.config.scale}
@@ -119,6 +126,7 @@ export default function ExamResults({
                     ' / ' +
                     report.config.scale.toFixed(2)}
               </strong>
+              <span>{reviewText(report.configured?'academicGpa':'estimatedGpa')}</span>
               <span>
                 {report.rows.length}{tr("results:场考试 ·")}{' '}
                 {report.config.weighted ? tr("results:按学分加权") : tr("results:各考试等权")}
@@ -169,7 +177,7 @@ export default function ExamResults({
                     e.preventDefault();
                     const fields = new FormData(e.currentTarget),
                       id = selected.id;
-                    await task(
+                    const saved = await task(
                       () =>
                         saveExamScore(
                           id,
@@ -183,6 +191,10 @@ export default function ExamResults({
                         ),
                       tr("common:成绩已保存，GPA 与学习计划已更新"),
                     );
+                    if (saved && reviewOnSave && openNamespace.current===currentNamespace()) {
+                      setOpen(false);
+                      navigate('results','all','report:'+id);
+                    }
                   }}
                 >
                   <p className="muted">
@@ -255,17 +267,25 @@ export default function ExamResults({
                 e.preventDefault();
                 const f = new FormData(e.currentTarget);
                 await task(
-                  () =>
-                    saveGpaConfig(
+                  async () => {
+                    const source=String(f.get('bands')??'').trim();
+                    const bands=gpaMethod==='bands'?source.split(/\r?\n/).map(line=>{
+                      const [minimum,points,label,...extra]=line.split(/[,，]/).map(v=>v.trim());
+                      if(!minimum||!points||extra.length)throw new Error('GPA_BANDS');
+                      return {minimum:Number(minimum),points:Number(points),label:label||undefined};
+                    }):undefined;
+                    await saveGpaConfig(
                       {
                         scale: Number(f.get('scale')),
-                        formula: String(f.get('formula')),
+                        formula: String(f.get('formula')??report.config.formula),
+                        bands,
                         weighted: f.get('weighted') === 'on',
                         from: String(f.get('from') || ''),
                         to: String(f.get('to') || ''),
                       },
                       openNamespace.current,
-                    ),
+                    );
+                  },
                   tr("common:GPA 公式已保存，全部成绩已重新计算"),
                 );
               }}
@@ -281,7 +301,14 @@ export default function ExamResults({
                   defaultValue={report.config.scale}
                 />
               </label>
-              <label>{tr("results:单场成绩换算公式")}<input
+              <label>{reviewText('method')}<select value={gpaMethod} onChange={e=>setGpaMethod(e.target.value as typeof gpaMethod)}>
+                <option value="formula">{reviewText('methodFormula')}</option>
+                <option value="bands">{reviewText('methodBands')}</option>
+              </select></label>
+              {gpaMethod==='bands' ? <label>{reviewText('methodBands')}<textarea name="bands" required rows={6} maxLength={900}
+                defaultValue={report.config.bands?.map(b=>[b.minimum,b.points,b.label??''].join(', ')).join('\n')}/>
+                <small>{reviewText('bandsHelp')}</small>
+              </label>:<><label>{tr("results:单场成绩换算公式")}<input
                   name="formula"
                   aria-label={tr("results:GPA 换算公式")}
                   maxLength={240}
@@ -289,7 +316,7 @@ export default function ExamResults({
                   defaultValue={report.config.formula}
                 />
               </label>
-              <small>{tr("results:默认：ratio × scale。最终 GPA 为各场换算分的加权平均；单场换算结果限制在 0 至满分。")}</small>
+              <small>{tr("results:默认：ratio × scale。最终 GPA 为各场换算分的加权平均；单场换算结果限制在 0 至满分。")}</small></>}
               <label className="gpa-weighted">
                 <input
                   name="weighted"
@@ -329,7 +356,7 @@ export default function ExamResults({
                   type="button"
                   onClick={() =>
                     void task(
-                      () => saveGpaConfig(DEFAULT_GPA, openNamespace.current),
+                      async () => {await saveGpaConfig(undefined, openNamespace.current);setGpaMethod('formula');},
                       tr("common:已恢复默认换算公式"),
                     )
                   }
