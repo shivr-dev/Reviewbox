@@ -1,4 +1,13 @@
 {
+  "math.fieldLabel": "Math answer",
+  "math.placeholder": "Enter a formula",
+  "math.分数": "Fraction",
+  "math.根号": "Root",
+  "math.指数": "Power",
+  "math.下标": "Subscript",
+  "math.绝对值": "Absolute value",
+  "math.方程组": "System",
+  "math.单位": "Unit",
   "进度未能保存，请检查设备存储后重试。": "The progress could not be saved, please check the device storage and try again.",
   "保存未完成，请保留页面并重试。": "The save was not completed, please keep the page and try again.",
   "返回工作台": "Return to workbench",
@@ -485,7 +494,7 @@
   "navi.followup.rephrase.request": "Explain the same point we just discussed in a different, more intuitive and concise way. Keep the original conditions and hint level.",
   "navi.followup.example.request": "Give one short, concrete example of the concept we just discussed. Distinguish your example from the source material and keep the current hint level.",
   "navi.display.fullscreen": "Expand fullscreen",
-  "navi.display.dock": "Return to side workspace",
+  "navi.display.dock": "Dock conversation",
   "navi.home.placeholder": "Ask Navi about your learning…",
   "navi.home.open": "Open Navi",
   "navi.config.setGpaRule": "Adjust GPA rule",
@@ -593,5 +602,11 @@
   "navi.live.describe.highlight": "Highlight visible objects: {{ids}}",
   "navi.live.describe.clearHighlights": "Clear object highlights",
   "navi.live.describe.macro": "Macromolecule representation: {{model}}",
-  "navi.live.describe.camera": "Macromolecule camera: {{command}}"
+  "navi.live.describe.camera": "Macromolecule camera: {{command}}",
+  "navi.diagnostic.title": "Error diagnostic",
+  "navi.diagnostic.copy": "Copy diagnostic",
+  "navi.diagnostic.copied": "Copied",
+  "navi.diagnostic.details": "View diagnostic details",
+  "navi.diagnostic.safe": "Includes error and connection metadata only, without conversation, question text or reasoning.",
+  "navi.diagnostic.copyFailed": "Copy failed. Select the diagnostic text manually."
 }

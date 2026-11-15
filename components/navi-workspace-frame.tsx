@@ -1,5 +1,6 @@
 'use client';
 import {
+  useEffect,
   useState,
   useSyncExternalStore,
   type CSSProperties,
@@ -43,6 +44,14 @@ export default function NaviWorkspaceFrame({
     [tools, setTools] = useState(false),
     [name, setName] = useState(''),
     [savingTemplate, setSavingTemplate] = useState(false);
+  useEffect(() => {
+    const open = (event: Event) => {
+      if ((event as CustomEvent).detail === controller && !controller.capabilities.protected)
+        setTools((visible) => !visible);
+    };
+    window.addEventListener('review:navi-workspace-tools', open);
+    return () => window.removeEventListener('review:navi-workspace-tools', open);
+  }, [controller]);
   const presets = (data.jobs ?? []).filter(
     (j) =>
       j.kind === 'navi-layout' &&
@@ -119,7 +128,7 @@ export default function NaviWorkspaceFrame({
           } as CSSProperties
         }
       >
-        {!controller.capabilities.protected && (
+        {!controller.capabilities.protected && tools && (
           <div className="navi-live-toolbar">
             <button
               type="button"

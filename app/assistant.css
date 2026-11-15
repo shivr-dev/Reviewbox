@@ -21,7 +21,7 @@
   width: 140px;
   height: 168px;
 }
-.now-companion .learning-penguin {
+.now-companion .navi-avatar {
   width: 140px;
   height: 140px;
   margin-bottom: 28px;
@@ -89,8 +89,8 @@
   align-items: center;
   min-height: 490px;
 }
-.director-companion .learning-penguin,
-.director-loading .learning-penguin {
+.director-companion .navi-avatar,
+.director-loading .navi-avatar {
   width: 125px;
   height: 125px;
   margin: 0 0 24px;
@@ -286,7 +286,7 @@
     padding: 25px 0 65px;
     min-height: calc(100dvh - 130px);
   }
-  .now-companion .learning-penguin {
+  .now-companion .navi-avatar {
     width: 120px;
     height: 120px;
   }
@@ -381,7 +381,7 @@
   gap: 23px;
   margin: 8px 0 40px;
 }
-.onboarding-coach .learning-penguin {
+.onboarding-coach .navi-avatar {
   width: 100px;
   height: 110px;
   flex-shrink: 0;
@@ -426,7 +426,7 @@
   flex-direction: column;
   padding: 22px 0 40px;
 }
-.onboarding-welcome .learning-penguin {
+.onboarding-welcome .navi-avatar {
   width: 185px;
   height: 185px;
   margin: 12px 0 28px;
@@ -690,7 +690,7 @@
     gap: 16px;
     margin-bottom: 32px;
   }
-  .onboarding-coach .learning-penguin {
+  .onboarding-coach .navi-avatar {
     width: 72px;
     height: 82px;
   }

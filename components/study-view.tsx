@@ -11,7 +11,7 @@ import {supportsMathInput,type MathAnswerFormat} from '@/lib/math-input-format';
 import {verifyMathAnswer,type MathVerification} from '@/lib/math-verification';
 import { objectiveScore, isPinyin } from '@/lib/question-tools';
 import { questionTopicTitle } from '@/lib/pinyin-collections';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import {
   ArrowLeft,
@@ -20,9 +20,9 @@ import {
   Check,
   CheckCheck,
   ChevronDown,
-  Clock3,
   Eye,
   Minus,
+  MoreHorizontal,
   PencilLine,
   X,
 } from 'lucide-react';
@@ -48,20 +48,9 @@ import { Empty, Heading } from './shared';
 import QuestionReviewButton from './question-review';
 import ProcessNotebook from './process-notebook';
 import { RemediationLauncher } from './remediation-course';
-import {
-  ComboCelebration,
-  ComboIndicator,
-  Penguin,
-  RewardFlash,
-  type RewardFeedback,
-} from './learning-game';
-import { learningGame } from '@/lib/learning-game';
-import { rewardSound } from '@/lib/game-client';
 import { createLearningTimer } from '@/lib/learning-timer';
 import { errorCauseEstimate } from '@/lib/learning-evidence';
-import {chestEligibility} from '@/lib/chest-eligibility';
 import { trackProductEvent } from '@/lib/product-insights';
-import { Heart, Zap, Volume2, VolumeX } from 'lucide-react';
 export default function StudyView({
   session,
   finish,
@@ -82,13 +71,6 @@ export default function StudyView({
   const [processHint, setProcessHint] = useState(false);
   const [hintLevel, setHintLevel] = useState<AnswerEvent['hintLevel']>();
   const activeTimer = useRef(createLearningTimer(performance.now()));
-  const [reward, setReward] = useState<RewardFeedback | null>(null);
-  const [gameNow, setGameNow] = useState(Date.now());
-  const game = learningGame(data, gameNow);
-  useEffect(() => {
-    const t = setInterval(() => setGameNow(Date.now()), 15000);
-    return () => clearInterval(t);
-  }, []);
   const [index, setIndex] = useState(0),
     [focusMode, setFocusMode] = useState(!sprint),
     [scratchOpen, setScratchOpen] = useState(false),
@@ -107,8 +89,14 @@ export default function StudyView({
   >();
   const lock = useRef(false);
   const [mathCheck,setMathCheck]=useState<MathVerification|null>(null),[mathChecking,setMathChecking]=useState(false);
+  const [confirmedRating, setConfirmedRating] = useState<AnswerEvent['outcome'] | null>(null);
+  const [leavingFeedback, setLeavingFeedback] = useState(false);
+  const feedbackShownAt = useRef<number | null>(null);
   const mathToken=useRef(0);
+  const stageRef = useRef<HTMLElement>(null);
+  const completionTitle = useRef<HTMLHeadingElement>(null);
   const answerCloseRef = useRef<HTMLButtonElement>(null);
+  const solutionId = useId();
   const originNamespace = useRef(currentNamespace());
   const [extraItems, setExtraItems] = useState<QueueItem[]>([]);
   const sessionItems = extraItems.length ? extraItems : (session?.items ?? []);
@@ -132,10 +120,7 @@ export default function StudyView({
     });
   };
   const item = sessionItems[index];
-  const q =
-    item?.gameRecovery && item.question.type === 'subjective'
-      ? { ...item.question, type: 'recall' }
-      : item?.question;
+  const q = item?.question;
   const node = data.nodes.find((n) => n.id === q?.nodeId);
   const reset = () => {
     mathToken.current++;setMathCheck(null);setMathChecking(false);
@@ -166,7 +151,6 @@ export default function StudyView({
     );
     const restoredItems: QueueItem[] = persisted?.items ?? session?.items ?? [];
     setExtraItems(restoredItems);
-    setReward(null);
     const saved = data.events
       .filter((e) => e.sessionId === session?.id)
       .sort((a, b) => a.occurredAt.localeCompare(b.occurredAt));
@@ -209,6 +193,20 @@ export default function StudyView({
     draftWrite.current={save,timer:setTimeout(()=>{save();draftWrite.current=null;},350)};
   }
   const mathematicalBlank=q?.type==='blank'&&['math','physics'].includes(q.subject);
+  const guided = focusMode && session?.mode === 'review' && !sprint;
+  useLayoutEffect(() => {
+    if (!done || !guided) return;
+    if (stageRef.current) stageRef.current.scrollTop = 0;
+    completionTitle.current?.focus({ preventScroll: true });
+  }, [done, guided]);
+  const checked = !guided || !q || !revealed || !answer.trim() ? null
+    : grade && grade.maxScore > 0 ? grade.score / grade.maxScore
+    : mathematicalBlank ? mathCheck?.status === 'equivalent' ? 1 : mathCheck?.status === 'not-equivalent' ? 0 : null
+    : q.type !== 'subjective' && q.type !== 'recall' ? objectiveScore(q, answer) : null;
+  const hasScoredFeedback = checked !== null;
+  useEffect(() => {
+    feedbackShownAt.current = hasScoredFeedback ? performance.now() : null;
+  }, [hasScoredFeedback, index, session?.id]);
   async function checkMath(){
     if(!q||!mathematicalBlank)return null;
     const token=++mathToken.current;setMathChecking(true);
@@ -355,7 +353,6 @@ export default function StudyView({
           remediationId: item?.remediationId,
           remediationGroup: item?.remediationGroup,
           remediationPhase: item?.remediationPhase,
-          gameRecovery: item?.gameRecovery,
           policy: schedule.policy,
           intervalFactor: schedule.factor,
           memoryFamily: schedule.family,
@@ -395,40 +392,7 @@ export default function StudyView({
       ).loadData(originNamespace.current);
       if (fresh.questions.find((x) => x.id === q.id)?.reviewStatus === 'paused')
         throw new Error('这道题已暂停，请保存退出后重新安排练习');
-      const beforeGame = learningGame(fresh);
-      if (
-        !sprint &&
-        fresh.settings.gameHearts !== false &&
-        session.mode === 'review' &&
-        !item.gameRecovery &&
-        beforeGame.hearts === 0
-      ) {
-        setGameNow(Date.now());
-        setAnswerPanelOpen(false);
-        throw new Error('生命值已用完，可通过恢复练习补回');
-      }
       await put('event', e, e.id, false, originNamespace.current);
-      if (
-        session.mode === 'review' &&
-        !fresh.events.some((x) => x.id === e.id)
-      ) {
-        const afterGame = learningGame({
-          ...fresh,
-          events: [...fresh.events, e],
-        });
-        const gained = afterGame.rewards.get(e.id);
-        if (gained) {
-          setReward({
-            ...gained,
-            id: e.id,
-            goalDone: !beforeGame.goalDone && afterGame.goalDone,
-            levelUp:
-              afterGame.level > beforeGame.level ? afterGame.level : undefined,
-          });
-          if (fresh.settings.gameSound !== false) rewardSound(gained.correct);
-        }
-        setGameNow(Date.now());
-      }
       const all = [...results, e];
       setResults(all);
       let nextItems = sessionItems;
@@ -467,6 +431,16 @@ export default function StudyView({
           setExtraItems(nextItems);
         }
       }
+      if (guided) {
+        if (!hasScoredFeedback) setConfirmedRating(outcome);
+        const elapsed = feedbackShownAt.current === null ? 0 : performance.now() - feedbackShownAt.current;
+        const remaining = Math.max(0, 1600 - elapsed);
+        if (remaining) await new Promise<void>(resolve => window.setTimeout(resolve, remaining));
+        setLeavingFeedback(true);
+        if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          await new Promise<void>(resolve => window.setTimeout(resolve, 320));
+        }
+      }
       if (index + 1 >= nextItems.length) {
         if (session.mode === 'test')
           await put(
@@ -500,83 +474,10 @@ export default function StudyView({
     } catch (e) {
       notify(e instanceof Error ? e.message : '保存未完成，请重试');
     } finally {
+      setConfirmedRating(null);
+      setLeavingFeedback(false);
       lock.current = false;
       setBusy(false);
-    }
-  }
-  async function restoreHearts() {
-    if (
-      !session ||
-      !q ||
-      lock.current ||
-      currentNamespace() !== originNamespace.current
-    )
-      return;
-    lock.current = true;
-    setBusy(true);
-    try {
-      const fresh = await (
-        await import('@/lib/store')
-      ).loadData(originNamespace.current);
-      const available = fresh.questions
-        .filter(
-          (x) =>
-            x.reviewStatus !== 'paused' &&
-            !x.examTask &&
-            x.nodeId === q.nodeId &&
-            x.skillId === q.skillId,
-        )
-        .sort((a, b) => a.difficulty - b.difficulty);
-      const candidates = available.length ? available : [q];
-      const recovery = Array.from({ length: 3 }, (_, i) => ({
-        question: candidates[i % candidates.length],
-        reason: '恢复练习',
-        priority: 1,
-        gameRecovery: true,
-        scaffold:
-          '先对照参考答案，重新梳理关键步骤，再尝试回忆。恢复练习会标记为辅助学习。',
-      }));
-      const updated = [...sessionItems];
-      updated.splice(index, 0, ...recovery);
-      await put(
-        'job',
-        {
-          ...session,
-          items: updated,
-          kind: 'session',
-          status: 'active',
-          createdAt: new Date().toISOString(),
-        },
-        'active-session',
-        false,
-        originNamespace.current,
-      );
-      if (currentNamespace() !== originNamespace.current) return;
-      setExtraItems(updated);
-      reset();
-      await refresh();
-    } catch (e) {
-      notify(e instanceof Error ? e.message : '恢复练习未能打开');
-    } finally {
-      lock.current = false;
-      setBusy(false);
-    }
-  }
-  async function toggleSound() {
-    const ns = originNamespace.current;
-    try {
-      const fresh = await (await import('@/lib/store')).loadData(ns);
-      if (currentNamespace() !== ns) return;
-      await put(
-        'setting',
-        { ...fresh.settings, gameSound: fresh.settings.gameSound === false },
-        'settings',
-        false,
-        ns,
-      );
-      await refresh();
-    } catch (e) {
-      notify(e instanceof Error ? e.message : '设置未保存');
     }
   }
   async function submitSubjective() {
@@ -636,7 +537,15 @@ export default function StudyView({
   }
   useEffect(() => {
     if (!answerPanelOpen) return;
-    answerCloseRef.current?.focus();
+    const close = answerCloseRef.current;
+    close?.focus({ preventScroll: true });
+    if (close?.closest('.guided-answer')) {
+      close.scrollIntoView?.({
+        block: 'nearest',
+        inline: 'nearest',
+        behavior: window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth',
+      });
+    }
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setAnswerPanelOpen(false);
     };
@@ -646,10 +555,6 @@ export default function StudyView({
   useEffect(() => {
     if (!q || done) return;
     const keys = (e: KeyboardEvent) => {
-      if (document.querySelector('.combo-screen')) {
-        if (e.code === 'Space') e.preventDefault();
-        return;
-      }
       if (
           ['INPUT', 'TEXTAREA','MATH-FIELD'].includes((e.target as HTMLElement)?.tagName) ||
         busy
@@ -781,40 +686,26 @@ export default function StudyView({
       </>
     );
   }
-  if (done) {
-    const chest=chestEligibility(session.id,data.jobs,results);
+  const leaveSummary = () => {
+    finish();
+    if (!sprint && session.mode !== 'test') navigate('plan');
+  };
+  const summaryAction = done ? <button type="button" className="primary" onClick={leaveSummary}>
+    {sprint ? tr('dashboard:sprint.next') : session.mode === 'test' ? tr('study:回到学习工作台') : tr('common:返回学习安排')}
+    <ArrowRight size={16} />
+  </button> : null;
+  const completion = done ? (() => {
     const score = results.length
       ? Math.round(
           (results.reduce((a, e) => a + e.score, 0) / results.length) * 100,
         )
       : 0;
     return (
-      <div className="session-summary">
-        <RewardFlash reward={reward} />
-        <ComboCelebration reward={reward} />
-        {session.mode !== 'test' && (
-          <>
-            <Penguin skin={game.skin} className="summary-penguin" />
-            <div className="game-session-earned">
-              <Zap />+
-              {results.reduce(
-                (a, e) => a + (game.rewards.get(e.id)?.xp ?? 0),
-                0,
-              )}{' '}
-              XP{' '}
-              <span>
-                {game.goalDone
-                  ? tr("study:每日目标达成！")
-                  : tr("common:{{v0}} / {{v1}} 每日目标",{v0:(game.daily.count),v1:(game.goal)})}
-              </span>
-            </div>
-          </>
-        )}
-        <span className="summary-icon">
+      <section className={'session-summary' + (guided ? ' guided-completion' : '')}>
+        <span className="summary-icon" aria-hidden="true">
           <CheckCheck size={29} />
         </span>
-        <p className="eyebrow">SESSION COMPLETE</p>
-        <h1>
+        <h1 ref={completionTitle} tabIndex={-1}>
           {session.mode === 'test' ? tr("study:测试已完成") : tr("study:今天，又学扎实了一点。")}
         </h1>
         <p className="muted">{tr("study:学习记录已保存，下一次复习安排已更新。")}</p>
@@ -906,149 +797,26 @@ export default function StudyView({
             }
           >{tr("study:返回补救课程")}</button>
         )}
-        <button
-          className="primary"
-          onClick={() => {
-            finish();
-            if (!sprint && session.mode !== 'test') navigate(chest.eligible?'chest':'plan',chest.eligible?session.id:undefined);
-          }}
-        >
-          {sprint ? tr("dashboard:sprint.next") : session.mode === 'test' ? tr("study:回到学习工作台") : chest.eligible?tr("common:打开练习宝箱"):tr("common:返回学习安排")}
-          <ArrowRight size={16} />
-        </button>
-        {!sprint&&session.mode!=='test'&&!chest.eligible&&<p className="muted" role="status">{chest.reason}</p>}
-      </div>
+        {!guided && summaryAction}
+      </section>
     );
-  }
+  })() : null;
+  if (done && !guided) return completion;
   if (!q) return null;
   const isTest = session.mode === 'test';
-  if (
-    !sprint &&
-    !isTest &&
-    data.settings.gameHearts !== false &&
-    game.hearts === 0 &&
-    !item.gameRecovery
-  )
-    return (
-      <div
-        className="game-recovery-screen"
-        role="region"
-        aria-label={tr("study:恢复生命值")}
-      >
-        <button className="quiet recovery-back" onClick={finish}>
-          <ArrowLeft size={18} />{tr("study:保存并退出")}</button>
-        <RewardFlash reward={reward} />
-        <div className="recovery-content">
-          <div className="recovery-heart">
-            <Heart size={30} fill="currentColor" />
-            <span>0 / {game.maxHearts}</span>
-          </div>
-          <Penguin skin={game.skin} action="thinking" actionKey="recovery" />
-          <h1>{tr("study:稍作巩固，再次出发")}</h1>
-          <p>{tr("study:通过三道恢复练习补回一颗生命值。")}<br />{tr("study:你的原练习与作答进度已经保留。")}</p>
-          <button
-            className="primary"
-            disabled={busy}
-            onClick={() => void restoreHearts()}
-          >{tr("study:开始恢复练习")}<Heart size={18} />
-          </button>
-          <button className="secondary" onClick={() => navigate('shop')}>{tr("study:打开点数商店")}</button>
-          <button className="quiet" onClick={() => navigate('you')}>{tr("study:调整生命值挑战")}</button>
-          <small>{tr("study:约")}{' '}
-            {Math.max(
-              1,
-              Math.ceil(((game.nextHeartAt ?? gameNow) - gameNow) / 60000),
-            )}{' '}{tr("study:分钟后自动恢复一颗")}</small>
-        </div>
-      </div>
-    );
-  return (
-    <div
-      className={
-        'study-surface ' +
-        (isTest ? 'assessment-surface' : 'practice-surface') +
-        (!isTest && focusMode ? ' focus-mode' : '')
-      }
-    >
-      <RewardFlash reward={reward} />
-      <ComboCelebration reward={reward} />
-      <div className="session-top">
-        {!sprint && <button className="quiet" onClick={() => { trackProductEvent('study_saved_exit', 'study'); savedExit(); }}>
-          <ArrowLeft size={16} />{tr("study:保存并退出")}</button>}
-        <span>
-          {isTest
-            ? session.title
-            : subjectName(q.subject) + ' · ' + questionTopicTitle(q, node)}
-        </span>
-        <b>
-          {index + 1}
-          <span> / {sessionItems.length}</span>
-        </b>
-        {!isTest && (
-          <div className="study-view-controls">{!sprint&&<NaviButton target={{type:"question",id:q.id}}/>}
-            <button
-              className="quiet"
-              onClick={() => setScratchOpen((v) => !v)}
-              aria-expanded={scratchOpen}
-            >
-              <PencilLine size={15} />{tr("study:草稿纸")}</button>
-            {!sprint&&<button
-              className="quiet"
-              onClick={toggleFocus}
-              aria-pressed={focusMode}
-            >
-              {focusMode ? tr("study:退出沉浸") : tr("study:沉浸模式")}
-            </button>}
-          </div>
-        )}
-      </div>
-      <Progress
-        value={(index / sessionItems.length) * 100}
-        className="session-progress"
-      />
-      {!isTest && !sprint && (
-        <div className="game-session-hud">
-          <span className="game-gems">
-            <Zap size={18} />
-            {results.reduce(
-              (a, e) => a + (game.rewards.get(e.id)?.xp ?? 0),
-              0,
-            )}{' '}
-            XP
-          </span>
-          <span>
-            {item.gameRecovery
-              ? tr("common:恢复练习 · 已完成 {{v0}} / 3",{v0:(game.recovery)})
-              : tr("common:每日目标 {{v0}} / {{v1}}",{v0:(game.daily.count),v1:(game.goal)})}
-          </span>
-          <ComboIndicator reward={reward} />
-          {data.settings.gameHearts !== false && (
-            <span className="game-heart" aria-label={tr("common:{{v0}} 颗生命值",{v0:(game.hearts)})}>
-              {Array.from({ length: game.maxHearts }, (_, i) => (
-                <Heart
-                  key={i}
-                  size={18}
-                  fill={i < game.hearts ? 'currentColor' : 'none'}
-                  style={{ opacity: i < game.hearts ? 1 : 0.3 }}
-                />
-              ))}
-            </span>
-          )}
-          <button
-            className="quiet"
-            aria-label={
-              data.settings.gameSound === false ? tr("study:开启音效") : tr("study:关闭音效")
-            }
-            onClick={() => void toggleSound()}
-          >
-            {data.settings.gameSound === false ? (
-              <VolumeX size={18} />
-            ) : (
-              <Volume2 size={18} />
-            )}
-          </button>
-        </div>
-      )}
+  const feedback = confirmedRating ? (confirmedRating === 'wrong' ? 'review' : confirmedRating)
+    : checked === null ? undefined : checked >= 1 ? 'correct' : 'review';
+  const suggestedRating = checked === null ? undefined : checked >= 1 ? 'correct' : checked > 0 ? 'unsure' : 'wrong';
+  const feedbackText = feedback === 'correct' ? tr('study:正确')
+    : feedback === 'unsure' ? tr('study:不确定')
+    : checked !== null && checked > 0 ? tr('common:部分正确') : tr('common:需要订正');
+  const explanation = isPinyin(q) ? '' : q.explanation?.trim();
+  const naviFeedback = checked !== null && !grade && explanation && explanation.length <= 160 && !explanation.includes('\n')
+    ? explanation : undefined;
+  const naviCorrectAnswer = feedback === 'correct' && checked === 1 && ['choice', 'blank'].includes(q.type) &&
+    q.answer.length <= 24 && !q.answer.includes('\n') ? q.answer : undefined;
+  const saveExit = () => { trackProductEvent('study_saved_exit', 'study'); savedExit(); };
+  const metadata = (
       <div className="question-meta">
         {data.questions.find((x) => x.id === q.id)?.reviewStatus ===
           'paused' && (
@@ -1063,7 +831,9 @@ export default function StudyView({
             <CheckCheck size={13} />{tr("study:解答已核验")}</span>
         )}
       </div>
-      {item?.scaffold && !isTest && (
+  );
+  const questionScaffold = (<>
+      {item?.scaffold && !item.gameRecovery && !isTest && (
         <aside className="scaffold">
           <BookOpen size={17} />
           <div>
@@ -1072,6 +842,14 @@ export default function StudyView({
           </div>
         </aside>
       )}
+  </>);
+  const hintText = hintLevel === 'light'
+    ? tr('study:先用自己的话复述题意，确认需要回答的问题。')
+    : hintLevel === 'method'
+      ? tr('common:列出已知与未知，回想相关概念，再独立选择方法。')
+      : hintLevel === 'step' ? q.solution?.[0] : hintLevel === 'answer' ? q.answer : undefined;
+  const showHint = guided && !revealed ? hintText : undefined;
+  const help = (<>
       {!isTest && !isPinyin(q) && !revealed && (
         <details className="graded-hints">
           <summary>{tr("study:需要一点帮助？")}</summary>
@@ -1082,40 +860,138 @@ export default function StudyView({
                   className="quiet"
                   key={level}
                   disabled={level === 'step' && !q.solution?.length}
-                  onClick={() =>
+                  onClick={(event) => {
                     setHintLevel((old) =>
                       !old ||
                       ['light', 'method', 'step', 'answer'].indexOf(level) >
                         ['light', 'method', 'step', 'answer'].indexOf(old)
                         ? level
                         : old,
-                    )
-                  }
+                    );
+                    if (guided) {
+                      const tools = event.currentTarget.closest<HTMLDetailsElement>('.guided-tools');
+                      if (tools) tools.open = false;
+                    }
+                  }}
                 >
                   {['轻提示', tr("study:方法提示"), tr("study:关键步骤"), tr("study:接近答案")][i]}
                 </button>
               ),
             )}
           </div>
-          {hintLevel && (
-            <MathText>
-              {hintLevel === 'light'
-                ? tr("study:先用自己的话复述题意，确认需要回答的问题。")
-                : hintLevel === 'method'
-                  ? tr("common:列出已知与未知，回想相关概念，再独立选择方法。")
-                  : hintLevel === 'step'
-                    ? (q.solution?.[0] ?? '暂无步骤提示')
-                    : q.answer}
-            </MathText>
-          )}
+          {!guided && hintText && <MathText>{hintText}</MathText>}
           <small>{tr("study:提示深度会记录；之后的无提示验证才用于确认独立掌握。")}</small>
         </details>
       )}
+  </>);
+  const practiceActions = (<>
+        {!revealed && !isTest && q.type !== 'subjective' && (
+          <div className="reveal-area">
+            <button className="primary" onClick={reveal} aria-keyshortcuts="Space">
+              <Eye size={17} />{tr("study:显示答案")}</button>
+            {!guided && <span>{tr("study:先独立思考，再揭晓答案")}<kbd>Space</kbd></span>}
+          </div>
+        )}
+        {!grade && q.type === 'subjective' && (
+          <div className="reveal-area">
+            <button
+              className="primary"
+              disabled={busy || !answer.trim() || !aiReady}
+              onClick={submitSubjective}
+            >
+              {busy ? tr("study:正在按评分点批改…") : tr("study:提交批改")}
+              <ArrowRight size={16} />
+            </button>
+            {!aiReady && (
+              <p className="muted">{tr("study:批改连接待配置；你仍可对照参考答案自评。")}</p>
+            )}
+            <button
+              className="quiet"
+              hidden={isTest}
+              disabled={busy}
+              onClick={reveal}
+            >{tr("study:对照参考答案自评")}</button>
+          </div>
+        )}
+  </>);
+  const reopenAnswer = (<>
+        {revealed && !answerPanelOpen && !isTest && (
+          <div className="reveal-area">
+            <button
+              className="primary"
+              onClick={() => setAnswerPanelOpen(true)}
+            >
+              <Eye size={17} />{tr("study:查看参考答案")}</button>
+          </div>
+        )}
+  </>);
+  const saveGrade = grade && (
+                      <button
+                        className="primary"
+                        disabled={busy}
+                        onClick={() =>
+                          record(
+                            grade.score / grade.maxScore >= 0.85
+                              ? 'correct'
+                              : grade.score / grade.maxScore >= 0.4
+                                ? 'unsure'
+                                : 'wrong',
+                            grade,
+                          )
+                        }
+                      >{tr("study:保存反馈，下一题")}<ArrowRight size={16} />
+                      </button>
+  );
+  const ratingActions = (
+                      <div className="rating-actions" role="group" aria-label={tr("study:对照参考答案自评")}>
+                        <button
+                          className="wrong"
+                          data-matches-result={suggestedRating === 'wrong' || undefined}
+                          aria-keyshortcuts="1"
+                          disabled={busy}
+                          onClick={() => record('wrong')}
+                        >
+                          <X size={17} />{tr("study:答错")}{!guided && <kbd>1</kbd>}
+                        </button>
+                        <button
+                          className="unsure"
+                          data-matches-result={suggestedRating === 'unsure' || undefined}
+                          aria-keyshortcuts="2"
+                          disabled={busy}
+                          onClick={() => record('unsure')}
+                        >
+                          <Minus size={17} />{tr("study:不确定")}{!guided && <kbd>2</kbd>}
+                        </button>
+                        <button
+                          className="correct"
+                          data-matches-result={suggestedRating === 'correct' || undefined}
+                          aria-keyshortcuts="3"
+                          disabled={busy}
+                          onClick={() => record('correct')}
+                        >
+                          <Check size={17} />{tr("study:答对")}{!guided && <kbd>3</kbd>}
+                        </button>
+                      </div>
+  );
+  const confidenceOptions = !revealed && !isTest && (
+    <div className="confidence-picker" role="group" aria-label={tr("study:作答前，你有多确定？")}>
+      {!guided && <span>{tr("study:作答前，你有多确定？")}</span>}
+      {([
+        ['sure', tr("study:有把握")],
+        ['unsure', tr("study:犹豫")],
+        ['guess', tr("study:猜测")],
+      ] as const).map(([id, label]) => (
+        <button key={id} type="button" aria-pressed={confidence === id}
+          className={confidence === id ? 'selected' : ''} onClick={() => setConfidence(id)}>
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+  const task = (
       <NaviLearningWorkspace key={q.id} question={q} answer={answer} grade={grade} focused={focusMode} protected={isTest||sprint} onFocus={setFocusMode} onHelp={()=>openNavi({type:'question',id:q.id})} onAssistance={level=>setHintLevel(old=>{const levels=['light','method','step','answer'] as const;return levels[Math.max(level-1,old?levels.indexOf(old):0)];})}>
       <article className="question-card" key={q.id}>
-        <p className="question-number">
-          QUESTION {String(index + 1).padStart(2, '0')}
-        </p>
+        {guided && questionScaffold}
         <h2 className="question-prompt">
           <MathText>{q.prompt}</MathText>
         </h2>
@@ -1132,6 +1008,10 @@ export default function StudyView({
               disabled={revealed}
               onClick={() => changeAnswer(option,'text')}
               className={answer === option ? 'chosen' : ''}
+              data-guided-option={guided ? '' : undefined}
+              data-guided-result={guided && revealed ? (
+                objectiveScore(q, option) >= 1 ? 'correct' : answer === option ? 'review' : undefined
+              ) : undefined}
             >
               <MathText>{option}</MathText>
             </button>
@@ -1173,55 +1053,8 @@ export default function StudyView({
             ))}
           </div>
         )}
-        {!revealed && !isTest && (
-          <div className="confidence-picker">
-            <span>{tr("study:作答前，你有多确定？")}</span>
-            {(
-              [
-                ['sure', tr("study:有把握")],
-                ['unsure', tr("study:犹豫")],
-                ['guess', tr("study:猜测")],
-              ] as const
-            ).map(([id, label]) => (
-              <button
-                key={id}
-                className={confidence === id ? 'selected' : ''}
-                onClick={() => setConfidence(id)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        )}
-        {!revealed && !isTest && q.type !== 'subjective' && (
-          <div className="reveal-area">
-            <button className="primary" onClick={reveal}>
-              <Eye size={17} />{tr("study:显示答案")}</button>
-            <span>{tr("study:先独立思考，再揭晓答案")}<kbd>Space</kbd>
-            </span>
-          </div>
-        )}
-        {!grade && q.type === 'subjective' && (
-          <div className="reveal-area">
-            <button
-              className="primary"
-              disabled={busy || !answer.trim() || !aiReady}
-              onClick={submitSubjective}
-            >
-              {busy ? tr("study:正在按评分点批改…") : tr("study:提交批改")}
-              <ArrowRight size={16} />
-            </button>
-            {!aiReady && (
-              <p className="muted">{tr("study:批改连接待配置；你仍可对照参考答案自评。")}</p>
-            )}
-            <button
-              className="quiet"
-              hidden={isTest}
-              disabled={busy}
-              onClick={reveal}
-            >{tr("study:对照参考答案自评")}</button>
-          </div>
-        )}
+        {!guided && confidenceOptions}
+        {!guided && practiceActions}
         {isTest && !revealed && q.type !== 'subjective' && (
           <div className="reveal-area">
             <button
@@ -1242,33 +1075,16 @@ export default function StudyView({
             <p className="muted">{tr("study:简答自动比对需要与标准答案一致；复杂表达建议选择主观题批改。")}</p>
           </div>
         )}
-        {revealed && !answerPanelOpen && !isTest && (
-          <div className="reveal-area">
-            <button
-              className="primary"
-              onClick={() => setAnswerPanelOpen(true)}
-            >
-              <Eye size={17} />{tr("study:查看参考答案")}</button>
-          </div>
-        )}
+        {!guided && reopenAnswer}
         {revealed &&
           answerPanelOpen &&
-          createPortal(
-            <div
-              className="answer-modal-backdrop"
-              onMouseDown={() => setAnswerPanelOpen(false)}
-            >
-              <section
-                className="answer-modal"
-                role="dialog"
-                aria-modal="true"
-                aria-label={tr("study:参考答案与核对")}
-                onMouseDown={(event) => event.stopPropagation()}
-              >
+          <AnswerPresentation inline={guided} close={() => setAnswerPanelOpen(false)}>
                 <header className="answer-modal-head">
                   <div>
-                    <span>{tr("study:核对答案")}</span>
-                    <small>{tr("study:第")}{index + 1} / {sessionItems.length}{tr("study:题")}</small>
+                    <span className={guided && !grade ? 'guided-answer-label' : undefined}>
+                      {tr(guided && !grade ? "study:参考答案" : "study:核对答案")}
+                    </span>
+                    {!guided && <small>{tr("study:第")}{index + 1} / {sessionItems.length}{tr("study:题")}</small>}
                   </div>
                   <button
                     ref={answerCloseRef}
@@ -1291,7 +1107,6 @@ export default function StudyView({
                     <>
                       <div className="grade-heading">
                         <div>
-                          <p className="eyebrow">RUBRIC FEEDBACK</p>
                           <h3>{grade.label}</h3>
                         </div>
                         <strong>
@@ -1324,26 +1139,12 @@ export default function StudyView({
                         <summary>{tr("study:查看示例答案")}</summary>
                         <p>{grade.exampleAnswer}</p>
                       </details>
-                      <button
-                        className="primary"
-                        disabled={busy}
-                        onClick={() =>
-                          record(
-                            grade.score / grade.maxScore >= 0.85
-                              ? 'correct'
-                              : grade.score / grade.maxScore >= 0.4
-                                ? 'unsure'
-                                : 'wrong',
-                            grade,
-                          )
-                        }
-                      >{tr("study:保存反馈，下一题")}<ArrowRight size={16} />
-                      </button>
+                      {!guided && saveGrade}
                     </>
                   ) : (
                     <>
-                      <p className="answer-label">{tr("study:参考答案")}</p>
-                      <QuestionReviewButton question={q} />
+                      {!guided && <p className="answer-label">{tr("study:参考答案")}</p>}
+                      {!guided && <QuestionReviewButton question={q} />}
                       <h3>
                         <MathText>
                           {q.type === 'matching' ? tr("study:配对结果") : q.answer}
@@ -1361,13 +1162,13 @@ export default function StudyView({
                             </MathText>
                           </p>
                         ))}
-                      {!isPinyin(q) && q.explanation && (
+                      {explanation && !naviFeedback && (
                         <p className="answer-explanation">
-                          <MathText>{q.explanation}</MathText>
+                          <MathText>{explanation}</MathText>
                         </p>
                       )}
-                      {answer && q.type!=='subjective' && !mathematicalBlank && (
-                        <p className="answer-check">{tr("study:本次作答：")}{objectiveScore(q, answer) === 1
+                      {!guided && answer && q.type!=='subjective' && !mathematicalBlank && (
+                        <p className="answer-check" data-outcome={objectiveScore(q, answer) === 1 ? 'correct' : 'review'}>{tr("study:本次作答：")}{objectiveScore(q, answer) === 1
                             ? tr("study:正确")
                             : objectiveScore(q, answer) > 0
                               ? tr("common:部分正确")
@@ -1394,59 +1195,161 @@ export default function StudyView({
                           <p className="muted">{tr("study:同一种能力，换了情境。比较两题共同的方法。")}</p>
                         </details>
                       )}
-                      {q.solution?.length && (
-                        <>
+                      {q.solution && q.solution.length > 0 && (
+                        <div className="solution-disclosure" data-open={solution || undefined}>
                           <button
+                            type="button"
                             className="quiet solution-toggle"
-                            onClick={() => setSolution(!solution)}
+                            aria-expanded={solution}
+                            aria-controls={solutionId}
+                            onClick={() => setSolution(open => !open)}
                           >
-                            <ChevronDown size={15} />{tr("study:查看解题过程")}</button>
-                          {solution && (
-                            <ol className="solution-steps">
-                              {q.solution.map((step, i) => (
-                                <li key={i}>
-                                  <span>STEP {i + 1}</span>
-                                  <MathText>{step}</MathText>
-                                </li>
-                              ))}
-                            </ol>
-                          )}
-                        </>
+                            <BookOpen size={17} aria-hidden="true" />
+                            {tr('study:查看解题过程')}
+                            <ChevronDown size={16} className="solution-chevron" aria-hidden="true" />
+                          </button>
+                          <div id={solutionId} className="solution-panel" inert={!solution}>
+                            <div className="solution-panel-inner">
+                              <ol className="solution-steps" role="list">
+                                {q.solution.map((step, i) => (
+                                  <li key={i}>
+                                    <span className="solution-step-number" aria-hidden="true">{i + 1}</span>
+                                    <div className="solution-step-body"><MathText>{step}</MathText></div>
+                                  </li>
+                                ))}
+                              </ol>
+                            </div>
+                          </div>
+                        </div>
                       )}
-                      <div className="rating-actions">
-                        <button
-                          className="wrong"
-                          disabled={busy}
-                          onClick={() => record('wrong')}
-                        >
-                          <X size={17} />{tr("study:答错")}<kbd>1</kbd>
-                        </button>
-                        <button
-                          className="unsure"
-                          disabled={busy}
-                          onClick={() => record('unsure')}
-                        >
-                          <Minus size={17} />{tr("study:不确定")}<kbd>2</kbd>
-                        </button>
-                        <button
-                          className="correct"
-                          disabled={busy}
-                          onClick={() => record('correct')}
-                        >
-                          <Check size={17} />{tr("study:答对")}<kbd>3</kbd>
-                        </button>
-                      </div>
+                      {!guided && ratingActions}
                     </>
                   )}
                 </div>
-              </section>
-            </div>,
-            document.body,
-          )}
+          </AnswerPresentation>}
       </article>
       </NaviLearningWorkspace>
-      {!isTest && <QuestionReviewButton question={q} />}
-      {!isTest &&
+  );
+
+  return (
+    <div
+      data-ui-mode={guided ? 'guided-focus' : undefined}
+      data-stage={done ? 'completion' : undefined}
+      data-feedback={done ? undefined : feedback}
+      data-feedback-phase={!done && leavingFeedback ? 'leaving' : undefined}
+      className={'study-surface ' + (isTest ? 'assessment-surface' : 'practice-surface') + (guided ? ' focus-mode guided-practice' : '')}
+    >
+      {guided ? (
+        <>
+          <header className="guided-progress-header">
+            <button type="button" className="quiet guided-exit" onClick={done ? leaveSummary : saveExit}
+              aria-label={tr(done ? 'common:返回学习安排' : 'study:保存并退出')} title={tr(done ? 'common:返回学习安排' : 'study:保存并退出')}><X size={23} /></button>
+            <div className="guided-progress">
+              <Progress value={done ? 100 : ((index + Number(revealed)) / sessionItems.length) * 100}
+                aria-label={tr('study:第') + (done ? sessionItems.length : index + 1) + ' / ' + sessionItems.length + tr('study:题')} />
+              <span>{done ? sessionItems.length : index + 1} / {sessionItems.length}</span>
+            </div>
+            <div className="guided-header-actions">
+            {!done && <details className="guided-tools" onKeyDown={(event) => {
+              if (event.key !== 'Escape' || !event.currentTarget.open) return;
+              event.stopPropagation();
+              event.currentTarget.open = false;
+              event.currentTarget.querySelector('summary')?.focus();
+            }}>
+              <summary aria-label={tr('common:更多选项')} title={tr('common:更多选项')}><MoreHorizontal size={21} /></summary>
+              <div className="guided-tools-popover">
+                <button type="button" className="quiet" onClick={(e) => {
+                  setScratchOpen(v => !v);
+                  const menu = e.currentTarget.closest('details');
+                  if (menu) menu.open = false;
+                }} aria-expanded={scratchOpen}>
+                  <PencilLine size={15} />{tr('study:草稿纸')}
+                </button>
+                {help}
+                {confidenceOptions && <details className="guided-confidence">
+                  <summary>{tr("study:作答前，你有多确定？")}</summary>
+                  {confidenceOptions}
+                </details>}
+                <details className="guided-session-info">
+                  <summary>{subjectName(q.subject)} · {questionTopicTitle(q, node)}</summary>
+                  {metadata}
+                </details>
+                <div className="guided-tools-secondary">
+                  <QuestionReviewButton question={q} />
+                  <button type="button" className="quiet" onClick={toggleFocus}>{tr('study:退出沉浸')}</button>
+                </div>
+              </div>
+            </details>}
+              <span className="guided-wordmark" lang="en">Reviewbox<span aria-hidden="true">.</span></span>
+            </div>
+          </header>
+          <div className="guided-canvas">
+            <main className="guided-stage" ref={stageRef}>
+              {!done && data.questions.find(x => x.id === q.id)?.reviewStatus === 'paused' &&
+                <p className="guided-status" role="alert">{tr('study:这道题已暂停，请保存退出后重新安排练习。')}</p>}
+              {done ? completion : task}
+            </main>
+            <footer className="guided-footer">
+              {!done && (feedback || showHint) && <div key={feedback ?? hintLevel} className="guided-outcome" role="status">
+                {feedback && <strong>{feedback === 'correct' && <Check size={16} />}<span>
+                  {feedbackText}{naviCorrectAnswer && <> · <MathText>{naviCorrectAnswer}</MathText></>}
+                </span></strong>}
+                {(naviFeedback || showHint) && <p><MathText>{naviFeedback || showHint}</MathText></p>}
+              </div>}
+              <div className="guided-mentor">
+                <NaviButton iconOnly target={{type:'question',id:q.id}}
+                  motion={done ? 'idle' : feedback === 'correct' ? 'success' : feedback === 'review' ? 'error' : 'idle'} />
+              </div>
+              <div className="guided-actions" data-action={!done && answerPanelOpen && !grade ? 'rating' : undefined}>
+                {done ? summaryAction : answerPanelOpen ? (grade ? saveGrade : ratingActions) : revealed ? reopenAnswer : practiceActions}
+              </div>
+            </footer>
+          </div>
+        </>
+      ) : (
+        <>
+      <div className="session-top">
+        {!sprint && <button className="quiet" onClick={() => { trackProductEvent('study_saved_exit', 'study'); savedExit(); }}>
+          <ArrowLeft size={16} />{tr("study:保存并退出")}</button>}
+        <span>
+          {isTest
+            ? session.title
+            : subjectName(q.subject) + ' · ' + questionTopicTitle(q, node)}
+        </span>
+        <b>
+          {index + 1}
+          <span> / {sessionItems.length}</span>
+        </b>
+        {!isTest && (
+          <div className="study-view-controls">{!sprint&&<NaviButton iconOnly={focusMode} target={{type:"question",id:q.id}}/>}
+            <button
+              className="quiet"
+              onClick={() => setScratchOpen((v) => !v)}
+              aria-expanded={scratchOpen}
+            >
+              <PencilLine size={15} />{tr("study:草稿纸")}</button>
+            {!sprint&&<button
+              className="quiet"
+              onClick={toggleFocus}
+              aria-pressed={focusMode}
+            >
+              {focusMode ? tr("study:退出沉浸") : tr("study:沉浸模式")}
+            </button>}
+          </div>
+        )}
+      </div>
+      <Progress
+        value={(index / sessionItems.length) * 100}
+        className="session-progress"
+      />
+          {metadata}
+          {questionScaffold}
+          {help}
+          {task}
+          {!isTest && <QuestionReviewButton question={q} />}
+        </>
+      )}
+      {!done && !isTest &&
         scratchOpen &&
         (['math', 'physics'].includes(q.subject) ? (
           <ProcessNotebook
@@ -1460,9 +1363,31 @@ export default function StudyView({
         ) : (
           <Scratchpad key={q.id} onClose={() => setScratchOpen(false)} />
         ))}
-      <div className="gentle-note">
-        <Clock3 size={14} />{tr("study:只和自己的昨天相比。")}</div>
     </div>
+  );
+}
+
+function AnswerPresentation({
+  inline, close, children,
+}: {
+  inline: boolean;
+  close: () => void;
+  children: ReactNode;
+}) {
+  const panel = (
+    <section
+      className={inline ? 'answer-modal guided-answer' : 'answer-modal'}
+      role={inline ? 'region' : 'dialog'}
+      aria-modal={inline ? undefined : true}
+      aria-label={tr('study:参考答案与核对')}
+      onMouseDown={inline ? undefined : (event) => event.stopPropagation()}
+    >
+      {children}
+    </section>
+  );
+  return inline ? panel : createPortal(
+    <div className="answer-modal-backdrop" onMouseDown={close}>{panel}</div>,
+    document.body,
   );
 }
 

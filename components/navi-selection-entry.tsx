@@ -1,6 +1,5 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { Compass } from 'lucide-react';
 import { tr } from '@/lib/i18n';
 import { currentNaviUI } from '@/lib/navi-ui';
 import { parseWorkspaceRoute } from '@/lib/workspace-route';
@@ -84,7 +83,6 @@ export default function NaviSelectionEntry({
         setSelected(null);
       }}
     >
-      <Compass size={15} />
       {tr('study:navi.selection.ask')}
     </button>
   );

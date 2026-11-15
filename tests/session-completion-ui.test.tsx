@@ -10,14 +10,14 @@ import { loadData, put, switchAccount } from '../lib/store';
 import { parseImportText } from '../lib/import-skill';
 import { learningTemplate } from '../lib/import-templates';
 import { computeMastery } from '../lib/engine';
-import {advanceChest} from '../lib/game-client';
 const { JSDOM } = createRequire(import.meta.url)('jsdom');
 
-test('saving the final real answer keeps the settlement visible and opens the chest only on request', async () => {
+test('final answer transitions to summary inside Guided Focus and exits only on request', async () => {
   const dom = new JSDOM('<body><div id="root"></div></body>', {
     url: 'https://review.test/',
     pretendToBeVisual: true,
   });
+  Object.defineProperty(dom.window, 'matchMedia', { value: () => ({ matches: true }) });
   const keys = [
     'window',
     'document',
@@ -70,8 +70,6 @@ test('saving the final real answer keeps the settlement visible and opens the ch
       {
         name: '结算测试',
         dailyMinutes: 20,
-        gameHearts: false,
-        gameSound: false,
         alphaPreview: true,
       },
       'settings',
@@ -136,6 +134,8 @@ test('saving the final real answer keeps the settlement visible and opens the ch
       });
     };
     await act(async()=>{await new Promise(r=>setTimeout(r,1700))});
+    const originalCanvas = document.querySelector(".guided-canvas");
+    assert.ok(originalCanvas);
     await click(/^显示答案$/);
     await click(/^答对/);
     for (let i = 0; i < 30 && !document.querySelector('.session-summary'); i++)
@@ -154,11 +154,11 @@ test('saving the final real answer keeps the settlement visible and opens the ch
       (await loadData()).jobs?.find((j) => j.id === session.id)?.status,
       'complete',
     );
-    await click(/^打开练习宝箱/);
-    assert.equal(route, 'chest:' + session.id);
-    assert.equal((await advanceChest(session.id)).stage,1);
-    await advanceChest(session.id);
-    assert.equal((await advanceChest(session.id)).stage,3);
+    assert.strictEqual(document.querySelector('.guided-canvas'), originalCanvas);
+    assert.ok(document.querySelector('.guided-stage .session-summary'));
+    assert.equal((await loadData()).jobs?.some(j => j.kind === 'game-chest'), false);
+    await click(/^返回学习安排/);
+    assert.equal(route, 'plan:');
   } finally {
     await act(async () => root.unmount());
     globalThis.fetch = oldFetch;

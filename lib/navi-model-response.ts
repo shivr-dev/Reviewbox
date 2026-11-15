@@ -1,3 +1,5 @@
+import { workersFinalContent, WorkersModelOutputError } from './workers-ai-response';
+
 export class NaviResponseFormatError extends Error {
   constructor(public reason: 'structure' | 'truncated' | 'reasoning-only') {
     super(reason);
@@ -28,36 +30,19 @@ function finalObject(input: unknown) {
 }
 /** Read final content only. Never use a model's separate reasoning as an answer. */
 export function parseNaviModelResponse(body: any): unknown {
-  const result = body?.result ?? body;
   if (body?.success === false) throw new Error('Model request failed');
-  const choice = result?.choices?.[0];
-  if (choice?.finish_reason === 'length' || result?.finish_reason === 'length')
-    throw new NaviResponseFormatError('truncated');
-  let content = choice?.message?.content ?? result?.response;
-  if (content === undefined && result?.reply !== undefined) content = result;
-  if (Array.isArray(content)) {
-    if (content.some((v) => v?.type !== 'text' || typeof v.text !== 'string'))
-      throw new NaviResponseFormatError('structure');
-    content = content.map((v) => v.text).join('');
+  let content: unknown;
+  try { content = workersFinalContent(body); }
+  catch (error) {
+    if (error instanceof WorkersModelOutputError) throw new NaviResponseFormatError(error.reason);
+    throw error;
   }
   if (content && typeof content === 'object' && !Array.isArray(content)) {
     return finalObject(content);
   }
   if (typeof content !== 'string' || content.length > 120000)
     throw new NaviResponseFormatError('structure');
-  let text = content.replace(/^\uFEFF/, '').trim();
-  while (/^<think\s*>/i.test(text)) {
-    const close = text.search(/<\/think\s*>/i);
-    if (close < 0) throw new NaviResponseFormatError('reasoning-only');
-    const end = text.slice(close).match(/^<\/think\s*>/i)![0].length;
-    text = text.slice(close + end).trim();
-  }
-  // Some providers omit the opening tag because it is part of the chat template.
-  const closing = text.indexOf('</think>');
-  if (closing >= 0 && (text.indexOf('{') < 0 || closing < text.indexOf('{')))
-    text = text.slice(closing + 8).trim();
-  if (!text) throw new NaviResponseFormatError('reasoning-only');
-  text = text
+  const text = content
     .replace(/^```(?:json)?\s*\n?/i, '')
     .replace(/\s*```$/, '')
     .trim();
@@ -126,3 +111,4 @@ export function naviQuoteMatches(content: string, quote: string) {
   }
   return false;
 }
+

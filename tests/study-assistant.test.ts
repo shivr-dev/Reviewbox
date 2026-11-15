@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { buildQueue } from '../lib/engine';
 import {
   assistantSettings,
   completedWeek,
@@ -106,6 +107,89 @@ function event(
   };
 }
 const hours = 3600000;
+test('short learning and initial diagnosis cover topics before repeating a large topic', () => {
+  const nodes = Array.from({ length: 12 }, (_, i) =>
+    node('topic-' + i.toString().padStart(2, '0')),
+  );
+  const d = data(nodes);
+  d.questions = nodes.flatMap((n) =>
+    Array.from({ length: 8 }, (_, i) => question(n, n.id + '-' + i)),
+  );
+  const plan = dailyStudyPlan(d, now);
+  assert.equal(
+    new Set(plan.queue.slice(0, 12).map((i) => i.question.nodeId)).size,
+    12,
+  );
+  const initial = plan.recommendations.find((r) => r.mode === 'initial')!;
+  assert.equal(
+    new Set(initial.questions.map((i) => i.question.nodeId)).size,
+    initial.questions.length,
+  );
+  const direct = buildQueue(d, { practice: true, limit: 12, now });
+  assert.equal(new Set(direct.map((i) => i.question.nodeId)).size, 12);
+});
+
+test('successive short sessions and a new day continue coverage instead of restarting at topic one', () => {
+  const d = data(
+    Array.from({ length: 14 }, (_, i) =>
+      node('topic-' + i.toString().padStart(2, '0')),
+    ),
+  );
+  const first = dailyStudyPlan(d, now).queue.slice(0, 6);
+  d.events = first.map((i, index) =>
+    event(i.question, now - (6 - index) * 60000, 'round-' + index),
+  );
+  const second = dailyStudyPlan(d, now).queue.slice(0, 6);
+  const covered = new Set(first.map((i) => i.question.nodeId));
+  assert.ok(second.every((i) => !covered.has(i.question.nodeId)));
+  second.forEach((i) => covered.add(i.question.nodeId));
+  d.events.push(
+    ...second.map((i, index) =>
+      event(i.question, now - (6 - index) * 1000, 'second-' + index),
+    ),
+  );
+  const nextDay = dailyStudyPlan(d, now + 86400000).queue.slice(0, 2);
+  assert.equal(nextDay.length, 2);
+  assert.ok(nextDay.every((i) => !covered.has(i.question.nodeId)));
+});
+
+test('two-topic practice alternates without prematurely stopping; narrow scope still works', () => {
+  const d = data();
+  d.questions = d.nodes.flatMap((n) =>
+    Array.from({ length: 6 }, (_, i) => question(n, n.id + i)),
+  );
+  const queue = buildQueue(d, { practice: true, limit: 10, now });
+  assert.equal(queue.length, 10);
+  assert.ok(
+    queue
+      .slice(1)
+      .every((q, i) => q.question.nodeId !== queue[i].question.nodeId),
+  );
+  const scoped = buildQueue(d, { practice: true, scope: ['a'], limit: 6, now });
+  assert.equal(scoped.length, 6);
+  assert.ok(scoped.every((i) => i.question.nodeId === 'a'));
+});
+
+test('rotation never selects paused, out-of-scope or over-budget content to fill coverage', () => {
+  const d = data([node('a'), node('b'), node('c')]);
+  d.settings.dailyMinutes = 10;
+  d.questions.forEach((q) => {
+    q.expectedSeconds = 400;
+  });
+  d.questions
+    .filter((q) => q.nodeId === 'c')
+    .forEach((q) => {
+      q.reviewStatus = 'paused';
+    });
+  const plan = dailyStudyPlan(d, now);
+  assert.equal(plan.queue.length, 1);
+  assert.ok(plan.scheduledSeconds <= plan.remainingSeconds);
+  assert.ok(plan.queue.every((i) => i.question.nodeId !== 'c'));
+  const queue = buildQueue(d, { scope: ['b'], practice: true, now });
+  assert.equal(queue.length, 1);
+  assert.equal(queue[0].question.nodeId, 'b');
+});
+
 test('new learners stay unknown and initial diagnosis covers weighted imported subjects', () => {
   const d = data([node('m'), node('c', 'chinese'), node('e', 'english')]);
   const plan = dailyStudyPlan(d, now);

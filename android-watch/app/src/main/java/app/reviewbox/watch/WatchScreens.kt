@@ -45,7 +45,7 @@ import org.json.JSONObject
     var readerPage by remember(vm.detail) { mutableStateOf(0) }
     var noteText by remember(vm.detail) { mutableStateOf(vm.detail?.optString("body")?:"") }
     val subjects = vm.snapshot.optJSONArray("subjects")?.objects() ?: emptyList()
-    val game = vm.snapshot.optJSONObject("game") ?: JSONObject()
+
     val recommendation = vm.snapshot.optJSONObject("recommendation")
     SwipeToDismissBox(onDismissed = { vm.back() }, userSwipeEnabled = vm.page !in listOf("home", "welcome")) { background ->
         if (background) Box(Modifier.fillMaxSize().background(Night), contentAlignment = Alignment.Center) { Text("返回", color = Blue) }
@@ -70,7 +70,7 @@ import org.json.JSONObject
                 if (vm.message.isNotEmpty()) item { Copy(vm.message, Muted) }
                 when (vm.page) {
                     "welcome" -> {
-                        item { Penguin(72); Copy("学习，随腕而行", large = true) }
+                        item { WatchMark(72); Copy("学习，随腕而行", large = true) }
                         item { Copy("连接现有账户，继续你的学习计划。", Muted) }
                         item { Action("连接 Reviewbox 账户", true, !vm.busy) { vm.beginPairing() } }
                         item { Action("先体验演示", enabled = !vm.busy) { vm.startDemo() } }
@@ -94,7 +94,7 @@ import org.json.JSONObject
                         item { Copy(recommendation?.optString("reason") ?: "先连接账户或体验演示内容。", Muted) }
                         if (vm.store.get("active-session") != null) item { NavigationRow("↻", "继续上次学习", "进度已经保存") { vm.resumePractice() } }
                         item { NavigationRow("⊞", "所有功能", "计划、学科、成绩与课程") { vm.go("hub") } }
-                        item { NavigationRow("◉", "我的企鹅", "LV ${game.optInt("level", 1)} · ${game.optInt("xp")} XP") { vm.go("profile") } }
+                        item { NavigationRow("◉", "账户与同步", vm.snapshot.optString("name", "学习空间")) { vm.go("profile") } }
                     }
                     "hub" -> {
                         item { Copy("去哪里学习？", large = true) }
@@ -147,7 +147,7 @@ import org.json.JSONObject
                         item { Copy(vm.detail?.optString("title") ?: "学习任务", large = true); Copy(vm.detail?.optString("reason") ?: "", Muted) }
                         item { Action(vm.detail?.optString("label", "开始任务") ?: "开始任务", true, !vm.busy) { vm.detail?.let { vm.executeAction(it) } } }
                     }
-                    "rest" -> item { Penguin(); Copy(vm.detail?.optString("title") ?: "休息一下", large = true); Copy(vm.detail?.optString("reason") ?: "", Muted) }
+                    "rest" -> item { WatchMark(); Copy(vm.detail?.optString("title") ?: "休息一下", large = true); Copy(vm.detail?.optString("reason") ?: "", Muted) }
                     "task-pending" -> item { Copy(vm.detail?.optString("title") ?: "学习任务", large = true); Copy("此任务流程仍在原生端接入中。当前测试版不执行替代练习，也不会伪造完成记录。", Muted) }
                     "subjects" -> items(subjects) { s ->
                         NavigationRow("▤", s.getString("name"), "${s.getJSONArray("nodes").length()} 个知识点") { vm.subject = s.getString("id"); vm.node = ""; vm.go("nodes") }
@@ -256,8 +256,8 @@ import org.json.JSONObject
                         item { Action("稍后继续", enabled = !vm.busy) { vm.saveAndExit() } }
                     }
                     "summary" -> {
-                        item { Penguin(72); Copy("每次回忆，都有意义", large = true); Copy("${vm.queue.size} 道已完成 · ${vm.pending} 条待同步", Muted) }
-                        item { Copy("LV ${game.optInt("level", 1)} · ${game.optInt("xp")} XP", Blue, true) }
+                        item { WatchMark(72); Copy("每次回忆，都有意义", large = true); Copy("${vm.queue.size} 道已完成 · ${vm.pending} 条待同步", Muted) }
+
                         if (vm.testMode) item { Action("查看测评报告", enabled = !vm.busy) { vm.openCurrentReport() } }
                         item { Action("同步学习记录", true, !vm.busy && !vm.demo) { vm.sync() }; Action("返回今天") { vm.go("home") } }
                     }
@@ -334,7 +334,7 @@ import org.json.JSONObject
                         } else item { Copy(vm.courseFeedback,Blue);Action("返回课程",true){vm.returnToCourseSection()};Action("重新尝试"){vm.openCourseCheck(q!!)} }
                     }
                     "course-consolidation" -> item {
-                        Penguin(64);Copy("讲解完成，动手巩固",large=true)
+                        WatchMark(64);Copy("讲解完成，动手巩固",large=true)
                         Copy("巩固后安排跨日验证，不跳过必要的学习证据。",Muted)
                         Action("开始课程巩固",true,!vm.busy){vm.startCoursePractice()}
                         Action("稍后继续"){vm.go("plan")}
@@ -368,7 +368,8 @@ import org.json.JSONObject
                         subjects.forEach { s -> Action(s.getString("name")) { vm.subject=s.getString("id");vm.go("nodes") } }
                     }
                     "profile" -> {
-                        item { Penguin(); Copy("LV ${game.optInt("level", 1)} · ${game.optInt("xp")} XP", Blue, true); Copy("${game.optInt("hearts")} / ${game.optInt("maxHearts", 5)} 生命值 · 连续 ${game.optInt("streak")} 天") }
+
+                        item { Copy(vm.snapshot.optString("name", "学习空间"), large = true) }
                         item { Copy("最近同步：${vm.store.get("last-sync") ?: "尚未同步"}\n${vm.pending} 条待上传", Muted) }
                         item { Action("立即同步", true, !vm.busy && !vm.demo) { vm.sync() } }
                         item { Action("学习偏好与每日时间") { vm.go("preferences") } }

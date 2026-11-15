@@ -1,12 +1,14 @@
+import { GEMMA, isReviewModel } from '../_shared/workers-ai-models.ts';
+
 // Caller-owned Cloudflare credentials authenticate at Cloudflare. No server AI
 // secret or database access is used. Supabase login is only needed for sync.
 const allowedOrigin = 'https://shivr-dev.github.io';
 const accountId = '68ab52ee180f593d1f508aedba898452';
-const model = '@cf/qwen/qwen3-30b-a3b-fp8';
 const cors = {
   'Access-Control-Allow-Origin': allowedOrigin,
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-cloudflare-token, x-cloudflare-account',
+  'Access-Control-Expose-Headers': 'X-Reviewbox-Model',
   'Vary': 'Origin',
 };
 const json = (value:unknown,status=200) => Response.json(value,{status,headers:{...cors,'Cache-Control':'no-store'}});
@@ -22,10 +24,12 @@ export async function handle(request: Request) {
       return json({error:'请先解锁网站的私有学习配置'},401);
     const source = await request.text();
     if (source.length > 150000) return json({error:'请求内容过大'},413);
-    const body = JSON.parse(source);
+    const { model = GEMMA, ...body } = JSON.parse(source);
+    if (!isReviewModel(model)) return json({error:'不支持所选模型'},400);
     if (body.action === 'check') {
       // Model discovery validates the actual AI credential without inference.
-      const check = await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/models/search?search=qwen3-30b-a3b-fp8&per_page=1`,{
+      const search = new URLSearchParams({ search: model.split('/').at(-1)!, per_page: '1' });
+      const check = await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/models/search?${search}`,{
         headers:{Authorization:'Bearer '+token},signal:AbortSignal.timeout(15000),
       });
       const data = await check.json();
@@ -39,15 +43,16 @@ export async function handle(request: Request) {
     const upstream = await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`,{
       method:'POST',
       headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
-      body:source,
+      body:JSON.stringify(body),
       signal:AbortSignal.timeout(55000),
     });
     return new Response(upstream.body,{
       status:upstream.status,
-      headers:{...cors,'Content-Type':'application/json','Cache-Control':'no-store'},
+      headers:{...cors,'Content-Type':'application/json','Cache-Control':'no-store','X-Reviewbox-Model':model},
     });
   } catch {
     return json({error:'模型连接暂时不可用'},503);
   }
 }
 Deno.serve(handle);
+

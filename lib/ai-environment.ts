@@ -6,7 +6,7 @@ export function installAIEnvironment(reader: (name: string) => string) {
 }
 /** Browser code only reads the explicitly unlocked vault; server code uses runtime bindings. */
 export function aiEnvironment(name: string): string {
-  if (typeof window !== 'undefined') {
+  if (typeof window !== 'undefined'&&typeof document!=='undefined') {
     const config = activePagesConfig();
     if (!config) return '';
     if (name === 'CF_ACCOUNT_ID' || name === 'CF_ACCOUNT_IDS')

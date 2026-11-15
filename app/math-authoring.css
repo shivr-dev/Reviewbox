@@ -1,3 +1,146 @@
 .import-repair-review{display:grid;gap:16px}.import-repair-review p{font-size:14px;color:#67717a}.import-repair-review pre{white-space:pre-wrap;overflow-wrap:anywhere;max-height:280px;overflow:auto;font:12px/1.6 monospace;border:1px solid #dce1e5;padding:12px;border-radius:8px}.import-repair-review>label{display:flex;align-items:center;gap:8px}.import-repair-review input[type=checkbox]{width:18px;height:18px}
-.math-answer-composer,.math-answer-input{display:grid;gap:10px;min-width:0}.math-format-picker,.math-input-tools{display:flex;gap:6px;flex-wrap:wrap}.math-format-picker button,.math-input-tools button,.mixed-math-fragment>button{font-size:12px;padding:6px 10px;min-height:32px;border:1px solid var(--border,#d7dee4);background:var(--panel,#fff);border-radius:7px;color:var(--text,#25313a);box-shadow:none}.math-format-picker button[aria-pressed=true]{background:#eef6fc;border-color:#74aed4;color:#24628d}.mathlive-host math-field{display:block;width:100%;min-height:64px;padding:10px 12px;font-size:22px;border:1px solid #b9c8d3;border-radius:8px;background:#fff;color:#18232b;--selection-background-color:#d9edff;--caret-color:#2470a1;--contains-highlight-background-color:#e9f3fa}.mathlive-host math-field:focus-within{outline:2px solid #83b7dc;outline-offset:2px}.math-input-problem{font-size:12px;color:#88652c}.mixed-math-fragment{border-top:1px solid #dde2e6;padding-top:12px}.answer-input-label:has(.math-answer-composer){display:block}.study-surface:has(.math-answer-composer){padding-bottom:calc(30px + var(--review-math-keyboard-height,0px))}.ML__keyboard{z-index:1200!important}
-.math-keyboard-dismiss{position:fixed;right:16px;z-index:1600;min-height:42px;padding:8px 16px!important;border:1px solid #c8d2da!important;border-radius:9px!important;background:#fff!important;color:#273c4b!important;font-size:14px!important;box-shadow:0 3px 12px #14283720!important}.mathlive-host math-field::part(menu-toggle),.mathlive-host math-field::part(virtual-keyboard-toggle){display:none}
+
+.math-answer-composer, .math-answer-input { display: grid; gap: 10px; min-width: 0; }
+.math-mode-body[data-resizing] { overflow: clip; }
+.math-mode-content { display: grid; gap: 10px; min-width: 0; }
+.math-editor-frame { position: relative; }
+.mathlive-host { min-height: 65px; }
+.math-editor-loading {
+  position: absolute; inset: 0; display: flex; align-items: center; padding: 12px;
+  border: 1px solid var(--rb-stroke); border-radius: var(--rb-radius-control);
+  background: var(--rb-paper); color: var(--rb-muted); pointer-events: none;
+}
+.math-format-picker {
+  display: inline-flex; flex-wrap: wrap; justify-self: start; gap: 3px;
+  padding: 3px; border: 1px solid var(--rb-stroke); border-radius: var(--rb-radius-control); background: var(--rb-wash);
+}
+:root :is(.math-format-picker,.math-input-tools,.mixed-math-fragment) button {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  min-height: 36px; padding: 5px 9px; border: 1px solid transparent; border-radius: calc(var(--rb-radius-control) - 2px);
+  background: transparent; color: var(--rb-muted); font: 600 .86rem/1.3 var(--font-body); box-shadow: none;
+  transition: background-color .17s var(--rb-ease), color .17s var(--rb-ease), border-color .17s var(--rb-ease);
+}
+:root .math-format-picker button[aria-pressed=true] { color: var(--rb-violet); background: var(--rb-paper); border-color: var(--rb-stroke); }
+:root .math-input-tools button:not(:disabled):hover, :root .mixed-math-fragment > button:not(:disabled):hover { background: var(--rb-wash); color: var(--rb-violet); }
+.math-input-tools { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 5px 10px; }
+.math-shortcuts, .math-edit-tools { display: flex; flex-wrap: wrap; gap: 3px; }
+.math-edit-tools { margin-inline-start: auto; }
+:root .math-input-tools .math-keyboard-toggle {
+  border-color: var(--rb-stroke); background: var(--rb-wash); color: var(--rb-violet); padding-inline: 10px;
+}
+:root .math-input-tools .math-keyboard-toggle[aria-expanded=true] { background: var(--rb-violet); color: var(--rb-paper); border-color: var(--rb-violet); }
+.mathlive-host math-field {
+  display: block; width: 100%; min-height: 65px; padding: 11px 13px; font-size: 22px;
+  border: 1px solid var(--rb-stroke); border-radius: var(--rb-radius-control);
+  background: var(--rb-paper); color: var(--rb-ink);
+  --selection-background-color: color-mix(in srgb, var(--rb-violet) 20%, var(--rb-paper));
+  --caret-color: var(--rb-violet);
+  --contains-highlight-background-color: var(--rb-wash);
+}
+.mathlive-host math-field:focus-within { border-color: var(--rb-violet); outline: 1px solid var(--rb-violet); }
+.mathlive-host math-field::part(menu-toggle), .mathlive-host math-field::part(virtual-keyboard-toggle) { display: none; }
+.math-input-problem { font-size: .83rem; color: var(--rb-danger); margin: 0; }
+.mixed-math-fragment { border-block-start: 1px solid var(--rb-stroke); padding-block-start: 12px; }
+:root .mixed-math-fragment > button { margin-block-start: 5px; color: var(--rb-violet); }
+.answer-input-label:has(.math-answer-composer) { display: block; }
+.study-surface:has(.math-answer-composer) { padding-bottom: calc(30px + var(--review-math-keyboard-height, 0px)); }
+.guided-stage:has(.math-answer-composer) {
+  padding-block-end: calc(clamp(16px, 4vh, 42px) + var(--review-math-keyboard-scroll, 0px));
+}
+
+:root {
+  --rb-math-keyboard-width: min(850px, calc(100% - 32px));
+  --rb-math-keyboard-header: 42px;
+}
+body > .ML__keyboard {
+  --keyboard-zindex: 1200;
+  --keyboard-accent-color: var(--rb-violet);
+  --keyboard-background: var(--rb-wash);
+  --keyboard-border: var(--rb-stroke);
+  --keyboard-padding-top: var(--rb-math-keyboard-header);
+  --keyboard-padding-horizontal: 12px;
+  --keyboard-padding-bottom: 11px;
+  --keyboard-toolbar-text: var(--rb-muted);
+  --keyboard-toolbar-text-active: var(--rb-violet);
+  --keyboard-toolbar-background-hover: var(--rb-paper);
+  --keyboard-toolbar-background-selected: color-mix(in srgb, var(--rb-violet) 16%, var(--rb-paper));
+  --keyboard-toolbar-font-size: 1rem;
+  --keyboard-horizontal-rule: 1px solid var(--rb-stroke);
+  --keycap-background: var(--rb-paper);
+  --keycap-background-hover: color-mix(in srgb, var(--rb-violet) 9%, var(--rb-paper));
+  --keycap-background-active: var(--rb-violet);
+  --keycap-background-pressed: var(--rb-violet);
+  --keycap-text: var(--rb-ink);
+  --keycap-text-active: var(--rb-paper);
+  --keycap-text-pressed: var(--rb-paper);
+  --keycap-border: var(--rb-stroke);
+  --keycap-border-bottom: color-mix(in srgb, var(--rb-violet) 20%, var(--rb-stroke));
+  --keycap-primary-background: var(--rb-violet);
+  --keycap-primary-text: var(--rb-paper);
+  --keycap-primary-background-hover: color-mix(in srgb, var(--rb-violet) 87%, var(--rb-ink));
+  --keycap-secondary-background: color-mix(in srgb, var(--rb-violet) 12%, var(--rb-paper));
+  --keycap-secondary-background-hover: color-mix(in srgb, var(--rb-violet) 21%, var(--rb-paper));
+  --keycap-secondary-text: var(--rb-violet);
+  --keycap-secondary-border: var(--rb-stroke);
+  --keycap-secondary-border-bottom: var(--keycap-border-bottom);
+  --keycap-gap: 5px;
+  --keycap-height: clamp(41px, 5.6dvh, 51px);
+  --keycap-max-width: 72px;
+  --keycap-font-size: clamp(17px, 3cqw, 23px);
+  --variant-panel-background: var(--rb-paper);
+}
+body > .ML__keyboard > .MLK__backdrop {
+  width: var(--rb-math-keyboard-width); inset-inline: 0; margin-inline: auto;
+  border-radius: 20px 20px 0 0; border: 1px solid var(--rb-stroke); border-block-end: 0;
+}
+body > .ML__keyboard.is-visible > .MLK__backdrop { box-shadow: 0 -8px 28px color-mix(in srgb, var(--rb-ink) 14%, transparent); }
+body > .ML__keyboard .MLK__plate { font-family: var(--font-body); }
+body > .ML__keyboard .MLK__toolbar { margin-block: 2px 6px; }
+body > .ML__keyboard .MLK__toolbar > div > div {
+  min-width: 34px; min-height: 35px; margin: 0 1px; padding: 5px 7px;
+  border-radius: 7px; border: 0; transition: background-color .16s var(--rb-ease), color .16s var(--rb-ease);
+}
+body > .ML__keyboard .MLK__toolbar > div > div.selected { font-weight: 700; }
+body > .ML__keyboard [data-tooltip]::after { pointer-events: none; }
+body > .ML__keyboard .MLK__row > :is(.MLK__keycap,.action,.shift,.fnbutton,.bigfnbutton) {
+  border-radius: 9px; border-bottom-width: 2px;
+  transition: background-color .12s var(--rb-ease), color .12s var(--rb-ease);
+}
+body .math-keyboard-header {
+  position: absolute; z-index: 5; inset: 0 0 auto; height: var(--rb-math-keyboard-header);
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 2px 12px 0; border-block-end: 1px solid var(--rb-stroke);
+  color: var(--rb-violet); font: 700 .87rem/1.3 var(--font-body); pointer-events: none;
+}
+body .math-keyboard-header-detached {
+  position: fixed; z-index: 1201; inset: auto 0 calc(var(--review-math-keyboard-height, 0px) - var(--rb-math-keyboard-header));
+  width: var(--rb-math-keyboard-width); margin-inline: auto;
+}
+body > .ML__keyboard .MLK__backdrop[data-rb-closing] :is(.MLK__plate,.math-keyboard-dismiss) {
+  pointer-events: none;
+}
+.math-keyboard-header > span { display: inline-flex; align-items: center; gap: 7px; }
+:root .math-keyboard-header .math-keyboard-dismiss {
+  display: grid; place-items: center; width: 38px; min-height: 34px; padding: 2px; margin: 0; pointer-events: auto;
+  background: var(--rb-paper); color: var(--rb-violet); border: 1px solid var(--rb-stroke); border-radius: 8px;
+}
+:root .math-keyboard-header .math-keyboard-dismiss:hover { border-color: var(--rb-violet); }
+@media (max-width: 540px) {
+  :root { --rb-math-keyboard-width: 100%; }
+  body > .ML__keyboard {
+    --keyboard-padding-horizontal: 5px;
+    --keyboard-padding-bottom: 6px;
+    --keycap-gap: 3px;
+    --keycap-height: clamp(38px, 5.6dvh, 46px);
+  }
+  body > .ML__keyboard .MLK__toolbar > div > div { min-width: 30px; padding: 4px 5px; }
+  body > .ML__keyboard .MLK__row > :is(.MLK__keycap,.action,.shift,.fnbutton,.bigfnbutton) { border-radius: 6px; }
+  .math-format-picker button { min-height: 39px; }
+}
+@media (max-height: 520px) and (orientation: landscape) {
+  :root { --rb-math-keyboard-header: 36px; }
+  body > .ML__keyboard { --keycap-height: 32px; --keyboard-padding-bottom: 4px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  body > .ML__keyboard *, .math-answer-composer button { transition-duration: 0s !important; }
+}

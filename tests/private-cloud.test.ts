@@ -2,11 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { apiFetch, usesPrivateCloud } from '../lib/runtime';
 import { unlockPages, lockPages } from '../lib/pages-vault';
-import { rewardsRequest, describeReward } from '../lib/rewards-client';
-import { learningGame } from '../lib/learning-game';
-import { loadData, switchAccount } from '../lib/store';
+import { loadData, put, switchAccount } from '../lib/store';
 
-test('local unlocked config routes login and rewards directly to Supabase; locking does not erase learning data', async () => {
+test('local unlocked config routes login to Supabase and retires the old rewards API; locking does not erase learning data', async () => {
   const originalWindow = globalThis.window,
     originalStorage = Object.getOwnPropertyDescriptor(
       globalThis,
@@ -80,26 +78,6 @@ test('local unlocked config routes login and rewards directly to Supabase; locki
         expires_at: Math.floor(Date.now() / 1000) + 3600,
         user: { id: 'fixture-user', email: 'fixture@example.test' },
       });
-    if (url.endsWith('/rest/v1/rpc/review_game')) {
-      assert.equal(
-        new Headers(init?.headers).get('Authorization'),
-        'Bearer test-jwt',
-      );
-      return Response.json({
-        admin: true,
-        redeemedReward: { coins: 77, freezes: 1, skin: 'skin-raincoat' },
-        grants: [
-          {
-            id: 'fixture-redemption',
-            at: new Date(Date.now() - 50).toISOString(),
-            source: 'code',
-            rewards: { coins: 77, freezes: 1, skin: 'skin-raincoat' },
-          },
-        ],
-        superUntil: null,
-        codes: [],
-      });
-    }
     if (url.endsWith('/rest/v1/rpc/review_reset_data')) {
       assert.equal(
         new Headers(init?.headers).get('Authorization'),
@@ -163,28 +141,13 @@ test('local unlocked config routes login and rewards directly to Supabase; locki
       method: 'POST',
       body: JSON.stringify({ action: 'admin-list', payload: {} }),
     });
-    assert.equal(((await rewards.json()) as any).admin, true);
-    assert.ok(calls.some((c) => c.includes('/rest/v1/rpc/review_game')));
-    assert.ok(calls.every((c) => !c.endsWith('/api/account')));
+    assert.equal(rewards.status, 410);
+    assert.ok(calls.every(c => !c.includes('/rest/v1/rpc/review_game')));
+    assert.ok(calls.every(c => !c.endsWith('/api/account')));
     await switchAccount('private-cloud-fixture');
-    const receipt = await rewardsRequest('redeem', {
-      code: 'FIXTURE',
-      requestId: 'fixture-request',
-    });
-    await rewardsRequest('redeem', {
-      code: 'FIXTURE',
-      requestId: 'fixture-request',
-    });
-    assert.match(
-      describeReward(receipt.redeemedReward!),
-      /77 点数.*连胜冻结.*雨中漫步/,
-    );
-    const owned = learningGame(await loadData());
-    assert.equal(owned.coins, 77);
-    assert.equal(owned.freezes, 1);
-    assert.ok(owned.owned.has('skin-raincoat'));
+    await put('setting', { name: '学习记录保留', dailyMinutes: 20 }, 'settings');
     await lockPages();
-    assert.ok(learningGame(await loadData()).owned.has('skin-raincoat'));
+    assert.equal((await loadData()).settings.name, '学习记录保留');
     const locked = await apiFetch('/api/account');
     assert.equal(((await locked.json()) as any).vaultLocked, true);
   } finally {

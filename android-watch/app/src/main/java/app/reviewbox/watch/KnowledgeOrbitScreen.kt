@@ -46,7 +46,7 @@ import androidx.wear.compose.material3.Text
                         if(value>0)drawArc(colors[i],-90f,value*359.8f,false,Offset(inset,inset),Size(diameter,diameter),style=stroke)
                     }
                 }
-                Penguin(36)
+                WatchMark(36)
             }
             Text("今日 $today/$goal · 保持 $retained/$total",color=Blue,fontSize=10.sp)
             Action("查看环详情",true){vm.go("orbit-details")}

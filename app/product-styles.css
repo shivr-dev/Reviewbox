@@ -1,17 +1,12 @@
 /* Both builds import this CSS file directly. Vinext's server stylesheet collector
    does not emit styles imported only through a side-effect TypeScript barrel. */
-@import 'katex/dist/katex.min.css';
 @import './globals.css';
 @import './upgrade.css';
 @import './courses.css';
 @import './exam-import.css';
 @import './editorial.css';
-@import './learning-game.css';
-@import './rewards.css';
-@import './home-item-art.css';
-@import './home-companion.css';
+@import './playful.css';
 @import './assistant.css';
-@import './brand-studio.css';
 @import './alpha-product.css';
 @import './exam-schedule.css';
 @import './watch.css';
@@ -33,3 +28,9 @@
 @import './membership.css';
 @import './learning-experience.css';
 @import './onboarding.css';
+@import './reviewbox-ui.css';
+@import './guided-practice.css';
+@import './home-workspace.css';
+@import './subjects-workspace.css';
+@import './public-community.css';
+@import './results-desk.css';

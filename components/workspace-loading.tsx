@@ -1,4 +1,4 @@
-import { assetPath } from '@/lib/runtime';
+import NaviAvatar from './navi-avatar';
 export default function WorkspaceLoading() {
-  return <div className="rb-system-loading" role="status" aria-live="polite"><div className="rb-loading-mark"><img src={assetPath('learning-penguin.png')} alt=""/><span/><span/><span/></div><strong>把学习空间准备好。</strong><p>正在读取你的计划与学习记录</p><div className="rb-loading-track"><i/></div><small>一步一步，继续向前。</small></div>;
+  return <div className="rb-system-loading" role="status" aria-live="polite"><NaviAvatar size={104} label={null} state="idle" paused/><strong>正在打开学习空间</strong><div className="rb-loading-track" aria-hidden="true"><i/></div></div>;
 }

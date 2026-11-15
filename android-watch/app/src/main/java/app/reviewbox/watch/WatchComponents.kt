@@ -1,7 +1,5 @@
 package app.reviewbox.watch
 
-import android.graphics.BitmapFactory
-import androidx.compose.foundation.Image
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -16,10 +14,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.PointerEventPass
@@ -96,10 +92,10 @@ internal val Mint = Color(0xFFB9E89D)
     }
 }
 
-@Composable internal fun Penguin(size: Int = 76) {
-    val context = LocalContext.current
-    val bitmap = remember(context) { context.assets.open("penguin.png").use { BitmapFactory.decodeStream(it).asImageBitmap() } }
-    Image(bitmap, "企鹅伙伴", Modifier.size(size.dp).background(Color(0xFFE9F4FA), CircleShape).padding(4.dp))
+@Composable internal fun WatchMark(size: Int = 76) {
+    Box(Modifier.size(size.dp).background(Panel, CircleShape), contentAlignment = Alignment.Center) {
+        Text("R", color = Blue, fontSize = (size * 0.43).sp, fontWeight = FontWeight.Bold)
+    }
 }
 
 /** Every lazy item has one layout root; transformations never distort individual text lines. */

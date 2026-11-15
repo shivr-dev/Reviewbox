@@ -1,4 +1,13 @@
 {
+  "math.fieldLabel": "Математический ответ",
+  "math.placeholder": "Введите формулу",
+  "math.分数": "Дробь",
+  "math.根号": "Корень",
+  "math.指数": "Степень",
+  "math.下标": "Нижний индекс",
+  "math.绝对值": "Модуль",
+  "math.方程组": "Система",
+  "math.单位": "Единица",
   "进度未能保存，请检查设备存储后重试。": "Не удалось сохранить прогресс. Проверьте память устройства и повторите попытку.",
   "保存未完成，请保留页面并重试。": "Сохранение не было завершено, сохраните страницу и повторите попытку.",
   "返回工作台": "Вернуться на верстак",
@@ -485,7 +494,7 @@
   "navi.followup.rephrase.request": "Объясни тот же вопрос иначе, нагляднее и короче. Сохрани исходные условия и текущий уровень подсказок.",
   "navi.followup.example.request": "Приведи один короткий конкретный пример обсуждаемого понятия. Отдели свой пример от исходного материала и сохрани уровень подсказок.",
   "navi.display.fullscreen": "На весь экран",
-  "navi.display.dock": "Вернуться к боковой панели",
+  "navi.display.dock": "Закрепить диалог",
   "navi.home.placeholder": "Спросите Navi об учёбе…",
   "navi.home.open": "Открыть Navi",
   "navi.config.setGpaRule": "Изменить правило GPA",
@@ -593,5 +602,11 @@
   "navi.live.describe.highlight": "Highlight visible objects: {{ids}}",
   "navi.live.describe.clearHighlights": "Clear object highlights",
   "navi.live.describe.macro": "Macromolecule representation: {{model}}",
-  "navi.live.describe.camera": "Macromolecule camera: {{command}}"
+  "navi.live.describe.camera": "Macromolecule camera: {{command}}",
+  "navi.diagnostic.title": "Диагностика ошибки",
+  "navi.diagnostic.copy": "Копировать диагностику",
+  "navi.diagnostic.copied": "Скопировано",
+  "navi.diagnostic.details": "Подробности",
+  "navi.diagnostic.safe": "Только сведения об ошибке и соединении, без переписки, текста заданий и рассуждений.",
+  "navi.diagnostic.copyFailed": "Не удалось скопировать. Выделите текст вручную."
 }

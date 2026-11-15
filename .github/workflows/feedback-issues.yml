@@ -1,13 +1,10 @@
 name: Deliver website bug reports
 on:
   schedule:
-    - cron: '*/10 * * * *'
+    - cron: '3-58/5 * * * *'
   workflow_dispatch:
   push:
     branches: [main]
-    paths:
-      - '.github/workflows/feedback-issues.yml'
-      - 'scripts/publish-feedback-issues.mjs'
 permissions:
   contents: read
   issues: write

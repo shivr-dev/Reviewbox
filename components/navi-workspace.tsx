@@ -1,4 +1,7 @@
 'use client';
+import NaviAvatar, { type NaviMotionState } from './navi-avatar';
+import NaviErrorDetails from './navi-error-details';
+import {diagnoseNaviFailure,type NaviDiagnostic} from '@/lib/navi-diagnostics';
 import {permitMembership} from '@/lib/membership-client';
 
 import NaviWebSearch from './navi-web-search';
@@ -16,7 +19,6 @@ import {
 } from '@/lib/navi-configuration';
 import { useEffect, useRef, useState } from 'react';
 import {
-  Compass,
   MoreHorizontal,
   Plus,
   Trash2,
@@ -27,6 +29,9 @@ import {
   Square,
   Maximize2,
   Minimize2,
+  ChevronLeft,
+  BookmarkPlus,
+  Plug,
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import i18n, { tr, formatDate } from '@/lib/i18n';
@@ -95,12 +100,13 @@ export function openNaviPublic(id: string) {
     new CustomEvent('review:navi-public', { detail: { id } }),
   );
 }
-export function NaviButton({ target }: { target: NaviTarget }) {
+export function NaviButton({ target, iconOnly = false, motion = 'idle' }: { target: NaviTarget; iconOnly?: boolean; motion?: NaviMotionState }) {
   useTranslation();
   return (
     <button
       type="button"
-      className="text-button"
+      className={iconOnly ? 'guided-navi-button' : 'text-button'}
+      aria-label={iconOnly ? 'Navi' : undefined}
       onClick={() =>
         openNavi({
           ...target,
@@ -108,8 +114,7 @@ export function NaviButton({ target }: { target: NaviTarget }) {
         })
       }
     >
-      <Compass size={16} />
-      Navi
+      {iconOnly ? <NaviAvatar size={108} state={motion} label={null} /> : 'Navi'}
     </button>
   );
 }
@@ -133,6 +138,7 @@ export default function NaviWorkspace() {
     [pendingNote, setPendingNote] = useState<NaviMessage | null>(null),
     [practice, setPractice] = useState(false),
     [receipt, setReceipt] = useState(''),
+    [operationMotion, setOperationMotion] = useState<'success' | 'error' | null>(null),
     [savingNote, setSavingNote] = useState(false);
   const [publicPack, setPublicPack] = useState<Pack | null>(null),
     [loadingPack, setLoadingPack] = useState(false);
@@ -186,13 +192,54 @@ export default function NaviWorkspace() {
     [thread, setThread] = useState<NaviThread | null>(null),
     [draft, setDraft] = useState(''),
     [busy, setBusy] = useState(false),
-    [error, setError] = useState(''),
+    [requestPending, setRequestPending] = useState(false),
+    [replyMotion, setReplyMotion] = useState<'explaining' | 'guiding' | null>(null),
+    [resting, setResting] = useState(false),
+    [motionRun, setMotionRun] = useState(0),
+    [error, setErrorText] = useState(''),
+    [diagnostic,setDiagnostic]=useState<NaviDiagnostic|null>(null),
     [pendingDelete, setPendingDelete] = useState('');
+  function setError(value:string){setErrorText(value);setDiagnostic(null);}
+  function showOutcome(state: 'success' | 'error') {
+    setOperationMotion(state);
+    setMotionRun((run) => run + 1);
+  }
+  const hasProposal = !!(research || configuration || pendingUI || pendingNote || practice || editorRequested);
+  const avatarState: NaviMotionState = !open ? 'sleeping' : requestPending || loadingPack ? 'thinking' :
+    error ? 'error' : operationMotion ?? (hasProposal ? 'guiding' : replyMotion ?? (resting ? 'sleeping' : 'idle'));
+  const draftNeedsConnection = !aiReady && !!draft.trim() &&
+    !parseNaviUICommand(draft) && !parseNaviToolIntent(draft) &&
+    !offlineConfigurationRequest(draft) && parseNaviWebIntent(draft) === undefined;
+  const canSuggestFollowups = aiReady && !busy && !draft.trim() && !hasProposal;
+  function openConnectionSettings() {
+    setOpen(false);
+    setMenu(false);
+    navigate('you', 'all', 'advanced');
+  }
+  useEffect(() => {
+    if (!operationMotion && !replyMotion) return;
+    const timeout = window.setTimeout(() => {
+      setOperationMotion(null);
+      setReplyMotion(null);
+    }, operationMotion ? 1650 : 6500);
+    return () => window.clearTimeout(timeout);
+  }, [operationMotion, replyMotion, motionRun]);
+  useEffect(() => {
+    if (!open) return;
+    setResting(false);
+    if (busy || hasProposal) return;
+    const timeout = window.setTimeout(() => setResting(true), 60000);
+    return () => window.clearTimeout(timeout);
+  }, [open, busy, draft, hasProposal, thread?.id, motionRun]);
   const gate = useRef(false),
     controller = useRef<AbortController | null>(null),
+    activeThread = useRef<NaviThread | null>(null),
     field = useRef<HTMLTextAreaElement>(null),
     scroller = useRef<HTMLDivElement>(null),
     follow = useRef(true);
+  useEffect(() => {
+    activeThread.current = thread;
+  }, [thread]);
   useEffect(() => {
     if (follow.current && scroller.current)
       scroller.current.scrollTop = scroller.current.scrollHeight;
@@ -238,6 +285,8 @@ export default function NaviWorkspace() {
     setPractice(false);
     setPendingNote(null);
     setReceipt('');
+    setOperationMotion(null);
+    setReplyMotion(null);
     setPendingUI(null);
     setMenu(false);
   }, [thread?.id, ns]);
@@ -253,13 +302,15 @@ export default function NaviWorkspace() {
         currentNaviUI()?.readEvidence?.().questionId !== questionId)
     ) {
       setReceipt(t('live.error.unsupported'));
+      showOutcome('error');
       return false;
     }
-    try{await permitMembership('workspace',membershipReceipt);}catch(e){setReceipt((e as Error).message);return false;}
+    try{await permitMembership('workspace',membershipReceipt);}catch(e){setReceipt((e as Error).message);showOutcome('error');return false;}
     const result = executeNaviUI(actions);
     setReceipt(
       result.ok ? t('live.applied') : t('live.error.' + result.reason),
     );
+    showOutcome(result.ok ? 'success' : 'error');
     return result.ok;
   }
   function openAction(
@@ -348,6 +399,7 @@ export default function NaviWorkspace() {
       if (currentNamespace() === owner) {
         setPendingNote(null);
         notify(t('savedNote'));
+        showOutcome('success');
         await refresh();
       }
     } catch {
@@ -411,6 +463,15 @@ export default function NaviWorkspace() {
             >
           ).detail,
           context = target ? resolveNaviContext(data, target) : undefined;
+        if (context && target?.draft === undefined && !target?.editor && !target?.selectedText &&
+          activeThread.current?.contexts.some(saved =>
+            saved.context_type === context.context_type &&
+            saved.source_id === context.source_id &&
+            saved.source_version === context.source_version &&
+            saved.source_location.section_id === context.source_location.section_id)) {
+          setOpen(true);
+          return;
+        }
         if (target) focusNaviTarget(target);
         setEditorRequested(!!target?.editor);
         let next = newNaviThread(context);
@@ -540,6 +601,8 @@ export default function NaviWorkspace() {
     gate.current = true;
     follow.current = true;
     setBusy(true);
+    setReplyMotion(null);
+    setOperationMotion(null);
     setError('');
     controller.current = new AbortController();
     const owner = ns,
@@ -662,6 +725,7 @@ export default function NaviWorkspace() {
       if (commands) {
         await permitMembership('workspace');
         const result = executeNaviUI(commands);
+        showOutcome(result.ok ? 'success' : 'error');
         const reply = result.ok
           ? t('live.applied')
           : t('live.error.' + result.reason);
@@ -727,6 +791,7 @@ export default function NaviWorkspace() {
             ? 4
             : (helpLevel as 1 | 2 | 3 | 4),
         );
+      setRequestPending(true);
       const answer = await requestNavi(
         text,
         contexts,
@@ -758,8 +823,9 @@ export default function NaviWorkspace() {
             : undefined,
         },{capability:membershipMode,trial:membershipTrial||undefined},
       );
+      setRequestPending(false);
       setMembershipTrial('');
-      if (currentNamespace() !== owner) return;
+      if (currentNamespace() !== owner || controller.current.signal.aborted) return;
       let autoApplied = false;
       if (
         autoUI &&
@@ -770,6 +836,7 @@ export default function NaviWorkspace() {
         const result = live.execute(answer.ui_actions, 'suggestion');
         autoApplied = result.ok;
         if (result.ok) setReceipt(t('tool.autoApplied'));
+        showOutcome(result.ok ? 'success' : 'error');
       }
       const responseId = 'navi-message:' + crypto.randomUUID();
       if (answer.configuration_actions?.[0]) {
@@ -818,12 +885,22 @@ export default function NaviWorkspace() {
       );
       setDraft('');
       await refresh();
+      if (currentNamespace() === owner && !controller.current.signal.aborted) {
+        const answeringWithHint = (check?.phase === 'ask' || (tutorMode === 'problem' || Boolean(currentQuestion)) && helpLevel < 4 && !/完整|直接.*答案|full explanation|complete solution/i.test(text));
+        setReplyMotion(answeringWithHint ? 'guiding' : 'explaining');
+        setMotionRun((run) => run + 1);
+      }
     } catch (e) {
-      if (currentNamespace() === owner && !controller.current.signal.aborted)
+      if (currentNamespace() === owner && !controller.current.signal.aborted){
         setError(t('error.' + (e instanceof NaviError ? e.code : 'request')));
+        setDiagnostic(diagnoseNaviFailure(e,'client'));
+      }
     } finally {
       gate.current = false;
-      if (currentNamespace() === owner) setBusy(false);
+      if (currentNamespace() === owner) {
+        setBusy(false);
+        setRequestPending(false);
+      }
     }
   }
   function sourceGo(id: string) {
@@ -931,6 +1008,7 @@ export default function NaviWorkspace() {
   const inlineTool = (
     <section
       className="navi-tool-tray navi-inline-tool"
+      data-tool={research ? 'web' : undefined}
       hidden={
         !pendingUI &&
         !pendingNote &&
@@ -939,10 +1017,10 @@ export default function NaviWorkspace() {
         !configuration &&
         !research
       }
-      aria-label={t('tool.title')}
+      aria-label={t(research ? 'web.title' : 'tool.title')}
     >
       <header>
-        <strong>{t('tool.title')}</strong>
+        {!research && <strong>{t('tool.title')}</strong>}
         <button type="button" aria-label={t('tool.close')} onClick={closeTool}>
           <X size={17} />
         </button>
@@ -1008,6 +1086,7 @@ export default function NaviWorkspace() {
               'navi-config:' + configuration.id.replace('navi-message:', '')
             }
             onClose={() => setConfiguration(null)}
+            onOutcome={showOutcome}
           />
         )}
         {pendingUI && (
@@ -1051,6 +1130,7 @@ export default function NaviWorkspace() {
             question={currentQuestion}
             threadId={thread.id}
             onClose={() => setPractice(false)}
+            onOutcome={showOutcome}
           />
         )}
       </div>
@@ -1072,27 +1152,12 @@ export default function NaviWorkspace() {
         aria-expanded={open}
         aria-controls="navi-workspace"
       >
-        <Compass size={19} />
         <span>Navi</span>
       </button>
       {open && (
         <NaviSurface label={t('title')} fullscreen={fullscreen}>
           <header>
-            <span className="navi-avatar">
-              <Compass size={23} />
-            </span>
-            <div>
-              <strong>Navi</strong>
-              <small>{thread?.contexts[0]?.title ?? t('subtitle')}</small>
-            </div>
-            <button
-              type="button"
-              aria-label={t(fullscreen ? 'display.dock' : 'display.fullscreen')}
-              aria-pressed={fullscreen}
-              onClick={() => setFullscreen((v) => !v)}
-            >
-              {fullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
-            </button>
+            <div><strong>Navi</strong></div>
             <button
               type="button"
               aria-label={t('tool.menu')}
@@ -1109,11 +1174,37 @@ export default function NaviWorkspace() {
                 controller.current?.abort();
               }}
             >
-              <X size={19} />
+              <ChevronLeft size={19} className="navi-collapse-arrow" />
             </button>
           </header>
           {menu && (
             <section className="navi-menu" aria-label={t('tool.menu')}>
+              <div className="navi-menu-commands">
+                <button type="button" onClick={() => {
+                  setFullscreen(v => !v);
+                  setMenu(false);
+                }}>
+                  {fullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+                  {t(fullscreen ? 'display.dock' : 'display.fullscreen')}
+                </button>
+                {!aiReady && <button type="button" onClick={openConnectionSettings}>
+                  <Plug size={16} />{t('connect')}
+                </button>}
+                <button type="button" disabled={busy} onClick={() => {
+                  setMenu(false);
+                  closeTool();
+                  setResearch(true);
+                }}>{t('web.title')}</button>
+                {currentNaviUI() && !currentNaviUI()?.capabilities.protected && (
+                  <button type="button" disabled={busy} onClick={() => {
+                    window.dispatchEvent(new CustomEvent('review:navi-workspace-tools', { detail: currentNaviUI() }));
+                    setMenu(false);
+                    setOpen(false);
+                  }}>
+                    {t('live.tools')}
+                  </button>
+                )}
+              </div>
               <nav aria-label={t('history')}>
                 <button
                   disabled={busy}
@@ -1383,6 +1474,7 @@ export default function NaviWorkspace() {
                   <small>{t('tool.autoScope')}</small>
                 </span>
               </label>
+              <p className="navi-menu-privacy">{t('privacy')}</p>
             </section>
           )}
           <div
@@ -1396,17 +1488,8 @@ export default function NaviWorkspace() {
             }}
             aria-live="polite"
           >
-            {!messages.length && !busy && (
-              <div className="navi-welcome">
-                <span className="navi-welcome-mark">
-                  <Compass size={34} />
-                </span>
-                <h2>{t('welcome.title')}</h2>
-                <p>{t('welcome.body')}</p>
-                <small>{t('tool.intro')}</small>
-              </div>
-            )}
             {messages.map((m) => {
+              const webPreviewMessage = research && m.id === toolMessageId && m.text === t('web.privacy');
               const operationId =
                 'navi-config:' + m.id.replace('navi-message:', '');
               const savedConfiguration = m.configuration_actions?.length
@@ -1415,13 +1498,13 @@ export default function NaviWorkspace() {
               return (
                 <article key={m.id} className={m.role}>
                   <small>{m.role === 'user' ? t('you') : 'Navi'}</small>
-                  <div className="navi-message-body">
+                  {!webPreviewMessage && <div className="navi-message-body">
                     {m.role === 'assistant' ? (
                       <NaviResponse text={m.text} />
                     ) : (
                       <MathText>{m.text}</MathText>
                     )}
-                  </div>
+                  </div>}
                   {m.supplementary && (
                     <small className="navi-supplement">{t('supplement')}</small>
                   )}
@@ -1472,17 +1555,19 @@ export default function NaviWorkspace() {
                       ))}
                     </details>
                   )}
-                  {m.role === 'assistant' && (
+                  {m.role === 'assistant' && !webPreviewMessage && (
                     <div className="navi-message-actions">
                       <button
                         type="button"
-                        className="text-button"
+                        className="navi-save-note"
+                        title={t('saveNote')}
+                        aria-label={t('saveNote')}
                         onClick={() => {
                           closeTool();
                           setPendingNote(m);
                         }}
                       >
-                        {t('saveNote')}
+                        <BookmarkPlus size={17} />
                       </button>
                       {!!m.ui_actions?.length && (
                         <button
@@ -1552,6 +1637,18 @@ export default function NaviWorkspace() {
                       }
                     />
                   )}
+                  {m.role === 'assistant' && m.id === messages.at(-1)?.id && canSuggestFollowups && (
+                    <nav className="navi-followups" aria-label={t('followup.title')}>
+                      <button type="button" onClick={() => void send(t('check.request'), { phase: 'ask' })}>
+                        {t('check.start')}
+                      </button>
+                      {['rephrase', 'example'].map(kind => (
+                        <button type="button" key={kind} onClick={() => void send(t('followup.' + kind + '.request'))}>
+                          {t('followup.' + kind)}
+                        </button>
+                      ))}
+                    </nav>
+                  )}
                   {m.id === toolMessageId && !savedConfiguration && inlineTool}
                 </article>
               );
@@ -1559,12 +1656,14 @@ export default function NaviWorkspace() {
             {!toolMessageId && inlineTool}
             {busy && (
               <NaviActivity
-                label={loadingPack ? t('activity.reading') : t('thinking')}
+                label={requestPending ? t('thinking') : t('activity.reading')}
+                state={avatarState}
               />
             )}
             {error && (
               <div role="alert" className="settings-error">
                 <p>{error}</p>
+                {diagnostic&&<NaviErrorDetails key={diagnostic.requestId} diagnostic={diagnostic}/>}
                 <button
                   type="button"
                   onClick={() => {
@@ -1587,6 +1686,7 @@ export default function NaviWorkspace() {
                   const result = executeNaviUI([
                     { type: 'restoreLayout', target: 'undo' },
                   ]);
+                  showOutcome(result.ok ? 'success' : 'error');
                   setReceipt(
                     result.ok
                       ? t('live.restored')
@@ -1612,42 +1712,6 @@ export default function NaviWorkspace() {
               void send();
             }}
           >
-            {!busy &&
-              !draft.trim() &&
-              messages.at(-1)?.role === 'assistant' &&
-              !configuration &&
-              !research &&
-              !pendingUI &&
-              !pendingNote &&
-              !practice &&
-              !editorRequested && (
-                <nav
-                  className="navi-followups"
-                  aria-label={t('followup.title')}
-                >
-                  <button
-                    type="button"
-                    disabled={!aiReady}
-                    onClick={() =>
-                      void send(t('check.request'), { phase: 'ask' })
-                    }
-                  >
-                    {t('check.start')}
-                  </button>
-                  {['rephrase', 'example'].map((kind) => (
-                    <button
-                      type="button"
-                      key={kind}
-                      disabled={!aiReady}
-                      onClick={() =>
-                        void send(t('followup.' + kind + '.request'))
-                      }
-                    >
-                      {t('followup.' + kind)}
-                    </button>
-                  ))}
-                </nav>
-              )}
             {thread?.contexts.some((c) => c.selected_text) && (
               <div className="navi-selected-quote">
                 <details>
@@ -1681,25 +1745,23 @@ export default function NaviWorkspace() {
                 </button>
               </div>
             )}
-            <button
-              type="button"
-              className="navi-web-entry"
-              onClick={() => {
-                closeTool();
-                setResearch(true);
-              }}
-            >
-              {t('web.title')}
-            </button>
+            <div className="navi-compose-row">
+              <button className="navi-compose-avatar" type="button" aria-label={t('close')} onClick={() => {
+                setOpen(false);
+                controller.current?.abort();
+              }}>
+                <NaviAvatar size={96} state={avatarState} label={null} replayKey={motionRun}
+                  target={avatarState === 'guiding' ? { x: 0.35, y: 1 } : null} />
+              </button>
             <div className="navi-input-shell">
               <textarea
                 ref={field}
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 maxLength={2500}
-                rows={2}
+                rows={1}
                 aria-label={t('message')}
-                placeholder={t('tool.placeholder')}
+                placeholder={t('message')}
                 disabled={busy}
               />
               {busy ? (
@@ -1711,37 +1773,23 @@ export default function NaviWorkspace() {
                 >
                   <Square size={14} fill="currentColor" />
                 </button>
+              ) : draftNeedsConnection ? (
+                <button type="button" className="navi-send" aria-label={t('connect')}
+                  title={t('connect')} onClick={openConnectionSettings}>
+                  <Plug size={18} />
+                </button>
               ) : (
                 <button
+                  type="submit"
                   className="navi-send"
                   aria-label={t('send')}
-                  disabled={
-                    busy ||
-                    (!aiReady &&
-                      !parseNaviUICommand(draft) &&
-                      !parseNaviToolIntent(draft) &&
-                      !offlineConfigurationRequest(draft) &&
-                      parseNaviWebIntent(draft) === undefined) ||
-                    !draft.trim()
-                  }
+                  disabled={!draft.trim()}
                 >
                   <ArrowUp size={19} />
                 </button>
               )}
             </div>
-            <small className="navi-composer-note">{t('privacy')}</small>
-            {!aiReady && (
-              <button
-                type="button"
-                className="text-button"
-                onClick={() => {
-                  setOpen(false);
-                  navigate('you', 'all', 'advanced');
-                }}
-              >
-                {t('connect')}
-              </button>
-            )}
+            </div>
           </form>
         </NaviSurface>
       )}

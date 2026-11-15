@@ -5,7 +5,7 @@ export type AppContext = {
   data: StudyData;
   states: Record<string, Mastery>;
   refresh: () => Promise<void>;
-  navigate: (page: string, subject?: string, section?: string) => void;
+  navigate: (page: string, subject?: string, section?: string, target?: string) => void;
   section?: string;
   start: (
     items: QueueItem[],

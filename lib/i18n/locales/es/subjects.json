@@ -1,4 +1,8 @@
 {
+  "map.prerequisite": "Requisitos previos",
+  "map.support": "Capítulo o enlace de apoyo",
+  "map.next": "Siguientes conceptos",
+  "map.missing": "Hay {{count}} temas previos sin instalar.",
   "知识地图": "Mapa de conocimiento",
   "实线为前置依赖，虚线为章节归属或辅助关联。拖动节点查看关系。": "La línea continua es la predependencia y la línea de puntos es la afiliación al capítulo o asociación auxiliar. Arrastre los nodos para ver las relaciones.",
   "地图学科": "Materia del mapa",

@@ -1,3 +1,4 @@
+import {safeDiagnostic,naviDiagnostic,type NaviDiagnostic} from './navi-diagnostics';
 import { naviUnderstandingCheck } from './navi-understanding';
 import { naviQuoteMatches } from './navi-model-response';
 import { naviConfigurationAction } from './navi-configuration';
@@ -67,6 +68,7 @@ export function naviContentVersion(value: unknown) {
   return 'content-' + (hash >>> 0).toString(16);
 }
 export class NaviError extends Error {
+  diagnostic?:NaviDiagnostic;
   constructor(
     public code:
       | 'context'
@@ -81,6 +83,7 @@ export class NaviError extends Error {
     super(code);
     this.name = 'NaviError';
     this.cause = cause;
+    this.diagnostic=safeDiagnostic((cause as any)?.diagnostic);
   }
 }
 const text = (value: unknown, max: number) =>
@@ -363,7 +366,7 @@ export const naviAnswerSchema = z
   .strict();
 export function verifyNaviAnswer(input: unknown, contexts: NaviContext[]) {
   const parsed = naviAnswerSchema.safeParse(input);
-  if (!parsed.success) throw new NaviError('format');
+  if (!parsed.success)throw new NaviError('format',{diagnostic:naviDiagnostic('RB-RESPONSE-SCHEMA','response-validation',{detail:parsed.error.issues.slice(0,5).map(i=>i.path.map(String).filter(p=>/^[a-zA-Z0-9_-]+$/.test(p)).join('.')+':'+i.code).join('; '),retryable:true})});
   for (const citation of parsed.data.citations) {
     const source = contexts.find(
       (c) =>

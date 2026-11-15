@@ -1,16 +1,6 @@
 import type { Metadata } from 'next';
-import { Geist, Geist_Mono } from 'next/font/google';
+import 'katex/dist/katex.min.css';
 import './product-styles.css';
-
-const geistSans = Geist({
-  variable: '--font-geist-sans',
-  subsets: ['latin'],
-});
-
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
-  subsets: ['latin'],
-});
 
 export const metadata: Metadata = {
   title: 'Review · 自适应复习',
@@ -27,10 +17,9 @@ export default function RootLayout({
     <html lang="zh-CN">
       <head>
         <link rel="stylesheet" href="/fonts/noto-sc/font.css" />
+        <link rel="stylesheet" href="/fonts/reviewbox/font.css" />
       </head>
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <body className="antialiased">
         {children}
       </body>
     </html>

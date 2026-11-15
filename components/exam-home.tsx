@@ -7,13 +7,15 @@ import {localDay} from '@/lib/model';
 import {subjectLabel} from '@/lib/presentation';
 import {planExamSprint, sprintJobs, sprintSummary, upcomingSchoolExams} from '@/lib/exam-sprint';
 import {completedExams, pendingExamScores, validResult} from '@/lib/exam-outcomes';
-import {studyAgenda} from '@/lib/study-orchestrator';
-import {presentAction} from '@/lib/presentation';
+import {studyAgenda, type StudyAction} from '@/lib/study-orchestrator';
+import {presentHomeAction} from '@/lib/presentation';
 import {useReview} from './review-context';
 import HomeView from './home-view';
 
 const t=(key:string,values?:Record<string,unknown>)=>tr('dashboard:sprint.'+key,values);
-export default function ExamHome() {
+export default function ExamHome({planned, onLaunch, blocked = false}: {
+  planned?: ReturnType<typeof studyAgenda>; onLaunch?: (action: StudyAction) => void; blocked?: boolean;
+} = {}) {
   useTranslation();
   const {data,navigate}=useReview();
   const [exam]=upcomingSchoolExams(data);
@@ -24,8 +26,8 @@ export default function ExamHome() {
   const today=localDay();
   const minutes=data.settings.sprintPreferences?.minutes??30;
   const goal=data.settings.sprintPreferences?.goal??'review';
-  const agenda=studyAgenda(data);
-  const next=presentAction(agenda.primary);
+  const agenda=planned??studyAgenda(data);
+  const next=presentHomeAction(agenda.primary,data);
   const keepCurrent=agenda.primary.kind==='resume';
   const topics=exam?data.nodes.filter(n=>n.subject===exam.subject&&(!exam.scope.length||exam.scope.includes(n.id))):[];
   const scope=topics.slice(0,3).map(n=>n.title).join(' · ');
@@ -50,7 +52,7 @@ export default function ExamHome() {
           {focus&&<div><dt>{t('focus')}</dt><dd>{focus}</dd></div>}
         </dl>}
         <div className="learning-actions">
-          {keepCurrent?<button className="primary" onClick={()=>navigate('plan','all','launch:'+next.id)}>{next.label}<ArrowRight size={17}/></button>:
+          {keepCurrent?<button className="primary" disabled={blocked} onClick={()=>onLaunch?onLaunch(next):navigate('plan','all','launch:'+next.id)}>{next.label}<ArrowRight size={17}/></button>:
           <button className="primary" onClick={()=>navigate('sprint',active?.id??exam?.id)}>
             {active?t('resume'):t('startMinutes',{minutes})}<ArrowRight size={17}/>
           </button>}
@@ -62,9 +64,13 @@ export default function ExamHome() {
         <Clock3 size={19}/><h2>{t('todayStudy')}</h2>
         <strong>{next.title}</strong><p>{next.reason}</p>
         {next.minutes>0&&<small>{t('minutes',{minutes:next.minutes})}</small>}
-        <button className="quiet" onClick={()=>navigate('plan')}>{t('plan')}<ArrowRight size={15}/></button>
+        <button className="quiet" onClick={()=>{
+          const schedule=document.getElementById('today-schedule');
+          if(schedule) schedule.scrollIntoView({block:'start',behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});
+          else navigate('plan');
+        }}>{t('plan')}<ArrowRight size={15}/></button>
       </div>
-    </section>:<HomeView direct/>}
+    </section>:<HomeView direct planned={agenda} onLaunch={onLaunch} blocked={blocked}/>}
     {(pending||recent)&&<section className="exam-home-followup learning-frame">
       <Target size={18}/><div><h2>{t('followUp')}</h2><p>{pending?.title??recent!.title} · {t(pending?'scorePending':'scoreSaved')}</p></div>
       <button className="quiet" onClick={()=>navigate('results','all',(pending?'score:':'report:')+(pending?.id??recent!.id))}>

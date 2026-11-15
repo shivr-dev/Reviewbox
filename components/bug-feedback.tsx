@@ -10,18 +10,16 @@ import {
   type FeedbackReceipt,
 } from '@/lib/product-feedback';
 import {
-  PRODUCT_AREAS,
   FEEDBACK_CATEGORIES,
   type FeedbackCategory,
   type ProductArea,
   type BugReport,
 } from '@/supabase/functions/review-feedback/contract';
-const names: Record<ProductArea, string> = {
+const names: Record<Exclude<ProductArea, 'workshop'>, string> = {
   home: '今天',
   study: '学习计划与练习',
   subjects: '学科与资料',
   results: '成绩与考试',
-  workshop: '工坊',
   profile: '我的',
   devices: '手表与设备',
   other: '其他',
@@ -69,6 +67,7 @@ export default function BugFeedback() {
   const [error, setError] = useState(''),
     [notice, setNotice] = useState('');
   const [receipts, setReceipts] = useState(() => readReceipts(ns));
+  const [now, setNow] = useState(Date.now());
   const draft = useRef<BugReport | undefined>(undefined);
   const lifetime = useRef(new AbortController());
   const polling = useRef(false),
@@ -124,9 +123,14 @@ export default function BugFeedback() {
   useEffect(() => {
     lifetime.current = new AbortController();
     void updateStatus();
-    const timer = setInterval(() => void updateStatus(), 30000);
+    const timer = setInterval(() => { setNow(Date.now()); void updateStatus(); }, 30000);
+    const visible = () => { if(document.visibilityState === 'visible') { setNow(Date.now()); void updateStatus(); } };
+    document.addEventListener('visibilitychange', visible);
+    window.addEventListener('focus', visible);
     return () => {
       clearInterval(timer);
+      document.removeEventListener('visibilitychange', visible);
+      window.removeEventListener('focus', visible);
       lifetime.current.abort();
     };
   }, [ns]);
@@ -225,9 +229,9 @@ export default function BugFeedback() {
             onChange={(e) => setArea(e.target.value as ProductArea)}
             disabled={busy}
           >
-            {PRODUCT_AREAS.map((a) => (
+            {Object.entries(names).map(([a, name]) => (
               <option key={a} value={a}>
-                {tr('settings:' + names[a])}
+                {tr('settings:' + name)}
               </option>
             ))}
           </select>
@@ -309,7 +313,8 @@ export default function BugFeedback() {
               <li key={r.id}>
                 <span>
                   <strong>{r.title}</strong>
-                  <small>{tr('settings:' + statuses[r.status])}</small>
+                <small>{['queued','retry','sending'].includes(r.status) && now-Date.parse(r.createdAt)>10*60000 ? tr('settings:自动发布延迟，反馈已保存，请勿重复提交。') : tr('settings:' + statuses[r.status])}</small>
+                {['queued','retry','sending'].includes(r.status) && now-Date.parse(r.createdAt)>10*60000 && <a href="https://github.com/shivr-dev/Reviewbox/actions/workflows/feedback-issues.yml" target="_blank" rel="noopener noreferrer">{tr('settings:查看自动发布任务')}</a>}
                 </span>
                 {r.status === 'submitted' &&
                   r.url &&

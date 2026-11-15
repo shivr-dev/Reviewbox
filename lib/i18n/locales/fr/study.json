@@ -1,4 +1,13 @@
 {
+  "math.fieldLabel": "Réponse mathématique",
+  "math.placeholder": "Saisir une formule",
+  "math.分数": "Fraction",
+  "math.根号": "Racine",
+  "math.指数": "Puissance",
+  "math.下标": "Indice",
+  "math.绝对值": "Valeur absolue",
+  "math.方程组": "Système",
+  "math.单位": "Unité",
   "进度未能保存，请检查设备存储后重试。": "La progression n'a pas pu être enregistrée, veuillez vérifier le stockage de l'appareil et réessayer.",
   "保存未完成，请保留页面并重试。": "La sauvegarde n'est pas terminée, veuillez conserver la page et réessayer.",
   "返回工作台": "Revenir au tableau d’étude",
@@ -485,7 +494,7 @@
   "navi.followup.rephrase.request": "Explique le même point d’une autre manière, plus intuitive et concise. Conserve les conditions initiales et le niveau d’aide.",
   "navi.followup.example.request": "Donne un exemple court et concret du concept évoqué. Distingue cet exemple du document source et conserve le niveau d’aide.",
   "navi.display.fullscreen": "Afficher en plein écran",
-  "navi.display.dock": "Revenir à l’espace latéral",
+  "navi.display.dock": "Ancrer la conversation",
   "navi.home.placeholder": "Posez vos questions à Navi…",
   "navi.home.open": "Ouvrir Navi",
   "navi.config.setGpaRule": "Modifier la règle GPA",
@@ -593,5 +602,11 @@
   "navi.live.describe.highlight": "Highlight visible objects: {{ids}}",
   "navi.live.describe.clearHighlights": "Clear object highlights",
   "navi.live.describe.macro": "Macromolecule representation: {{model}}",
-  "navi.live.describe.camera": "Macromolecule camera: {{command}}"
+  "navi.live.describe.camera": "Macromolecule camera: {{command}}",
+  "navi.diagnostic.title": "Diagnostic d’erreur",
+  "navi.diagnostic.copy": "Copier le diagnostic",
+  "navi.diagnostic.copied": "Copié",
+  "navi.diagnostic.details": "Voir les détails",
+  "navi.diagnostic.safe": "Uniquement des informations sur l’erreur et la connexion, sans conversation, énoncé ni raisonnement.",
+  "navi.diagnostic.copyFailed": "Échec de la copie. Sélectionnez le texte manuellement."
 }

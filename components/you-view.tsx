@@ -40,7 +40,6 @@ import {
 import { useReview } from './review-context';
 import ClearDataCard from './clear-data-card';
 import WatchDeviceManager from './watch-device-manager';
-import { GameProfile } from './learning-game';
 import ProductDataSettings from './product-data-settings';
 import BugFeedback from './bug-feedback';
 import AgreementSettings from './usage-agreement';
@@ -54,7 +53,6 @@ const titles: Record<string, string> = {
   agreement: '使用协议与隐私说明',
   danger: '危险操作',
   advanced: '高级设置与实验功能',
-  partner: '企鹅空间',
 };
 function Entry({
   title,
@@ -340,12 +338,6 @@ export default function YouView() {
           </section>
           <div className="profile-footer-links">
             <Entry
-              title={tr("settings:企鹅空间")}
-              note={tr("settings:形象、成就与成长记录")}
-              onClick={() => open('partner')}
-              quiet
-            />
-            <Entry
               title={tr("settings:高级设置与实验功能")}
               onClick={() => open('advanced')}
               quiet
@@ -559,6 +551,11 @@ export default function YouView() {
           </div>
           <p className="settings-caption">{tr("settings:立即生效，刷新后保留。学习中的沉浸模式仍可单独切换。")}</p>
           <p className="settings-caption">{tr("settings:阅读与显示：练习页可切换沉浸模式、打开草稿纸。")}</p>
+          <p className="settings-caption type-attribution">
+            <a href="https://fonts.alibabagroup.com/#/font">Alimama FangYuanTi · © 阿里妈妈</a>
+            {' · '}<a href="https://hyperos.mi.com/font/en/download/">MiSans · © Xiaomi</a>
+            {' · '}<a href="https://seed.line.me/index_en.html">LINE Seed · © LY Corporation</a>
+          </p>
         </div>
       )}
       {view === 'devices' &&
@@ -796,7 +793,6 @@ export default function YouView() {
           </section>
         </div>
       )}
-      {view === 'partner' && <GameProfile />}
       <Dialog open={accountOpen} onOpenChange={setAccountOpen}>
         <DialogContent className="account-dialog profile-account-dialog settings-scope">
           <DialogTitle>

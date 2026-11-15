@@ -41,6 +41,9 @@ test('Navi escapes clipped page containers, restores focus, and removes request 
       panel.querySelector('[role="status"]')!.textContent!,
       /正在组织解释/,
     );
+    const avatar = panel.querySelector('svg[data-navi-state="thinking"]')!;
+    assert.ok(avatar.querySelector('g[data-navi="pupil"]'));
+    assert.equal(avatar.getAttribute('aria-hidden'), 'true');
     assert.equal(panel.querySelectorAll('.navi-activity-wave i').length, 3);
     assert.equal(
       panel.querySelector('.navi-activity-wave')!.getAttribute('aria-hidden'),

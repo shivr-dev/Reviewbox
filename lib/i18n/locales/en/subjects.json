@@ -1,4 +1,8 @@
 {
+  "map.prerequisite": "Prerequisites",
+  "map.support": "Chapter or supporting link",
+  "map.next": "Builds on this",
+  "map.missing": "{{count}} prerequisite topics aren’t installed.",
   "知识地图": "Knowledge map",
   "实线为前置依赖，虚线为章节归属或辅助关联。拖动节点查看关系。": "The solid lines are pre-dependencies, and the dotted lines are chapter affiliations or auxiliary associations. Drag nodes to view relationships.",
   "地图学科": "Map subject",

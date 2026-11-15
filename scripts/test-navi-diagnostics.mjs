@@ -1,0 +1,1 @@
+import {build} from 'esbuild';import {spawnSync} from 'node:child_process';await build({entryPoints:['tests/navi-diagnostics.test.ts'],outfile:'work/navi-diagnostics.test.mjs',bundle:true,platform:'node',format:'esm',packages:'external'});process.exitCode=spawnSync(process.execPath,['--test','work/navi-diagnostics.test.mjs'],{stdio:'inherit'}).status??1;

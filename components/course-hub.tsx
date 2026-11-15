@@ -19,7 +19,7 @@ import { currentNamespace } from '@/lib/store';
 import { type Course } from '@/lib/course-model';
 import { type Subject } from '@/lib/model';
 import { courseErrorMessage } from '@/lib/course-errors';
-export default function CourseHub({ subject }: { subject: Subject }) {
+export default function CourseHub({ subject, embedded = false }: { subject: Subject; embedded?: boolean }) {
   const { data, navigate, refresh, notify, aiReady } = useReview();
   const [editing, setEditing] = useState(false),
     [title, setTitle] = useState(''),
@@ -58,6 +58,12 @@ export default function CourseHub({ subject }: { subject: Subject }) {
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)) ?? [];
   const materials = data.materials.filter((m) => m.subject === subject);
   const shown = live && live.subject === subject ? live : null;
+  const featured = courses.find(course => course.status === 'ready' && course.sections.some(section => !section.completedAt)) ?? courses[0];
+  const featuredComplete = featured?.sections.filter(section => !!section.completedAt).length ?? 0;
+  const featuredSection = featured?.sections[featured.current];
+  const canOpen = (course:Course) => course.sections.some(section => !!section.content);
+  const courseAction = (course:Course) => course.status !== 'ready' ? tr('common:查看进度')
+    : course.sections.every(section => section.completedAt) ? tr('common:回顾课程') : tr('common:继续学习');
   function closeCamera() {
     cameraStream.current?.getTracks().forEach((track) => track.stop());
     cameraStream.current = null;
@@ -188,7 +194,7 @@ export default function CourseHub({ subject }: { subject: Subject }) {
     }
   }
   return (
-    <div className="course-hub">
+    <div className={'course-hub' + (embedded ? ' rb-course-workspace' : '')}>
       {cameraOpen && (
         <div
           className="camera-capture-backdrop"
@@ -232,18 +238,40 @@ export default function CourseHub({ subject }: { subject: Subject }) {
           </section>
         </div>
       )}
-      <section className="course-intro">
+      {!embedded && <section className="course-intro">
         <div>
           <p className="eyebrow">COURSE REVIEW</p>
-          <h2>{tr("common:课程复习")}</h2>
+          <h2>{tr('common:课程复习')}</h2>
           <p>{tr("common:以教材与笔记为依据，依次完成概念讲解、例题分析、理解检验和巩固练习。")}</p>
         </div>
         <button
           className={courses.length ? 'secondary' : 'primary'}
-          onClick={() => setEditing(!editing)}
+          onClick={() => setEditing(!editing)} aria-expanded={editing || !courses.length}
         >
           <Plus size={16} />{tr("common:建立课程")}</button>
-      </section>
+      </section>}
+      {embedded && (editing ? <header className="rb-course-editor-heading">
+        <h2>{tr('common:建立课程')}</h2>
+        <button className="quiet" disabled={!!working} onClick={() => setEditing(false)}>{tr('common:返回')}</button>
+      </header> : <section className="rb-course-feature">
+        <div>
+          <p className="rb-course-feature-label"><BookOpen size={17} aria-hidden="true" />{tr('library:课程')}</p>
+          <h2>{featured?.title ?? tr('library:courseEmpty')}</h2>
+          {featuredSection && <p>{featuredSection.title}</p>}
+          <div className="rb-course-feature-actions">
+            {featured && <button className="primary" disabled={!!working} onClick={() => canOpen(featured)
+              ? navigate('course', featured.id) : void prepare(featured)}>{courseAction(featured)}<ArrowRight size={17}/></button>}
+            <button className={featured ? 'secondary' : 'primary'} onClick={() => setEditing(true)}>
+              <Plus size={16}/>{tr('common:建立课程')}
+            </button>
+          </div>
+        </div>
+        {featured && <div className="rb-course-feature-progress">
+          <strong>{featuredComplete}<span> / {featured.sections.length}</span></strong>
+          <span>{tr('common:已完成')}</span>
+          <progress value={featuredComplete} max={Math.max(1,featured.sections.length)} aria-label={tr('common:查看进度')}/>
+        </div>}
+      </section>)}
       {error && (
         <div className="course-error" role="alert">
           <div>
@@ -253,8 +281,9 @@ export default function CourseHub({ subject }: { subject: Subject }) {
           </div>
         </div>
       )}
-      {(editing || !courses.length) && (
+      {(editing || (!embedded && !courses.length)) && (
         <section className="panel course-create">
+          <div className="rb-course-sources">
           <div className="section-head">
             <h3>{tr("common:添加学习资料")}</h3>
             <span className="muted">{tr("common:相同资料自动复用")}</span>
@@ -304,6 +333,8 @@ export default function CourseHub({ subject }: { subject: Subject }) {
               </select>
             </label>
           )}
+          </div>
+          <div className="rb-course-manuscript">
           <label>{tr("common:课程名称")}<input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -355,6 +386,7 @@ export default function CourseHub({ subject }: { subject: Subject }) {
           {!aiReady && (
             <p className="muted">{tr("common:课程生成服务暂不可用，已保存的课程可继续学习。")}</p>
           )}
+          </div>
         </section>
       )}
       {shown && shown.status !== 'ready' && (
@@ -467,16 +499,12 @@ export default function CourseHub({ subject }: { subject: Subject }) {
                   className="secondary"
                   disabled={!!working}
                   onClick={() =>
-                    course.sections.some((s) => s.content)
+                    canOpen(course)
                       ? navigate('course', course.id)
                       : void prepare(course)
                   }
                 >
-                  {course.status === 'ready'
-                    ? completed === course.sections.length
-                      ? tr("common:回顾课程")
-                      : tr("common:继续学习")
-                    : tr("common:查看进度")}
+                  {courseAction(course)}
                   <ArrowRight size={15} />
                 </button>
               </article>

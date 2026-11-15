@@ -233,5 +233,7 @@
   "站点配置版本暂不支持": "Cette version de configuration n’est pas prise en charge.",
   "账户与会员": "Compte et abonnement",
   "会员与用量": "Abonnement et utilisation",
-  "查看方案": "Voir les offres"
+  "查看方案": "Voir les offres",
+  "自动发布延迟，反馈已保存，请勿重复提交。": "La publication est retardée. Votre retour a été enregistré. Ne le renvoyez pas.",
+  "查看自动发布任务": "Voir le processus de publication"
 }

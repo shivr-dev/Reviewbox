@@ -1,4 +1,13 @@
 {
+  "math.fieldLabel": "數學答案",
+  "math.placeholder": "輸入公式",
+  "math.分数": "分數",
+  "math.根号": "根號",
+  "math.指数": "指數",
+  "math.下标": "下標",
+  "math.绝对值": "絕對值",
+  "math.方程组": "聯立方程",
+  "math.单位": "單位",
   "进度未能保存，请检查设备存储后重试。": "進度未能儲存，請檢查裝置儲存後重試。",
   "保存未完成，请保留页面并重试。": "儲存未完成，請保留頁面並重試。",
   "返回工作台": "返回工作臺",
@@ -485,7 +494,7 @@
   "navi.followup.rephrase.request": "請針對剛才討論的同一個問題，換一種更直觀、簡短的講法，保持原題條件與提示等級。",
   "navi.followup.example.request": "請針對剛才討論的同一個知識點，舉一個簡短的具體例子。區分原資料和你補充的例子，保持提示等級。",
   "navi.display.fullscreen": "全螢幕展開",
-  "navi.display.dock": "返回右側工作區",
+  "navi.display.dock": "停靠對話",
   "navi.home.placeholder": "有問題，和 Navi 聊聊…",
   "navi.home.open": "開啟 Navi",
   "navi.config.setGpaRule": "調整 GPA 規則",
@@ -593,5 +602,11 @@
   "navi.live.describe.highlight": "高亮已显示对象：{{ids}}",
   "navi.live.describe.clearHighlights": "清除对象高亮",
   "navi.live.describe.macro": "大分子表示：{{model}}",
-  "navi.live.describe.camera": "调整大分子视角：{{command}}"
+  "navi.live.describe.camera": "调整大分子视角：{{command}}",
+  "navi.diagnostic.title": "錯誤診斷",
+  "navi.diagnostic.copy": "複製診斷",
+  "navi.diagnostic.copied": "已複製",
+  "navi.diagnostic.details": "查看診斷詳情",
+  "navi.diagnostic.safe": "僅包含錯誤與連線資訊，不附帶對話、題目正文或思考內容。",
+  "navi.diagnostic.copyFailed": "複製失敗，請手動選取下方診斷內容。"
 }

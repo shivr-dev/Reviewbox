@@ -171,7 +171,9 @@ test('Navi retries format/citation failures once, preserves strict schemas, and 
     };
     assert.deepEqual(await naviConversation(request), answer);
     assert.equal(calls.length, 2);
-    assert.equal(calls[0].response_format.type, 'json_schema');
+    assert.equal(calls[0].response_format.type, 'json_object');
+    assert.match(calls[0].messages[0].content, /Required JSON schema/);
+    assert.doesNotMatch(calls[0].messages[0].content, /\/(?:no_)?think\b/);
     calls = [];
     globalThis.fetch = async () => {
       calls.push(1);

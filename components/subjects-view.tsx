@@ -56,10 +56,10 @@ import {
   dateLabel,
 } from './shared';
 import AnalyticsView from './analytics-view';
-export default function SubjectsView() {
+export default function SubjectsView({ embedded = false }: { embedded?: boolean } = {}) {
   const { data, states, subject, navigate, start, refresh, notify, aiReady } =
     useReview();
-  const [tab, setTab] = useState('review'),
+  const [tab, setTab] = useState(embedded ? 'practice' : 'review'),
     [search, setSearch] = useState(''),
     [node, setNode] = useState<Node | null>(null),
     [note, setNote] = useState(''),
@@ -293,24 +293,20 @@ export default function SubjectsView() {
     setNode(n);
     setSkillId(n.skills[0].id);
   };
+  const subjectActions = <div className="button-row">
+    <ManualImport key={s.id} subject={s.id} />
+    <button className="primary" disabled={!queue.length} onClick={() => start(queue)}>
+      {tr('subjects:开始专项练习')}<ArrowRight size={16} />
+    </button>
+  </div>;
   return (
     <>
-      <Heading
+      {embedded ? <div className="rb-subject-inline-actions">{subjectActions}</div> : <Heading
         eyebrow={s.en.toUpperCase()}
         title={tr('subjects:'+s.name)}
         description={s.course + ' · 课程、练习与能力评估'}
-        action={
-          <div className="button-row">
-            <ManualImport key={s.id} subject={s.id} />
-            <button
-              className="primary"
-              disabled={!queue.length}
-              onClick={() => start(queue)}
-            >{tr("subjects:开始专项练习")}<ArrowRight size={16} />
-            </button>
-          </div>
-        }
-      />
+        action={subjectActions}
+      />}
       <div className="subject-stat-row">
         <div>
           <span>{tr("subjects:知识点")}</span>
@@ -345,10 +341,10 @@ export default function SubjectsView() {
           </strong>
         </div>
       </div>
-      <Tabs value={tab} onValueChange={(v) => setTab(String(v))}>
-        <TabsList variant="line" className="page-tabs">
+      <Tabs value={tab} onValueChange={(v) => setTab(String(v))} className={embedded ? 'rb-practice-workspace' : undefined}>
+        <TabsList variant={embedded ? 'default' : 'line'} className={embedded ? 'rb-library-tabs' : 'page-tabs'}>
           {[
-            ['review', tr("subjects:复习")],
+            ...(!embedded ? [['review', tr("subjects:复习")]] : []),
             ['practice', tr("subjects:练习")],
             ['notes', tr("subjects:笔记")],
             ['tests', tr("subjects:测试")],
@@ -484,7 +480,7 @@ export default function SubjectsView() {
             <section className="panel pinyin-collections-panel">
               <div className="section-head">
                 <div>
-                  <p className="eyebrow">CHINESE WORD SETS</p>
+                  {!embedded && <p className="eyebrow">CHINESE WORD SETS</p>}
                   <h2>{tr("subjects:字词篇目")}</h2>
                 </div>
                 <span className="muted">{tr("subjects:按篇目完整练习")}</span>
@@ -512,7 +508,7 @@ export default function SubjectsView() {
             </section>
           )}
           {s.id === 'ce' && <ToeflPractice />}
-          <div className="home-columns">
+          <div className={'home-columns' + (embedded ? ' rb-practice-setup' : '')}>
             <section className="panel">
               <div className="section-head">
                 <h2>{tr("subjects:自适应专项练习")}</h2>

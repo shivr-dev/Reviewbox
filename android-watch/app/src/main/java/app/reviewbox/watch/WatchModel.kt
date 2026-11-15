@@ -619,7 +619,7 @@ class WatchModel @JvmOverloads constructor(app: Application, client: WatchDevice
         val authored = JSONArray(getApplication<Application>().assets.open("demo-records.json").bufferedReader().use { it.readText() }).objects()
         val merged = store.array("demo-records").objects().associateBy { it.getString("id") }.toMutableMap()
         authored.forEach { row ->
-            // Refresh authored content without resetting attempts, earned XP or edited demo scores.
+            // Refresh authored content without resetting attempts or edited demo scores.
             if (row.optString("kind") in listOf("node", "question") || !merged.containsKey(row.getString("id"))) merged[row.getString("id")] = row
         }
         store.put("demo-records", JSONArray(merged.values.toList()).toString())

@@ -3,7 +3,6 @@ import { buildQueue, computeMastery, nodeMastery } from './engine';
 import { examGpa, validResult, validExamDate } from './exam-outcomes';
 import { weeklyLearningGpa } from './study-assistant';
 import { watchAgenda } from './watch-agenda';
-import { learningGame } from './learning-game';
 import { wrongQuestions, isPinyin } from './question-tools';
 import {objective} from './learning-intelligence';
 import {startWatchSession,finishWatchSession,answerWatchSession,watchCompletionRecords} from './watch-session';
@@ -17,18 +16,24 @@ import {watchLearningCommand,watchCoursePages} from './watch-learning';
 import {courseQuestions} from './course-model';
 import {watchPackageCatalog} from './watch-package';
 
-/** The native client invokes this bundled module. No duplicated Kotlin GPA/mastery/XP algorithm. */
+/** The native client invokes this bundled module. No duplicated Kotlin GPA or mastery algorithm. */
 export function watchCore(request: {op:string;records:LocalRecord[];now?:number;input?:any}) {
   const now=request.now ?? Date.now(), data=projectRecords(request.records), input=request.input ?? {};
   if(request.op==='snapshot') {
-    const gpa=examGpa(data,now),game=learningGame(data,now),states=computeMastery(data.nodes,data.events);
+    const gpa=examGpa(data,now),states=computeMastery(data.nodes,data.events);
     const agenda=watchAgenda(data,now,input.deviceId);
+    const day = localDay(new Date(now));
+    const today = new Set(data.events.filter(event =>
+      !event.voidedBy && !event.learningEvidence?.gameRecovery &&
+      event.localDay === day && Date.parse(event.occurredAt) <= now,
+    ).map(event => event.questionId)).size;
+    const goal = Math.max(5, Math.min(30, Math.round(data.settings.dailyQuestionGoal ?? 10)));
     return {
       coreVersion:WATCH_CORE_VERSION,name:data.settings.name,mode:data.settings.studyMode ?? 'guided',
       gpa:{value:gpa.value,scale:gpa.config.scale,rows:gpa.rows.length,formula:gpa.config.formula,weighted:gpa.config.weighted},weeklyGpa:weeklyLearningGpa(data,now),
       recommendation:agenda.primary,actions:agenda.actions,
-      game:{xp:game.totalXP,level:game.level,hearts:game.hearts,maxHearts:game.maxHearts,coins:game.coins,streak:game.streak,skin:game.skin},
-      orbit:{today:game.daily.count,goal:game.goal,
+
+      orbit:{today,goal,
         covered:data.nodes.filter(n=>data.events.some(e=>!e.voidedBy&&e.nodeId===n.id)).length,total:data.nodes.length,
         retained:data.nodes.filter(n=>['已保持','已验证'].includes(aggregateMasteryStatus(n.skills.map(k=>states[keyOf(n.id,k.id)])))).length},
       subjects:SUBJECTS.map(s=>({...s,nodes:data.nodes.filter(n=>n.subject===s.id).map(n=>({id:n.id,title:n.title,chapter:n.chapter,skills:n.skills,mastery:nodeMastery(n,states),status:aggregateMasteryStatus(n.skills.map(k=>states[keyOf(n.id,k.id)]))}))})),

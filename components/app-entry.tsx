@@ -9,7 +9,12 @@ const systemRoute = () => typeof location !== 'undefined' && !!location.hash && 
 
 async function returningLearner() {
   // Read only the current namespace. Do not create, migrate or seed a database on the website.
-  const db = await openDB('review-learning-v1', 1, {upgrade(_db,_old,_new,tx){tx.abort();}});
+  const db = await openDB('review-learning-v1', 1, {
+    upgrade(_db, _old, _new, tx) {
+      void tx.done.catch(() => {});
+      tx.abort();
+    },
+  });
   try {
     const ns = await db.get('meta','activeAccount') ?? 'local';
     const tx = db.transaction('records');

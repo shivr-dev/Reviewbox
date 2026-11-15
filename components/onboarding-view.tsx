@@ -11,7 +11,7 @@ import { SUBJECTS } from '@/lib/model';
 import { buildQueue } from '@/lib/engine';
 import { dailyStudyPlan } from '@/lib/study-assistant';
 import { currentNamespace, loadData, put } from '@/lib/store';
-import { Penguin } from './learning-game';
+import NaviAvatar from './navi-avatar';
 import SubjectIcon from './subject-icon';
 import { UsageAgreement } from './usage-agreement';
 import {
@@ -198,7 +198,7 @@ function LegacyOnboardingView() {
       <section className="onboarding-content">
         {step > 0 && (
           <div className="onboarding-coach">
-            <Penguin action="welcome" actionKey={'guide:' + step} />
+            <NaviAvatar size={74} label={null} />
             <div>
               <h1>{steps[step]}</h1>
               <p>

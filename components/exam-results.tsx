@@ -28,12 +28,14 @@ export default function ExamResults({
   initialExamId,
   onClosed,
   reviewOnSave = false,
+  buttonOnly = false,
 }: {
   compact?: boolean;
   autoOpen?: boolean;
   initialExamId?: string;
   onClosed?: () => void;
   reviewOnSave?: boolean;
+  buttonOnly?: boolean;
 }) {
   const { data, refresh, notify, navigate } = useReview();
   const reviewText = (key:string) => tr('dashboard:examReview.'+key);
@@ -91,7 +93,7 @@ export default function ExamResults({
     >
       <button className={compact ? 'quiet' : 'secondary'} onClick={show}>
         <GraduationCap size={17} />
-        {pending.length
+        {buttonOnly ? tr("results:desk.manage") : pending.length
           ? pending.length + ' 场考试待录入成绩'
           : report.value === null
             ? tr("common:录入考试成绩")
@@ -101,7 +103,7 @@ export default function ExamResults({
               report.config.scale}
         <ArrowRight size={15} />
       </button>
-      {!compact && report.value !== null && (
+      {!compact && !buttonOnly && report.value !== null && (
         <small>{report.rows.length}{tr("results:场已录入 · 可修改换算公式")}</small>
       )}
       <Dialog

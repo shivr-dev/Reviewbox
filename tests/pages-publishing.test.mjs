@@ -10,9 +10,9 @@ import {
 } from '../scripts/verify-pages.mjs';
 
 const cssFixture =
-  '.alpha-product{}.alpha-rail{}.rb-brand-studio{}.rb-workshop-content{}.combo-soft{}.game-session-hud{}';
+  '.alpha-product{}.rb-home-masthead{}.rb-brand-studio{}.guided-practice{}.guided-completion{}.rb-results-desk{}';
 
-test('both application builds consume one shared style entry including Alpha and workshop styles', async () => {
+test('both application builds consume one shared style entry including workspace and Guided Focus styles', async () => {
   assert.match(
     await readFile('app/layout.tsx', 'utf8'),
     /import '\.\/product-styles\.css'/,
@@ -24,8 +24,8 @@ test('both application builds consume one shared style entry including Alpha and
   const entry = await readFile('app/product-styles.css', 'utf8');
   for (const file of [
     'globals.css',
-    'learning-game.css',
-    'brand-studio.css',
+    'playful.css',
+    'guided-practice.css',
     'alpha-product.css',
   ])
     assert.ok(entry.includes(file));
@@ -43,7 +43,7 @@ test('rejects missing styles and the previously published bundle that omitted Al
     ['./assets/app.css'],
   );
   assert.throws(
-    () => verifyStyleContent('.game-session-hud{} .combo-soft{}'),
+    () => verifyStyleContent('.guided-practice{} .guided-completion{}'),
     /missing .alpha-product/,
   );
   verifyStyleContent(cssFixture);

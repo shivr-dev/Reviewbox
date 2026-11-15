@@ -101,30 +101,7 @@ export async function pagesApi(
       });
     }
     const body = init?.body ? JSON.parse(String(init.body)) : null;
-    if (path === '/api/game' && method === 'POST') {
-      if (!config) throw new Error('请先在「我的」解锁站点配置');
-      const current = await session();
-      if (!current) throw new Error('请先登录学习账户');
-      const response = await fetch(
-        config.supabaseUrl + '/rest/v1/rpc/review_game',
-        {
-          method: 'POST',
-          headers: {
-            apikey: config.publishableKey,
-            Authorization: 'Bearer ' + current.access_token,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            action: body.action,
-            payload: body.payload ?? {},
-          }),
-          signal: AbortSignal.timeout(15000),
-        },
-      );
-      const result: any = await response.json();
-      if (!response.ok) throw new Error(result.message ?? '奖励服务暂时不可用');
-      return Response.json(result);
-    }
+    if (path === '/api/game') return Response.json({ code: 'retired' }, { status: 410 });
     if (path === '/api/account' && method === 'POST') {
       if (body?.action === 'logout') {
         const current = stored();
@@ -290,7 +267,7 @@ export async function pagesApi(
     if (method === 'POST' && path === '/api/course') {
       if(body.action==='tutor'){
         const {membershipRequest}=await import('./membership-client');const {action,requestId,capability,trial,...input}=body;
-        try{const result=await membershipRequest('tutor',{action:'tutor',requestId:requestId??crypto.randomUUID(),capability:capability??'navi_basic',trial,input},init?.signal??undefined);window.dispatchEvent(new Event('review:membership-updated'));return Response.json(result);}catch(e){return Response.json({error:(e as Error).message,code:(e as any).code??'request'},{status:422});}
+        try{const result=await membershipRequest('tutor',{action:'tutor',requestId:requestId??crypto.randomUUID(),capability:capability??'navi_basic',trial,input},init?.signal??undefined);window.dispatchEvent(new Event('review:membership-updated'));return Response.json(result);}catch(e){return Response.json({error:(e as Error).message,code:(e as any).code??'request',diagnostic:(e as any).diagnostic},{status:422});}
       }
       const { generateCourseSection, courseConversation, reviseCourseSection } =
         await import('./course-server');

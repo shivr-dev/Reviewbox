@@ -7,7 +7,7 @@ import {
   type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { Compass } from 'lucide-react';
+import NaviAvatar, { type NaviMotionState } from './navi-avatar';
 
 /** Keep Navi outside transformed/overflow-clipped page and game containers. */
 export function NaviLayer({ children }: { children: ReactNode }) {
@@ -78,7 +78,7 @@ export function NaviSurface({
 }
 
 /** Indicates actual request activity; never invents reasoning steps or a percentage. */
-export function NaviActivity({ label }: { label: string }) {
+export function NaviActivity({ label, state = 'thinking' }: { label: string; state?: NaviMotionState }) {
   return (
     <div
       className="navi-activity"
@@ -87,8 +87,7 @@ export function NaviActivity({ label }: { label: string }) {
       aria-atomic="true"
     >
       <span className="navi-activity-mark" aria-hidden="true">
-        <span className="navi-activity-orbit" />
-        <Compass size={18} />
+        <NaviAvatar size={96} state={state} label={null} />
       </span>
       <span className="navi-activity-copy">
         {label}

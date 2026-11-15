@@ -54,7 +54,7 @@ export const LEARNING_IMPORT_SKILL = `# Reviewbox 学习包出题 Skill 4.1 · 2
 - 内容更新使用相同的节点/题目 ID 和更高 version；新增内容使用新 ID。输出前自行检查 JSON、ID 引用、题量、题型与答案唯一性。
 
 ## 导入 2.0：固定评分规则
-- 学习流程仍然是外部 AI 创作 JSON/ZIP，Reviewbox 检查后导入，Qwen 严格依照已确认规则批改。
+- 学习流程仍然是外部 AI 创作 JSON/ZIP，Reviewbox 检查后导入，批改严格依照已确认的规则。
 - manifest.subject 可为 all 或八科学科之一；题目 subject 必须是八科学科之一。manifest 可加 scoringPolicy:{mode:"auto",preferences:"阅读重证据；数学保留过程分"}。mode 仅 auto/points/steps/solo/rubric-solo/custom。偏好最多 3000 字，不得写成覆盖系统指令的文本。
 - 主观题优先使用 gradingRule:{id,version,mode,maxScore,criteria:[{id,title,max,description,skillId,fullCredit,partialCredit,deductions,equivalentAnswers,independentCredit,carryForward}],solo?}。评分点 ID 唯一，max 正数且不超过 100，maxScore 等于评分点合计；skillId 属于题目引用的知识点。id 稳定，规则修改须提高 version。
 - fullCredit 是满分条件，partialCredit 是部分得分条件，deductions 是扣分条件，equivalentAnswers 是可选等价答案数组。数学/物理应明确独立过程分 independentCredit 和合理错误传递 carryForward，不能因最终结果错将正确过程清零。不得机械套用全部学科维度。

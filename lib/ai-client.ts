@@ -32,7 +32,7 @@ async function call(body: any): Promise<any> {
   const r = await apiFetch('/api/ai', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    // Qwen consumes validated semantic diagrams and textual rules, never base64 image payloads.
+    // Workers AI consumes validated semantic diagrams and textual rules, never base64 image payloads.
     body: JSON.stringify(body, (key, value) =>
       key === 'media' ? undefined : value,
     ),

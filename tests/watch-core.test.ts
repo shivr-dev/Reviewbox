@@ -3,7 +3,6 @@ import assert from 'node:assert/strict';
 import {fixture,attempt,schoolExam} from './study-plan-fixtures';
 import {watchCore,watchAnswerEvent,type WatchAnswer} from '../lib/watch-core';
 import {examGpa} from '../lib/exam-outcomes';
-import {learningGame} from '../lib/learning-game';
 import {projectRecords} from '../lib/record-projection';
 import type {LocalRecord,StudyData} from '../lib/model';
 import {createWatchGateway,deviceHash} from '../lib/watch-gateway';
@@ -18,13 +17,13 @@ function records(d:StudyData):LocalRecord[] {const rows:LocalRecord[] = (['node'
  return list.map(payload=>({id:payload.id,kind,payload,updated_at:new Date(now).toISOString(),deleted:false}));
 });rows.push({id:'setting',kind:'setting',payload:d.settings,updated_at:new Date(now).toISOString(),deleted:false});return rows;}
 const input=(d:StudyData):WatchAnswer=>({eventId:'watch-event:device:attempt-1',sessionId:'watch-session:one',questionId:d.questions[0].id,answer:'A',occurredAt:new Date(now).toISOString(),displayedAt:new Date(now-15000).toISOString(),revealedAt:new Date(now-1000).toISOString(),activeThinkMs:13000,wallTimeMs:15000,idleMs:2000,timeZone:'Asia/Shanghai'});
-test('native projection keeps real GPA distinct and matches web XP after duplicate offline delivery',()=>{
+test('native projection keeps real GPA and counts distinct practice after duplicate offline delivery',()=>{
  const d=fixture();d.exams=[{...schoolExam(d,now,-3),result:{score:83,maxScore:100,credits:2,recordedAt:new Date(now-10000).toISOString()}}];
  const e=watchAnswerEvent(d,input(d),now);d.events=[e,e];
  const rows=records(d), snapshot=watchCore({op:'snapshot',records:rows,now}) as any;
- assert.equal(snapshot.gpa.value,examGpa(d,now).value);assert.equal(snapshot.game.xp,learningGame(d,now).totalXP);
+ assert.equal(snapshot.gpa.value,examGpa(d,now).value);assert.equal('game' in snapshot,false);
  assert.equal(snapshot.weeklyGpa.value,null);assert.equal(snapshot.weeklyGpa.label,'学习 GPA（非官方成绩）');
- assert.equal(snapshot.game.xp,learningGame({...d,events:[e]},now).totalXP);
+ assert.equal(snapshot.orbit.today,1);
 });
 test('watch objective answers use the shared scorer and cannot inject mastery or a fabricated correct score',()=>{
  const d=fixture(), forged={...input(d),answer:'B',score:1,mastery:1} as WatchAnswer;

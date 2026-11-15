@@ -1,3 +1,4 @@
+import {diagnoseNaviFailure,naviDiagnostic,safeDiagnostic} from './navi-diagnostics';
 import type { NaviCheckRequest } from './navi-understanding';
 import type {
   NaviConfigurationAction,
@@ -145,6 +146,7 @@ export async function requestNavi(
   },
   billing?:{capability:'navi_basic'|'navi_deep'|'agent';trial?:'plus'|'pro'},
 ) {
+  const requestId=crypto.randomUUID();
   try {
     let remaining = 18000;
     const history = messages
@@ -164,7 +166,7 @@ export async function requestNavi(
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        action: 'tutor',requestId:crypto.randomUUID(),capability:billing?.capability??'navi_basic',trial:billing?.trial,
+        action: 'tutor',requestId,capability:billing?.capability??'navi_basic',trial:billing?.trial,
         message,
         contexts,
         history,
@@ -177,7 +179,7 @@ export async function requestNavi(
       ]),
     });
     const value = await res.json().catch(() => {
-      throw new NaviError('format');
+      throw new NaviError('format',{diagnostic:naviDiagnostic('RB-GATEWAY-NONJSON','client',{requestId,httpStatus:res.status,retryable:true})});
     });
     if (!res.ok) {
       const code = (value as any)?.code;
@@ -185,6 +187,7 @@ export async function requestNavi(
         ['context', 'timeout', 'format', 'citation', 'save','membership_upgrade','membership_credits','auth','ai_unconfigured'].includes(code)
           ? code
           : 'request',
+        {diagnostic:safeDiagnostic((value as any)?.diagnostic)??naviDiagnostic('RB-GATEWAY-HTTP','gateway',{requestId,httpStatus:res.status,detail:(value as any)?.error,retryable:res.status>=500})},
       );
     }
     const {membership,...answer}=value as any;
@@ -192,7 +195,7 @@ export async function requestNavi(
   } catch (e) {
     if (e instanceof NaviError) throw e;
     if (e instanceof Error && e.name === 'TimeoutError')
-      throw new NaviError('timeout');
-    throw new NaviError('request', e);
+      throw new NaviError('timeout',{diagnostic:diagnoseNaviFailure(e,'client',requestId)});
+    throw new NaviError('request',{diagnostic:diagnoseNaviFailure(e,'client',requestId)});
   }
 }

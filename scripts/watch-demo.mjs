@@ -26,7 +26,7 @@ export function watchDemo(pack, now = Date.now()) {
   ];
   return [...nodes.map(payload=>({id:payload.id,kind:'node',payload})), ...[...questions,...authored].map(payload=>({id:payload.id,kind:'question',payload})),
     ...exams.map(payload=>({id:payload.id,kind:'exam',payload})),
-    {id:'settings',kind:'setting',payload:{name:'企鹅演示空间',dailyMinutes:10,surprise:false}},
+    {id:'settings',kind:'setting',payload:{name:'Reviewbox 演示空间',dailyMinutes:10,surprise:false}},
     {id:'watch-demo-note',kind:'note',payload:{id:'watch-demo-note',subject:'math',name:'先理解，再练习',text:'先尝试独立回忆；对照答案后真实自评。不会的内容先阅读讲解，再做巩固。演示资料仅保存在本机，不参与个人成绩。'}}
   ].map(r=>({...r,updated_at:new Date(now).toISOString(),deleted:false}));
 }

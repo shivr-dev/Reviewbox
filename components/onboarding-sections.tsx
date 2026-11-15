@@ -12,12 +12,12 @@ import {
 import { useState } from 'react';
 import { tr } from '@/lib/i18n';
 import LibraryView from './library-view';
-import { Penguin } from './learning-game';
+import NaviAvatar from './navi-avatar';
 
 export function OnboardingWelcome() {
   return (
     <div className="onboarding-welcome">
-      <Penguin action="welcome" actionKey="onboarding-welcome" />
+      <NaviAvatar size={126} label={null} />
       <h1 id="onboarding-title" tabIndex={-1}>
         {tr('planner:欢迎来到 Review')}
       </h1>

@@ -4,6 +4,7 @@ import WatchDownload from '../components/watch-download';
 import {isWatchBrowser} from '../lib/watch-platform';
 import DeploymentStatus from '../components/deployment-status';
 import { pagesApi } from '../lib/pages-cloud';
+import 'katex/dist/katex.min.css';
 import '../app/product-styles.css';
 (window as any).__REVIEW_STATIC__ = true;
 (window as any).__REVIEW_PAGES_API__ = pagesApi;

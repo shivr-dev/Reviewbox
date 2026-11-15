@@ -1,41 +1,55 @@
 'use client';
-import {tr} from '@/lib/i18n';
-import { ArrowRight } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import {formatDate, tr} from '@/lib/i18n';
+import { ArrowRight, Clock3 } from 'lucide-react';
+import { useState } from 'react';
 import { useReview } from './review-context';
-import { studyAgenda } from '@/lib/study-orchestrator';
-import {presentAction} from '@/lib/presentation';
-import { Penguin } from './learning-game';
+import { studyAgenda, type StudyAction } from '@/lib/study-orchestrator';
+import {presentHomeAction} from '@/lib/presentation';
+import { localDay } from '@/lib/model';
 export default function HomeView({
-  direct = false,
-}: { direct?: boolean } = {}) {
-  const [showCompanion, setShowCompanion] = useState(false);
-  useEffect(() => setShowCompanion(true), []);
-  const { data, navigate } = useReview(),
-    next = presentAction(studyAgenda(data).primary);
+  direct = false, planned, onLaunch, blocked = false,
+}: { direct?: boolean; planned?: ReturnType<typeof studyAgenda>; onLaunch?: (action: StudyAction) => void; blocked?: boolean } = {}) {
+  const { data, navigate } = useReview();
+  const [selection, setSelection] = useState('');
+  const agenda = planned ?? studyAgenda(data);
+  const options = [agenda.primary, ...agenda.actions.filter(action => action.id !== agenda.primary.id)]
+    .slice(0, 3).map(action => presentHomeAction(action, data));
+  const next = options.find(action => action.id === selection) ?? options[0];
+  const today = localDay();
   return (
     <section className="now-home" aria-label={tr("dashboard:现在应该做什么")}>
-      <div className="now-companion" aria-hidden="true">
-        {showCompanion && (
-          <Penguin skin={data.settings.gameSkin} action="welcome" />
-        )}
+      <header className="rb-home-task-heading">
+        <h1>{tr("dashboard:sprint.todayStudy")}</h1>
+        <time dateTime={today}>{formatDate(today+'T12:00:00', {month:'short',day:'numeric'})}</time>
+        {next.subjectName && <span className="rb-home-task-subject">{next.subjectName}</span>}
+      </header>
+      <div className="rb-home-task">
+        <div className="rb-home-task-copy" aria-live="polite">
+          {options.map(action => <div key={action.id} className="rb-home-copy-option"
+            aria-hidden={action.id !== next.id || undefined}>
+            <h2 title={action.title}>{action.title}</h2>
+            <p title={action.reason}>{action.reason}</p>
+          </div>)}
+        </div>
+        <div className="rb-home-task-controls">
+          <button className="primary" disabled={blocked} onClick={() => onLaunch
+            ? onLaunch(next) : direct ? navigate('plan', 'all', 'launch:' + next.id) : navigate('plan')}>
+            {direct ? <span className="rb-home-action-labels">
+              {options.map(action => <span key={action.id}
+                aria-hidden={action.id !== next.id || undefined}>{action.label}</span>)}
+            </span> : tr("dashboard:进入学习计划")}
+            <ArrowRight size={19} aria-hidden="true" />
+          </button>
+          {options.some(action => action.minutes > 0) && <span className="rb-home-duration"
+            aria-hidden={next.minutes <= 0 || undefined}>
+            <Clock3 size={16} />{tr('dashboard:sprint.minutes', {minutes:next.minutes})}
+          </span>}
+        </div>
       </div>
-      <span className="now-kicker">{tr("dashboard:现在，先做这一件事")}</span>
-      <h1>{next.title}</h1>
-      <p>{next.reason}</p>
-      <button
-        className="primary game-main-action"
-        onClick={() =>
-          direct
-            ? navigate('plan', 'all', 'launch:' + next.id)
-            : navigate('plan')
-        }
-      >
-        {direct ? next.label : tr("dashboard:进入学习计划")}
-        <ArrowRight size={20} />
-      </button>
-      <small>
-        {next.minutes > 0 ? tr("common:这一段约 {{v0}} 分钟 · ",{v0:(next.minutes)}) : ''}{tr("dashboard:完成后，再决定下一步")}</small>
+      {options.length > 1 && <div className="rb-home-task-choices" role="group" aria-label={tr('planner:接下来的安排')}>
+        {options.map(action => <button type="button" key={action.id} aria-pressed={action.id === next.id}
+          onClick={() => setSelection(action.id)}>{action.label}</button>)}
+      </div>}
     </section>
   );
 }

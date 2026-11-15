@@ -19,10 +19,12 @@ export default function NaviConfigurationPreview({
   action,
   operationId,
   onClose,
+  onOutcome,
 }: {
   action: NaviConfigurationAction;
   operationId: string;
   onClose: () => void;
+  onOutcome?: (state: 'success' | 'error') => void;
 }) {
   const { data, refresh } = useReview();
   const owner = useRef(currentNamespace()),
@@ -113,8 +115,10 @@ export default function NaviConfigurationPreview({
       if (currentNamespace() !== owner.current) return;
       await refresh();
       setDone(true);
+      onOutcome?.('success');
       onClose();
     } catch (e) {
+      onOutcome?.('error');
       setError(
         t(
           e instanceof Error && ['account', 'changed'].includes(e.message)

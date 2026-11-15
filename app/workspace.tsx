@@ -33,23 +33,15 @@ import YouView from '@/components/you-view';
 import ProductInsights from '@/components/product-insights';
 import { trackProductEvent } from '@/lib/product-insights';
 import WatchDevices from '@/components/watch-devices';
-import WorkshopExperience from '@/components/workshop-experience';
 import ProductShell, { ProductHome } from '@/components/product-shell';
 import {
   ProductSubjects,
   ProductResults,
-  ProductShop,
 } from '@/components/product-workspaces';
 import OnboardingView from '@/components/onboarding-view';
 import ExamSprintView from '@/components/exam-sprint-view';
-import StudyPlanView from '@/components/study-plan-view';
-import RewardsView, {
-  RewardsBridge,
-  SuperPromo,
-} from '@/components/rewards-view';
-import ChestView from '@/components/chest-view';
 import { assetPath } from '@/lib/runtime';
-import { parseWorkspaceRoute, workspaceHash } from '@/lib/workspace-route';
+import { isRetiredWorkspaceRoute, parseWorkspaceRoute, workspaceHash } from '@/lib/workspace-route';
 import { sessionForView } from '@/lib/session-view';
 import { SUBJECTS, uid, type StudyData, type QueueItem } from '@/lib/model';
 
@@ -86,14 +78,6 @@ export default function Workspace() {
     }
     document.documentElement.dataset.reviewTheme =
       localStorage.getItem('review-visual-theme') || 'playful';
-    const font = new FontFace(
-      'Review Duo',
-      `url("${assetPath('det-player/assets/fonts/DuolingoSansVF.woff2')}")`,
-    );
-    void font
-      .load()
-      .then((loaded) => document.fonts.add(loaded))
-      .catch(() => {});
   }, []);
   const [data, setData] = useState<StudyData>(base),
     [page, setPage] = useState('home'),
@@ -240,11 +224,11 @@ export default function Workspace() {
       setSyncing(false);
     }
   }, [notify, refresh]);
-  const navigate = useCallback((p: string, s = 'all', view = '') => {
+  const navigate = useCallback((p: string, s = 'all', view = '', target?: string) => {
     setPage(p);
     setSubject(s);
     setSection(view);
-    const next = workspaceHash({ page: p, subject: s, section: view });
+    const next = workspaceHash({ page: p, subject: s, section: view, target });
     if (location.hash !== next)
       history.pushState({ ...history.state, reviewRoute: next }, '', next);
     window.scrollTo({ top: 0, behavior: 'instant' });
@@ -347,6 +331,10 @@ export default function Workspace() {
     window.addEventListener('offline', updateNetwork);
     const onHash = () => {
       const route = parseWorkspaceRoute(location.hash);
+      if (isRetiredWorkspaceRoute(location.hash)) {
+        const next = workspaceHash(route);
+        history.replaceState({ ...history.state, reviewRoute: next }, '', next);
+      }
       setPage(route.page);
       setSubject(route.subject);
       setSection(route.section);
@@ -471,9 +459,8 @@ export default function Workspace() {
     >
       <ProductLocale locale={data.settings.locale} ready={ready}/>
       {ready && !website && <ProductInsights page={page} />}
-      {ready && !website && <RewardsBridge />}
       {ready && identityReady && !website && !['exam','assessment','sprint','onboarding'].includes(page) && session?.mode!=='test' && <NaviWorkspace key={currentNamespace()}/>}
-      <div className="review-application">
+      <div className="review-application" data-page={page}>
       {page === 'website' || (ready && identityReady && website) ? <WebsiteView navigate={navigate} locale={data.settings.locale}/> : !ready || (page === 'home' && !identityReady) ? <WorkspaceLoading/> : ready &&
       [
         'home',
@@ -483,24 +470,14 @@ export default function Workspace() {
         'library',
         'results',
         'analytics',
-        'workshop',
-        'forge',
-        'enchant',
-        'equipment',
-        'shop',
-        'redeem',
         'super','membership',
-        'admin',
         'you',
         'study',
         'sprint',
-        'chest',
       ].includes(page) ? (
         <ProductShell key={currentNamespace()} page={page}>
-          {page === 'home' ? (
-            <ProductHome />
-          ) : page === 'plan' ? (
-            <StudyPlanView key={currentNamespace()} />
+          {page === 'home' || page === 'plan' ? (
+            <ProductHome enterPlan={page === 'plan'} />
           ) : page === 'sprint' ? (
             <ExamSprintView key={currentNamespace()+'-'+subject}/>
           ) : page === 'study' ? (
@@ -541,11 +518,9 @@ export default function Workspace() {
                 />
               </div>
             )
-          ) : page === 'chest' ? (
-            <ChestView key={subject + currentNamespace()} sessionId={subject} />
           ) : page === 'subjects' || page === 'library' ? (
             <ProductSubjects
-              key={page + subject}
+              key={page}
               initialView={page === 'library' ? 'materials' : 'subjects'}
             />
           ) : page === 'results' || page === 'analytics' ? (
@@ -558,36 +533,7 @@ export default function Workspace() {
             <div className="alpha-workspace">
               <YouView />
             </div>
-          ) : page==='membership'||page==='super'?<MembershipView/> : ['shop', 'redeem', 'super', 'admin'].includes(page) ? (
-            <div className="alpha-workspace">
-              <nav className="alpha-secondary" aria-label="工坊功能">
-                {[
-                  ['forge', '铁匠铺'],
-                  ['enchant', '附魔师与图鉴'],
-                  ['equipment', '装备与搭配'],
-                  ['shop', '材料与商店'],
-                ].map(([id, label]) => (
-                  <button
-                    key={id}
-                    aria-current={page === id ? 'page' : undefined}
-                    onClick={() => navigate(id)}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </nav>
-              {page === 'shop' ? (
-                <ProductShop />
-              ) : (
-                <RewardsView
-                  key={page + currentNamespace()}
-                  mode={page as 'redeem' | 'admin' | 'super'}
-                />
-              )}
-            </div>
-          ) : (
-            <WorkshopExperience page={page} selection={subject} />
-          )}
+          ) : page === 'membership' || page === 'super' ? <MembershipView /> : null}
         </ProductShell>
       ) : page === 'course' && ready ? <CourseRoom key={subject+currentNamespace()} courseId={subject}/> : page === 'remedy' && ready ? <RemediationCourse key={subject+currentNamespace()} courseId={subject}/> : page === 'onboarding' && ready ? <OnboardingView key={currentNamespace()}/> : page === 'exam' && ready ? <ExamRoom key={subject+currentNamespace()} runId={subject}/> : page === 'assessment' && ready ? (()=>{const draft=data.jobs?.find(j=>j.id===subject&&j.kind==='assessment');return draft?.session?<AssessmentRoom key={subject+currentNamespace()} session={draft.session} finish={()=>navigate('results')}/>:<div role="status">此测试尚未同步完整<button onClick={()=>void sync()}>同步后重试</button></div>})() : <div role="status">正在读取学习记录…</div>}
       </div>

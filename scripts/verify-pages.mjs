@@ -34,11 +34,11 @@ export function applicationStyles(html) {
 export function verifyStyleContent(css) {
   for (const selector of [
     '.alpha-product',
-    '.alpha-rail',
+    '.rb-home-masthead',
     '.rb-brand-studio',
-    '.rb-workshop-content',
-    '.combo-soft',
-    '.game-session-hud',
+    '.guided-practice',
+    '.guided-completion',
+    '.rb-results-desk',
   ]) {
     assert.ok(
       css.includes(selector),

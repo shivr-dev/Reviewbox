@@ -1,4 +1,5 @@
 {
+  "homeActionTopic": "{{step}} · {{topic}}",
   "现在应该做什么": "What should I do now?",
   "现在，先做这一件事": "Start with this one thing",
   "进入学习计划": "Open study plan",

@@ -1,3 +1,143 @@
+/* Reviewbox brand laboratory. Scoped: existing learning and native exams stay intact. */
+.rb-brand-studio {
+  --rb-blue: #51aff0;
+  --rb-blue-deep: #4095ca;
+  --rb-ink: #3c3c3c;
+  --rb-muted: #727b84;
+  --rb-line: #e5e5e5;
+  --rb-lilac: #f3effe;
+  --rb-cream: #fff9e8;
+  font-family: var(--font-body);
+  background: #f8fbfe;
+  color: var(--rb-ink);
+  min-height: 100dvh;
+  padding: 0 36px 24px;
+  line-height: 1.6;
+}
+.rb-brand-studio .primary {
+  background: #51aff0;
+  color: #fff;
+  border: 0;
+  border-radius: 12px;
+  min-height: 46px;
+  box-shadow: 0 4px 0 #4095ca;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-weight: 800;
+  padding: 12px 22px;
+}
+.rb-brand-studio .primary:active {
+  transform: translateY(4px);
+  box-shadow: none;
+}
+.rb-brand-studio .primary:disabled {
+  background: #e5e5e5;
+  color: #999;
+  box-shadow: none;
+}
+.rb-brand-studio .secondary {
+  border: 2px solid #e5e5e5;
+  border-radius: 12px;
+  background: white;
+  color: #168acb;
+  box-shadow: 0 3px 0 #e5e5e5;
+  min-height: 46px;
+  padding: 10px 20px;
+  font-weight: 800;
+}
+.rb-brand-studio button {
+  font-family: inherit;
+}
+.rb-brand-studio .rb-action {
+  width: 100%;
+  min-height: 44px !important;
+  font-size: 13px !important;
+  border-radius: 11px !important;
+  padding: 10px 12px !important;
+  gap: 8px;
+}
+@keyframes rb-item-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-8deg);
+  }
+  50% {
+    transform: translateY(-7px) rotate(-5deg);
+  }
+}
+@keyframes rb-forge-tap {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-8deg);
+  }
+  30% {
+    transform: translateY(-20px) rotate(-15deg);
+  }
+  44% {
+    transform: translateY(6px) rotate(2deg);
+  }
+  60% {
+    transform: translateY(-5px) rotate(-6deg);
+  }
+}
+@keyframes rb-spark {
+  0%,
+  30% {
+    opacity: 0;
+    transform: rotate(var(--angle)) translateX(0) scale(0.2);
+  }
+  45% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: rotate(var(--angle)) translateX(105px) scale(0.2);
+  }
+}
+@keyframes rb-companion-hop {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  40% {
+    translate: 0 -9px;
+  }
+  65% {
+    translate: 0 0;
+  }
+}
+@keyframes rb-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (max-width: 1050px) {
+  .rb-brand-studio {
+    padding: 0 20px 22px;
+  }
+}
+@media (max-width: 760px) {
+  .rb-brand-studio {
+    padding: 0 14px 20px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rb-brand-studio *,
+  .rb-brand-studio *::before,
+  .rb-brand-studio *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* Alpha only. The stable workspace keeps its existing layout and theme. */
 .alpha-shop-links {
   display: flex;
@@ -87,17 +227,6 @@
     font-size: 12px !important;
   }
 }
-.alpha-rail .alpha-nav-button.game-group::before {
-  content: '';
-  position: absolute;
-  width: 26px;
-  height: 1px;
-  background: #e7edf1;
-  left: 50%;
-  top: -17px;
-  transform: translateX(-50%);
-  pointer-events: none;
-}
 .alpha-product {
   display: flex;
   min-height: 100dvh;
@@ -143,9 +272,6 @@
   flex-direction: column;
   gap: 16px;
 }
-.alpha-rail .game-group {
-  margin-top: 15px;
-}
 .alpha-rail button:hover {
   background: #f3faff;
   color: #168acb;
@@ -163,19 +289,6 @@
   width: 48px;
   height: 54px;
   border-radius: 15px;
-}
-.alpha-profile .learning-penguin {
-  width: 43px;
-  height: 43px;
-  margin: 0;
-  transform: none !important;
-}
-.alpha-profile .learning-penguin img {
-  width: 43px;
-  height: 43px;
-}
-.alpha-profile:hover .learning-penguin {
-  translate: 0 -2px;
 }
 .alpha-navtip {
   position: absolute;
@@ -282,17 +395,6 @@
 }
 .alpha-home .now-companion {
   height: 155px;
-}
-.alpha-home .now-home .game-main-action {
-  background: #78c934 !important;
-  box-shadow: 0 4px 0 #5fa720 !important;
-  border-radius: 13px;
-  min-height: 52px;
-  padding: 13px 30px;
-  font-size: 16px;
-}
-.alpha-home .now-home .game-main-action:active {
-  box-shadow: none !important;
 }
 .alpha-home-strip {
   display: flex;
@@ -506,105 +608,12 @@
   font-size: 14px;
   text-align: center;
 }
-.rb-alpha-workshop {
-  max-width: 1240px;
-  margin: auto;
-  padding: 22px 20px 50px;
-}
-.alpha-workshop-tabs {
-  padding: 0 10px 15px;
-  gap: 4px;
-}
-.alpha-workshop-tabs .rb-material-wallet {
-  padding: 8px 10px;
-}
-.rb-alpha-workshop .rb-workshop-heading {
-  padding-top: 14px;
-}
-.rb-alpha-workshop .rb-workshop-heading h1 {
-  font-size: 26px !important;
-  line-height: 1.5;
-  margin: 8px 0;
-}
-.rb-alpha-workshop .rb-item-heading h2 {
-  font-size: 20px;
-  margin: 4px 0;
-}
-.rb-alpha-workshop .rb-select-label {
-  display: block;
-  font-size: 11px;
-  color: #8b959d;
-  margin-bottom: 16px;
-}
-.rb-alpha-workshop .rb-select-label select {
-  display: block;
-  width: 100%;
-  font-size: 13px;
-  color: #536a79;
-  border: 2px solid #e4edf3;
-  border-radius: 10px;
-  background: white;
-  padding: 8px 10px;
-  margin-top: 5px;
-}
-.rb-alpha-workshop .rb-forge-tabs {
-  display: flex;
-  gap: 8px;
-  margin: 18px 0;
-}
-.rb-alpha-workshop .rb-workshop-content {
-  padding-top: 8px;
-}
-.rb-alpha-workshop .rb-affixes b {
-  font-size: 14px;
-}
-.rb-alpha-workshop .rb-affixes small {
-  font-size: 11px;
-  line-height: 1.7;
-}
-.rb-alpha-workshop .rb-affixes li {
-  min-height: 74px;
-}
-.rb-alpha-workshop .rb-enchant-effect small {
-  font-size: 11px;
-}
-.rb-alpha-workshop .rb-book-upgrade .rb-cost-parts {
-  font-size: 9px;
-}
-.rb-alpha-workshop .rb-details {
-  padding: 22px;
-}
-.rb-alpha-workshop .rb-owned-item.level-3,
-.rb-alpha-workshop .rb-owned-item.level-4,
-.rb-alpha-workshop .rb-owned-item.level-5 {
-  filter: drop-shadow(0 0 6px #b9e5ff);
-}
-.rb-collectible.rarity-epic {
-  background: #faf7ff;
-  border-color: #e6def2;
-}
-.rb-collectible.rarity-unique {
-  background: #fffcf1;
-  border-color: #eee3bb;
-}
-.rb-collectible.selected {
-  border-color: #51aff0;
-}
-.rb-alpha-workshop .rb-scene-area {
-  aspect-ratio: 1.15;
-}
-.rb-alpha-workshop .rb-scene-caption {
-  bottom: -4px;
-}
 @media (max-width: 1050px) {
   .alpha-workspace {
     padding: 25px 24px 50px;
   }
   .alpha-product-header {
     padding: 0 24px;
-  }
-  .rb-alpha-workshop {
-    padding: 18px 8px 45px;
   }
   .alpha-gpa-summary {
     gap: 25px;
@@ -672,10 +681,6 @@
   .alpha-home .now-companion {
     height: 135px;
   }
-  .alpha-home .now-companion .learning-penguin {
-    width: 115px;
-    height: 115px;
-  }
   .alpha-home-strip {
     gap: 6px;
   }
@@ -731,52 +736,6 @@
   .alpha-exam-row > div {
     flex-basis: 100%;
   }
-  .alpha-workshop-tabs {
-    flex-wrap: wrap;
-    overflow: visible;
-  }
-  .alpha-workshop-tabs .rb-material-wallet {
-    width: 100%;
-    margin: 0;
-    justify-content: flex-end;
-    padding-top: 10px;
-  }
-  .rb-alpha-workshop .rb-workshop-content,
-  .rb-alpha-workshop .rb-inventory-layout {
-    grid-template-columns: 1fr;
-    padding: 0 15px 25px;
-  }
-  .rb-alpha-workshop .rb-workshop-heading {
-    padding: 12px 15px;
-  }
-  .rb-alpha-workshop .rb-workshop-heading h1 {
-    font-size: 22px !important;
-  }
-  .rb-alpha-workshop .rb-pill {
-    display: none;
-  }
-  .rb-alpha-workshop .rb-scene-area {
-    max-width: 450px;
-    width: 100%;
-    margin: auto;
-    aspect-ratio: 1.2;
-  }
-  .rb-alpha-workshop .rb-details {
-    padding: 18px;
-  }
-  .rb-alpha-workshop .rb-inventory-detail {
-    border-top: 2px solid #edf2f5;
-    padding-top: 22px;
-  }
-  .rb-alpha-workshop .rb-item-grid {
-    gap: 10px;
-  }
-  .rb-alpha-workshop .rb-collectible {
-    padding: 12px 6px;
-  }
-  .rb-alpha-workshop .rb-collectible b {
-    font-size: 12px;
-  }
   .alpha-subject-grid .secondary {
     padding: 12px !important;
     font-size: 13px !important;
@@ -798,7 +757,5 @@
   .alpha-rail nav {
     gap: 5px;
   }
-  .alpha-rail .game-group {
-    margin-top: 5px;
-  }
 }
+

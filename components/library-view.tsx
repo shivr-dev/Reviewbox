@@ -18,6 +18,9 @@ import {supportsMathInput,type MathAnswerFormat} from '@/lib/math-input-format';
 import {repairImportJson,type JsonRepairResult} from '@/lib/import-json-repair';
 
 import QuestionReviewButton from './question-review';
+import QuestionVisual from './question-visual';
+import ResourceReader from './resource-reader';
+import MaterialDesk, { ImportChoices, type ImportSource } from './material-desk';
 import { parseImportText } from '@/lib/import-skill';
 import {
   assertQuestionFormat,
@@ -32,7 +35,9 @@ import {
   Upload,
   Plus,
   Search,
+  ArrowLeft,
   ArrowRight,
+  MoreHorizontal,
   Download,
   FileText,
   Database,
@@ -48,7 +53,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { useReview } from './review-context';
-import {SUBJECTS,uid,type Subject,type Node,type Question,type Pack} from '@/lib/model';
+import {SUBJECTS,uid,type Subject,type Node,type Question,type Pack,type Material} from '@/lib/model';
 import {
   put,
   saveRecords,
@@ -67,9 +72,17 @@ import {
 } from '@/lib/importer';
 
 import { Choice, Empty, Heading, SubjectChoice, dateLabel } from './shared';
+const libraryPages = {
+  authoring: 'library:authoringTools',
+  skill: 'library:让外部 AI 按你的方式出题',
+  review: 'common:错题本',
+  activity: 'library:最近学习记录',
+  export: 'library:导出我整理的内容',
+} as const;
+
 export default function LibraryView({
-  initialTab = 'materials',packageRequest,
-}: { initialTab?: string;packageRequest?:typeof watchRequest } = {}) {
+  initialTab = 'materials',packageRequest, embedded = false, openImport = false, page,
+}: { initialTab?: string;packageRequest?:typeof watchRequest; embedded?: boolean; openImport?: boolean; page?: string } = {}) {
   const { data, refresh, start, notify, navigate, subject: routeSubject } = useReview();
   const collection=useMemo(()=>{const c=new NaviUIController({panels:[],questionIds:[],molecule:false,protected:false,collection:true});c.state.collection={query:'',subject:SUBJECTS.some(s=>s.id===routeSubject)?routeSubject as any:'all',sort:'new'};return c;},[routeSubject]);
   const collectionState=useSyncExternalStore(collection.subscribe,collection.snapshot,collection.snapshot);
@@ -87,7 +100,7 @@ export default function LibraryView({
     : 'chinese';
   const [tab, setTab] = useState(initialTab),
 
-    [importOpen, setImportOpen] = useState(false),
+    [importOpen, setImportOpen] = useState(openImport),
     [bookletOpen,setBookletOpen]=useState(false),
     [editorOpen, setEditorOpen] = useState(false),
     [text, setText] = useState(''),
@@ -106,14 +119,17 @@ export default function LibraryView({
     [type, setType] = useState('recall'),
     [difficulty, setDifficulty] = useState('2'),
     [newNodeTitle, setNewNodeTitle] = useState('');
-  const [routeFocus,setFocusId]=useState(()=>parseWorkspaceRoute(location.hash).target??'');
+  const [routeFocus,setFocusId]=useState(()=>parseWorkspaceRoute(typeof window === 'undefined' ? '' : window.location.hash).target??'');
   const focusId=collectionState.collectionFocus?.slice(collectionState.collectionFocus.indexOf(':')+1)??routeFocus;
+  const [reading, setReading] = useState<string | null>(focusId || null);
+  const [importSource, setImportSource] = useState<ImportSource>('file');
+  useEffect(() => { if (embedded && focusId) setReading(focusId); }, [embedded,focusId]);
   const focusFilter=useRef(search+'|'+filter);
   useEffect(()=>{const next=search+'|'+filter;if(next!==focusFilter.current){focusFilter.current=next;setFocusId('');}},[search,filter]);
   useEffect(()=>{const focus=(e:Event)=>{const value=(e as CustomEvent).detail;if(!value||!['question','material'].includes(value.type)||typeof value.id!=='string')return;focusFilter.current='|all';setSearch('');setFilter('all');setFocusId(value.id);setMaterialPage(0);setQuestionPage(0);};window.addEventListener('review:focus-source',focus);return()=>window.removeEventListener('review:focus-source',focus);},[]);
   const [materialPage,setMaterialPage]=useState(0),[questionPage,setQuestionPage]=useState(0);
   useEffect(()=>{setMaterialPage(0);setQuestionPage(0);},[search,filter]);
-  const materials=data.materials.filter(m=>(!focusId||m.id===focusId)&&(filter==='all'||m.subject===filter)&&m.name.toLowerCase().includes(search.toLowerCase())).sort((a,b)=>materialOrder==='name'?a.name.localeCompare(b.name,'zh-CN'):b.date.localeCompare(a.date));
+  const materials=data.materials.filter(m=>(embedded||!focusId||m.id===focusId)&&(filter==='all'||m.subject===filter)&&m.name.toLowerCase().includes(search.toLowerCase())).sort((a,b)=>materialOrder==='name'?a.name.localeCompare(b.name,'zh-CN'):b.date.localeCompare(a.date));
   const fileInput = useRef<HTMLInputElement>(null);
   const chosenNode = data.nodes.find((n) => n.id === nodeId);
   const visibleNodes = data.nodes.filter((n) => n.subject === subject);
@@ -126,12 +142,17 @@ export default function LibraryView({
   );
   const materialPages=Math.max(1,Math.ceil(materials.length/12)),questionPages=Math.max(1,Math.ceil(questions.length/20));
   const mp=Math.min(materialPage,materialPages-1),qp=Math.min(questionPage,questionPages-1);
+  const materialWindow = materials.slice(mp * 12, mp * 12 + 12);
+  const questionWindow = questions.slice(qp * 20, qp * 20 + 20);
+  const material = materials.find(item => item.id === reading);
+  const question = questionWindow.find(item => item.id === reading) ?? questionWindow[0];
   useLayoutEffect(()=>{
     const target=collectionState.scroll?.target;if(!target)return;
     const question=target.startsWith('question:'),id=target.slice(target.indexOf(':')+1);
     setTab(question?'questions':'materials');
     const rows=question?data.questions:[...data.materials].sort((a,b)=>materialOrder==='name'?a.name.localeCompare(b.name,'zh-CN'):b.date.localeCompare(a.date));
     const index=rows.findIndex(r=>r.id===id);if(index<0)return;
+    if (embedded) setReading(id);
     if(question)setQuestionPage(0);else setMaterialPage(0);
   },[collectionState.scroll?.revision]);
   useLayoutEffect(()=>{
@@ -149,6 +170,10 @@ export default function LibraryView({
 
   async function file(file?: File) {
     if (!file) return;
+    setStage(null);
+    setPendingStage(null);
+    setRepairs([]);
+    if (embedded) { setImportOpen(true); setImportSource('file'); }
     setBusy(true);
     setName(file.name);
     try {
@@ -166,6 +191,7 @@ export default function LibraryView({
         setText(v.text ?? '');
         setSubject(guessSubject(v.text ?? ''));
         setStage(null);
+        setImportSource('text');
       }
     } catch (e) {
       notify(e instanceof Error ? e.message : '文件解析失败');
@@ -355,48 +381,131 @@ export default function LibraryView({
       setBusy(false);
     }
   }
+  const questionBank = embedded && initialTab === 'questions';
+  const openIntake = (source: ImportSource) => {
+    setStage(null); setPendingStage(null); setRepairs([]);
+    setImportSource(source); setImportOpen(true);
+  };
+  const launchImport = () => openIntake('file');
+  const chooseImportSource = (source: ImportSource) => {
+    if (source === 'file') fileInput.current?.click();
+    else openIntake(source);
+  };
+  const libraryPage = page && Object.hasOwn(libraryPages, page) ? page as keyof typeof libraryPages : undefined;
+  const openPage = (page: keyof typeof libraryPages, from?: string) => navigate('subjects',routeSubject,'library-' + page,from);
+  const authoringFrom = tab === 'content' ? 'packs' : tab === 'data' ? 'data' : 'materials';
+  const returnSection = libraryPage === 'authoring'
+    ? ['packs','data'].includes(routeFocus) ? routeFocus : 'materials'
+    : libraryPage === 'export' ? 'packs' : 'data';
+  const actions = <div className="button-row">
+    {embedded && !questionBank ? <button type="button" className="quiet" onClick={() => openPage('authoring', authoringFrom)}>
+      {tr('library:authoringTools')}<ArrowRight size={16} aria-hidden="true" />
+    </button> : <details className="library-studio-menu">
+      <summary aria-label={questionBank ? tr('library:更多') : undefined}>{questionBank ? <MoreHorizontal size={19} /> : '制作与排版'}</summary>
+      <div onClick={event => {
+        if (event.target instanceof Element && event.target.closest('button')) event.currentTarget.closest('details')?.removeAttribute('open');
+      }}>
+        {questionBank && <><button onClick={launchImport}>{tr('library:导入')}</button>
+          <button onClick={() => navigate('subjects',routeSubject,'data')}>{tr('library:导入工具')}</button></>}
+        <button onClick={() => navigate('subjects',routeSubject,'studio')}>学习包制作台</button>
+        <button onClick={() => navigate('subjects',routeSubject,'publish')}>试卷排版工作台</button>
+        <button onClick={() => setBookletOpen(true)}>快速导出 Word</button>
+      </div>
+    </details>}
+    {!embedded && <button className="secondary" onClick={() => setTab('data')}>{tr('library:导入工具')}</button>}
+    {questionBank ? ((questions.length > 0 || search) && <button className="primary" onClick={() => setEditorOpen(true)}><Plus size={16} />{tr('library:新建题目')}</button>)
+      : !embedded &&
+        <button className="primary" onClick={launchImport}><Upload size={16} />{tr('library:导入')}</button>}
+  </div>;
+  const materialFilters = <div className="pack-toolbar">
+    <input aria-label={tr('library:搜索资料')} placeholder={tr('library:搜索我的资料')} value={search} onChange={e => setSearch(e.target.value)} />
+    {!embedded && <SubjectChoice value={filter} onChange={setFilter} all />}
+    <select aria-label={tr('library:资料排序')} value={materialOrder} onChange={e => setMaterialOrder(e.target.value)}>
+      <option value="new">{tr('library:最近添加')}</option><option value="name">{tr('library:按名称')}</option>
+    </select>
+  </div>;
+  const questionFilters = <div className="toolbar">
+    <div className="search-box">
+      <Search size={17} /><input value={search} onChange={e => setSearch(e.target.value)}
+        placeholder={tr('library:搜索题目或知识点')} aria-label={tr('library:搜索题目')} />
+    </div>
+    {!embedded && <SubjectChoice value={filter} onChange={setFilter} all />}
+    {!embedded && <button className="secondary" onClick={() => setEditorOpen(true)}><Plus size={16} />{tr('library:新建题目')}</button>}
+  </div>;
+  const registerReaderRow = (kind: 'material' | 'question', id: string, element: HTMLElement | null) => {
+    const key = kind + ':' + id;
+    if (element) rowRefs.current.set(key, element);
+    else rowRefs.current.delete(key);
+  };
+  const materialInfo = (entry: Material) => <>{subjectName(entry.subject)} · {entry.nodeIds.length}{tr('library:个知识点 ·')} {dateLabel(entry.date)}</>;
+  const questionInfo = (entry: Question) => <>{subjectName(entry.subject)} · {data.nodes.find(n => n.id === entry.nodeId)?.title} · {tr('subjects:' + (QUESTION_TYPES.find(t => t.id === entry.type)?.label ?? '回忆题'))}</>;
+  const practiceMaterial = (entry: Material) => {
+    const items = data.questions.filter(q => entry.nodeIds.includes(q.nodeId)).slice(0, 12);
+    start(items.map(q => ({question:q, reason:'资料复习', priority:1})));
+  };
+  const practiceQuestion = (entry: Question) => start([{question:entry, reason:'自由练习', priority:1}]);
+  const materialPagination = <footer className="pack-pagination"><button disabled={mp===0} onClick={()=>setMaterialPage(mp-1)}>{tr('library:上一页')}</button><span>{mp+1} / {materialPages}</span><button disabled={mp+1>=materialPages} onClick={()=>setMaterialPage(mp+1)}>{tr('library:下一页')}</button></footer>;
+  const questionPagination = <footer className="pack-pagination"><button disabled={qp===0} onClick={()=>setQuestionPage(qp-1)}>{tr('library:上一页')}</button><span>{qp+1} / {questionPages}</span><button disabled={qp+1>=questionPages} onClick={()=>setQuestionPage(qp+1)}>{tr('library:下一页')}</button></footer>;
+  const ExportPanel = embedded ? 'section' : 'details';
   return (
-    <div className="library-page settings-scope">
-      <Heading
+    <div className={'library-page settings-scope' + (embedded ? ' rb-library-workspace' : '')}>
+      {questionBank ? <header className="rb-library-head">
+        <h2>{tr('library:题库管理')}</h2>
+        {actions}
+      </header> : !embedded && <Heading
         eyebrow="YOUR LEARNING LIBRARY"
-        title={tr("library:资料库")}
-        description={tr("library:管理自己的资料、题目与学习包。")}
-        action={
-          <div className="button-row">
-            <details className="library-studio-menu"><summary>制作与排版</summary><div><button onClick={()=>navigate('subjects',routeSubject,'studio')}>学习包制作台</button><button onClick={()=>navigate('subjects',routeSubject,'publish')}>试卷排版工作台</button><button onClick={()=>setBookletOpen(true)}>快速导出 Word</button></div></details>
-            <button className="secondary" onClick={()=>setTab('data')}>{tr("library:导入工具")}</button>
-            <button
-              className="primary"
-              onClick={() => {
-                setStage(null);
-                setImportOpen(true);
-              }}
-            >
-              <Upload size={16} />{tr("library:导入")}</button>
-          </div>
-        }
-      />
+        title={tr('library:资料库')}
+        description={tr('library:管理自己的资料、题目与学习包。')}
+        action={actions}
+      />}
       {bookletOpen&&<Suspense fallback={<p role="status">{tr("library:导出工具加载中…")}</p>}><BookletExport close={()=>setBookletOpen(false)}/></Suspense>}
-      <Tabs value={tab} onValueChange={(v) => setTab(String(v))}>
-        <TabsList variant="line" className="page-tabs">
+      {libraryPage && <header className="rb-library-subpage">
+        <button className="quiet" onClick={() => navigate('subjects',routeSubject,returnSection)}>
+          <ArrowLeft size={16} aria-hidden="true" />{tr(returnSection === 'packs' ? 'library:学习包' : returnSection === 'data' ? 'library:导入工具' : 'library:学习资料')}
+        </button>
+        <h2>{tr(libraryPages[libraryPage])}</h2>
+      </header>}
+      <Tabs value={tab} onValueChange={value => {
+        if (embedded && initialTab !== 'questions') {
+          navigate('subjects', routeSubject, value === 'content' ? 'packs' : value === 'data' ? 'data' : 'materials');
+        } else setTab(String(value));
+      }}>
+        {!libraryPage && (!embedded || initialTab !== 'questions') && <div className={embedded ? 'rb-library-modebar' : undefined}>
+          <TabsList variant="line" className={embedded ? 'rb-library-modes' : 'page-tabs'}>
           <TabsTrigger value="materials">{tr("library:学习资料")}</TabsTrigger>
-          <TabsTrigger value="questions">{tr("library:题目库")}</TabsTrigger>
+          {!embedded && <TabsTrigger value="questions">{tr("library:题目库")}</TabsTrigger>}
           <TabsTrigger value="content">{tr("library:学习包")}</TabsTrigger>
+          {embedded && <TabsTrigger value="data">{tr('library:导入工具')}</TabsTrigger>}
 
-        </TabsList>
+          </TabsList>{embedded && actions}
+        </div>}
         <TabsContent value="materials">
-          <div className="pack-toolbar"><input aria-label={tr("library:搜索资料")} placeholder={tr("library:搜索我的资料")} value={search} onChange={e=>setSearch(e.target.value)}/><SubjectChoice value={filter} onChange={setFilter} all/><select aria-label={tr("library:资料排序")} value={materialOrder} onChange={e=>setMaterialOrder(e.target.value)}><option value="new">{tr("library:最近添加")}</option><option value="name">{tr("library:按名称")}</option></select></div>
+          {embedded ? <MaterialDesk entries={materialWindow} active={material} filtered={!!search.trim()} featureLatest={mp === 0 && materialOrder === 'new' && !search.trim()}
+            onOpen={setReading} onBack={() => {setReading(null);setFocusId('');}} onRow={(id,el) => registerReaderRow('material',id,el)}
+            controls={materialFilters} pagination={materialPages > 1 ? materialPagination : undefined}
+            onImport={launchImport} onChooseSource={chooseImportSource}>
+            {material && <NaviSourceWorkspace target={{type:'material',id:material.id}} subject={material.subject}>
+              <header className="rb-reader-title"><div><p>{materialInfo(material)}</p><h2>{material.name}</h2></div></header>
+              <div className="rb-reader-tools"><button className="primary" onClick={() => practiceMaterial(material)}>{tr('library:复习这份资料')}<ArrowRight size={16}/></button>
+                <NaviButton target={{type:'material',id:material.id}}/></div>
+              <p className="pre-wrap rb-reader-text">{material.text}</p>
+            </NaviSourceWorkspace>}
+          </MaterialDesk> : <>
+          {materialFilters}
           {materials.length ? (
             <div className="material-grid">
               {materials.slice(mp*12,mp*12+12).map((m) => (
-                <section className="panel" key={m.id} ref={el=>{if(el)rowRefs.current.set("material:"+m.id,el);else rowRefs.current.delete("material:"+m.id);}}>
-                  <FileText size={21} />
-                  <h3>{m.name}</h3>
-                  <p className="muted">
-                    {subjectName(m.subject)} · {m.nodeIds.length}{tr("library:个知识点 ·")}{' '}
-                    {dateLabel(m.date)}
-                  </p>
-                  <details>
+                <section className="panel" key={m.id} ref={el => registerReaderRow('material',m.id,el)}>
+                  <div className="rb-material-title">
+                    <FileText size={21} aria-hidden="true" />
+                    <div><h3>{m.name}</h3>
+                      <p className="muted">
+                        {subjectName(m.subject)} · {m.nodeIds.length}{tr("library:个知识点 ·")}{' '}
+                        {dateLabel(m.date)}
+                      </p>
+                    </div>
+                  </div>
+                  <details className="rb-material-reading" open={focusId === m.id || undefined}>
                     <summary>{tr("library:查看提取内容")}</summary>
                     <NaviSourceWorkspace target={{type:'material',id:m.id}} subject={m.subject}><NaviButton target={{type:'material',id:m.id}}/><p className="pre-wrap">{m.text}</p></NaviSourceWorkspace>
                   </details>
@@ -424,27 +533,35 @@ export default function LibraryView({
               <Empty title={tr("library:你的课程资料，在这里相遇")}>{tr("library:导入后先检查识别内容，再加入自己的知识地图。")}</Empty>
             </section>
           )}
-          <footer className="pack-pagination"><button disabled={mp===0} onClick={()=>setMaterialPage(mp-1)}>{tr("library:上一页")}</button><span>{mp+1} / {materialPages}</span><button disabled={mp+1>=materialPages} onClick={()=>setMaterialPage(mp+1)}>{tr("library:下一页")}</button></footer>
+          {materialPagination}</>}
         </TabsContent>
         <TabsContent value="questions">
-          <div className="toolbar">
-            <div className="search-box">
-              <Search size={17} />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder={tr("library:搜索题目或知识点")}
-                aria-label={tr("library:搜索题目")}
-              />
-            </div>
-            <SubjectChoice value={filter} onChange={setFilter} all />
-            <button className="secondary" onClick={() => setEditorOpen(true)}>
-              <Plus size={16} />{tr("library:新建题目")}</button>
-          </div>
+          {embedded ? <ResourceReader label={tr('library:题库管理')} current={question?.id} open={!!reading && question?.id === reading}
+            entries={questionWindow.map(entry => ({id:entry.id,title:<MathText>{entry.prompt}</MathText>,subtitle:questionInfo(entry)}))}
+            onOpen={setReading} onBack={() => setReading(null)} onRow={(id,el) => registerReaderRow('question',id,el)}
+            controls={<>{questionFilters}<p className="rb-question-count">{tr('common:{{v0}} 题',{v0:questions.length})}</p></>}
+            pagination={questionPages > 1 ? questionPagination : undefined}
+            empty={<div className="rb-reader-empty"><Search size={34} aria-hidden="true"/><h3>{tr('library:没有找到题目')}</h3>
+              {!search && <button className="primary" onClick={() => setEditorOpen(true)}><Plus size={16}/>{tr('library:新建题目')}</button>}</div>}>
+            {question && <NaviSourceWorkspace target={{type:'question',id:question.id}} subject={question.subject}>
+              <header className="rb-reader-title"><div><p>{questionInfo(question)}</p><h3><MathText>{question.prompt}</MathText></h3></div></header>
+              <div className="rb-reader-tools"><button className="primary" onClick={() => practiceQuestion(question)}>{tr('library:练习这道题')}<ArrowRight size={16}/></button>
+                <QuestionReviewButton question={question}/><NaviButton target={{type:'question',id:question.id}}/>
+              </div>
+              <QuestionVisual question={question} />
+              {question.options?.length ? <ul className="rb-reader-options">{question.options.map((option,i) => <li key={i}><MathText>{option}</MathText></li>)}</ul> : null}
+              <section className="rb-reader-answer"><h4>{tr('library:参考答案')}</h4>
+                <p className="pre-wrap"><MathText>{question.type === 'matching' ? tr('library:配对结果见下方解析') : question.answer}</MathText></p>
+                {question.explanation && <p><MathText>{question.explanation}</MathText></p>}
+              </section>
+              {question.source && <footer className="rb-reader-source">{question.source}{question.verified ? tr('library: · 已核验') : ''}</footer>}
+            </NaviSourceWorkspace>}
+          </ResourceReader> : <>
+          {questionFilters}
           <p className="inline-hint">{tr("library:共")}{questions.length}{tr("library:道题目 · 每道题都关联一个知识点与具体能力")}</p>
           <div className="panel question-list">
             {questions.slice(qp*20,qp*20+20).map((q) => (
-              <details key={q.id} ref={el=>{if(el)rowRefs.current.set("question:"+q.id,el);else rowRefs.current.delete("question:"+q.id);}}>
+              <details key={q.id} open={focusId === q.id || undefined} ref={el=>{if(el)rowRefs.current.set("question:"+q.id,el);else rowRefs.current.delete("question:"+q.id);}}>
                 <summary>
                   <span className="grow">
                     <b>
@@ -491,9 +608,18 @@ export default function LibraryView({
               <Empty title={tr("library:没有找到题目")}>{tr("library:可以导入资料，或用表单建立第一道题。")}</Empty>
             )}
           </div>
-          <footer className="pack-pagination"><button disabled={qp===0} onClick={()=>setQuestionPage(qp-1)}>{tr("library:上一页")}</button><span>{qp+1} / {questionPages}</span><button disabled={qp+1>=questionPages} onClick={()=>setQuestionPage(qp+1)}>{tr("library:下一页")}</button></footer>
+          {questionPagination}</>}
         </TabsContent>
-        <TabsContent value="content"><PackWorkspace request={packageRequest} onImport={()=>{setStage(null);setImportOpen(true);}}/><details className="pack-export"><summary>{tr("library:导出我整理的内容")}</summary>          <section className="panel">
+        <TabsContent value="content">
+          {libraryPage !== 'export' && <>
+            <PackWorkspace embedded={embedded} request={packageRequest} onImport={launchImport}/>
+            {embedded && <button className="quiet rb-library-link" onClick={() => openPage('export')}>
+              <Download size={17} aria-hidden="true" />{tr('library:导出我整理的内容')}<ArrowRight size={16} aria-hidden="true" />
+            </button>}
+          </>}
+          {(!embedded || libraryPage === 'export') && <ExportPanel className="pack-export">
+            {!embedded && <summary>{tr('library:导出我整理的内容')}</summary>}
+            <section className="panel">
             <h2>{tr("library:打包自己的课程")}</h2>
             <p className="muted">{tr("library:导出题目、知识点和评分标准，保存在自己的设备中，或用于私有云端备份。")}</p>
             <button
@@ -524,9 +650,25 @@ export default function LibraryView({
             >
               <Download size={15} />{tr("library:导出自建学习包")}</button>
           </section>
-</details></TabsContent>
-        <TabsContent value="data"><ImportSkillCard/>
-          <WrongNotebook />
+          </ExportPanel>}
+        </TabsContent>
+        <TabsContent value="data">
+          {embedded && !libraryPage && <><section className="rb-import-landing"><h2>{tr('planner:导入学习内容')}</h2>
+            <ImportChoices onChoose={chooseImportSource} />
+          </section><nav className="rb-library-tool-list" aria-label={tr('library:导入工具')}>
+            <button onClick={() => openPage('skill')}>{tr('library:让外部 AI 按你的方式出题')}<ArrowRight size={17} aria-hidden="true" /></button>
+            <button onClick={() => openPage('review')}>{tr('common:错题本')}<ArrowRight size={17} aria-hidden="true" /></button>
+            <button onClick={() => openPage('activity')}>{tr('library:最近学习记录')}<ArrowRight size={17} aria-hidden="true" /></button>
+            <button onClick={() => navigate('you','all','data')}>{tr('library:备份与恢复')}<ArrowRight size={17} aria-hidden="true" /></button>
+          </nav></>}
+          {libraryPage === 'authoring' && <div className="rb-library-tool-list">
+            <button onClick={() => navigate('subjects',routeSubject,'studio')}>{tr('library:packStudio')}<ArrowRight size={17} aria-hidden="true" /></button>
+            <button onClick={() => navigate('subjects',routeSubject,'publish')}>{tr('library:paperStudio')}<ArrowRight size={17} aria-hidden="true" /></button>
+            <button onClick={() => setBookletOpen(true)}>{tr('library:quickWordExport')}<ArrowRight size={17} aria-hidden="true" /></button>
+          </div>}
+          {(!embedded || libraryPage === 'skill') && <ImportSkillCard expanded={embedded} onImport={() => openIntake('text')} />}
+          {(!embedded || libraryPage === 'review') && <WrongNotebook standalone={embedded} />}
+          {(!embedded || libraryPage === 'activity') && <>
           <div className="subject-stat-row">
             {[
               [
@@ -599,19 +741,20 @@ export default function LibraryView({
               <Empty title={tr("library:每一次复习，都会被认真记录")} />
             )}
           </section>
+          </>}
         </TabsContent>
       </Tabs>
-      <Dialog open={importOpen} onOpenChange={setImportOpen}>
-        <DialogContent className="import-dialog">
-          <DialogTitle>{tr("library:智能导入")}</DialogTitle>
-          <DialogDescription>{tr("library:粘贴内容或选择文件，确认识别结果后加入学习。")}</DialogDescription>
-          <input
+      <input
             ref={fileInput}
             type="file"
-            className="hidden"
+            hidden data-library-import-file
             accept=".pdf,.docx,.pptx,.txt,.md,.json,.csv,.tsv,.xlsx,.xls,.zip,image/*"
-            onChange={(e) => void file(e.target.files?.[0])}
-          />
+            onChange={e => { const selected = e.target.files?.[0]; e.target.value = ''; void file(selected); }}
+      />
+      <Dialog open={importOpen} onOpenChange={setImportOpen}>
+        <DialogContent className={'import-dialog' + (embedded ? ' rb-library-dialog rb-intake-dialog' : '')}>
+          <DialogTitle>{tr("library:智能导入")}</DialogTitle>
+          <DialogDescription>{tr("library:粘贴内容或选择文件，确认识别结果后加入学习。")}</DialogDescription>
           {pendingStage&&repairs.length ? <ImportRepairReview reports={repairs} onCancel={()=>{if(repairs.length===1)setText(repairs[0].original);setPendingStage(null);setRepairs([]);}} onConfirm={()=>{setStage(pendingStage);setPendingStage(null);setRepairs([]);}}/> : stage?.pack ? <PackUpdateReview pack={stage.pack} onCancel={()=>setStage(null)} onDone={()=>{setStage(null);setImportOpen(false);setText('');}}/> : stage ? (
             <>
               <div className="import-result">
@@ -657,8 +800,25 @@ export default function LibraryView({
               </div>
             </>
           ) : (
-            <>
-              <div className="button-row">
+            <div className={embedded ? 'rb-intake-layout' : undefined}>
+              {embedded && <div className="rb-intake-mode" role="group" aria-label={tr('library:智能导入')}>
+                <button type="button" className="quiet" aria-pressed={importSource === 'file'} disabled={busy} onClick={() => setImportSource('file')}>
+                  <Upload size={18} aria-hidden="true" />{tr('library:选择文件')}
+                </button>
+                <button type="button" className="quiet" aria-pressed={importSource === 'text'} disabled={busy} onClick={() => setImportSource('text')}>
+                  <FileText size={18} aria-hidden="true" />{tr('library:pasteText')}
+                </button>
+                <ManualImport subject={initialSubject} />
+              </div>}
+              {embedded && importSource === 'file' ? <div className="rb-intake-file">
+                <button type="button" disabled={busy} onClick={() => fileInput.current?.click()}>
+                  <Upload size={32} aria-hidden="true" />
+                  <strong>{busy ? tr('library:正在识别文件…') : tr('library:选择文件')}</strong>
+                  <span>PDF, Word, PowerPoint, PNG, JSON</span>
+                  <small>{tr('library:最多 15 MB · 图片识别首次需要联网')}</small>
+                </button>
+              </div> : <div className={embedded ? 'rb-intake-text' : undefined}>
+              {!embedded && <div className="button-row">
                 <button
                   className="secondary"
                   disabled={busy}
@@ -668,7 +828,7 @@ export default function LibraryView({
                   {busy ? tr("library:正在识别文件…") : tr("library:选择文件")}
                 </button>
                 <ManualImport subject={initialSubject}/><span className="muted">{tr("library:最多 15 MB · 图片识别首次需要联网")}</span>
-              </div>
+              </div>}
               <label>{tr("library:资料名称")}<input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
@@ -720,12 +880,13 @@ export default function LibraryView({
                 }}
               >{tr("library:识别并预览")}<ArrowRight size={16} />
               </button>
-            </>
+              </div>}
+            </div>
           )}
         </DialogContent>
       </Dialog>
       <Dialog open={editorOpen} onOpenChange={setEditorOpen}>
-        <DialogContent className="editor-dialog">
+        <DialogContent className={'editor-dialog' + (embedded ? ' rb-library-dialog' : '')}>
           <DialogTitle>{tr("library:新建题目")}</DialogTitle>
           <DialogDescription>{tr("library:题目、知识点与能力连接后，练习才会影响掌握度。")}</DialogDescription>
           <form onSubmit={saveQuestion}>

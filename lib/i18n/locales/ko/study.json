@@ -1,4 +1,13 @@
 {
+  "math.fieldLabel": "수학 답안",
+  "math.placeholder": "수식 입력",
+  "math.分数": "분수",
+  "math.根号": "제곱근",
+  "math.指数": "지수",
+  "math.下标": "아래 첨자",
+  "math.绝对值": "절댓값",
+  "math.方程组": "연립방정식",
+  "math.单位": "단위",
   "进度未能保存，请检查设备存储后重试。": "진행 상황을 저장할 수 없습니다. 기기 저장 공간을 확인한 후 다시 시도해 주세요.",
   "保存未完成，请保留页面并重试。": "저장이 완료되지 않았습니다. 페이지를 유지한 후 다시 시도해 주세요.",
   "返回工作台": "학습 화면으로 돌아가기",
@@ -485,7 +494,7 @@
   "navi.followup.rephrase.request": "방금 이야기한 같은 내용을 더 직관적이고 간결한 다른 방식으로 설명해 주세요. 원래 조건과 힌트 수준은 유지해 주세요.",
   "navi.followup.example.request": "방금 이야기한 개념의 짧고 구체적인 예를 하나 들어 주세요. 원자료와 추가 예시를 구분하고 현재 힌트 수준을 유지해 주세요.",
   "navi.display.fullscreen": "전체 화면",
-  "navi.display.dock": "오른쪽 작업 공간으로 돌아가기",
+  "navi.display.dock": "대화 도킹",
   "navi.home.placeholder": "학습 질문을 Navi에게 물어보세요…",
   "navi.home.open": "Navi 열기",
   "navi.config.setGpaRule": "GPA 규칙 조정",
@@ -593,5 +602,11 @@
   "navi.live.describe.highlight": "Highlight visible objects: {{ids}}",
   "navi.live.describe.clearHighlights": "Clear object highlights",
   "navi.live.describe.macro": "Macromolecule representation: {{model}}",
-  "navi.live.describe.camera": "Macromolecule camera: {{command}}"
+  "navi.live.describe.camera": "Macromolecule camera: {{command}}",
+  "navi.diagnostic.title": "오류 진단",
+  "navi.diagnostic.copy": "진단 복사",
+  "navi.diagnostic.copied": "복사됨",
+  "navi.diagnostic.details": "진단 상세 보기",
+  "navi.diagnostic.safe": "대화, 문제 본문, 추론 내용 없이 오류 및 연결 정보만 포함합니다.",
+  "navi.diagnostic.copyFailed": "복사하지 못했습니다. 진단 텍스트를 직접 선택하세요."
 }

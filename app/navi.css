@@ -48,15 +48,6 @@
   display: block;
   line-height: 1.7;
 }
-.navi-avatar {
-  width: 38px;
-  height: 38px;
-  border-radius: 12px;
-  background: #ebf5ff;
-  color: #258bd0;
-  display: grid;
-  place-items: center;
-}
 .navi-workspace header > button {
   padding: 7px;
 }
@@ -960,13 +951,7 @@
   white-space: nowrap;
 }
 .navi-conversation .navi-avatar {
-  height: 39px;
-  width: 39px;
-  border-radius: 13px;
-  background: var(--navi-soft);
-  color: var(--navi-blue);
-  border: 1px solid #2993cd18;
-  flex-shrink: 0;
+  pointer-events: none;
 }
 .navi-conversation > header > button {
   padding: 9px;
@@ -1175,19 +1160,9 @@
   text-align: center;
 }
 .navi-welcome-mark {
-  width: 74px;
-  height: 74px;
-  border: 1px solid #2993cd1f;
-  border-radius: 25px;
-  background: var(--navi-soft);
   display: grid;
   place-items: center;
-  margin-bottom: 25px;
-  color: var(--navi-blue);
-}
-.navi-welcome-mark svg {
-  margin: 0;
-  stroke-width: 1.4;
+  margin-bottom: 12px;
 }
 :root .navi-conversation .navi-welcome h2 {
   font: inherit;
@@ -1219,33 +1194,8 @@
   color: var(--navi-muted);
 }
 .navi-activity-mark {
-  position: relative;
-  width: 32px;
-  height: 32px;
-  display: grid;
-  place-items: center;
-  color: var(--navi-blue);
+  display: block;
   flex-shrink: 0;
-}
-.navi-activity-mark > svg {
-  stroke-width: 1.5;
-}
-.navi-activity-orbit {
-  position: absolute;
-  inset: 0;
-  border: 1px solid #2993cd24;
-  border-top-color: var(--navi-blue);
-  border-radius: 50%;
-}
-.navi-activity-orbit::after {
-  content: '';
-  position: absolute;
-  top: 2px;
-  right: 2px;
-  height: 4px;
-  width: 4px;
-  border-radius: 50%;
-  background: var(--navi-blue);
 }
 .navi-activity-copy {
   font-size: 12px;
@@ -1420,18 +1370,6 @@
 .navi-conversation .navi-input-shell .navi-stop:hover {
   color: #fff;
 }
-.navi-conversation > form .navi-composer-note {
-  text-align: center;
-  margin-top: 9px;
-  font-size: 10px;
-}
-.navi-conversation > form > .text-button {
-  display: block;
-  margin: 7px auto 0;
-  color: var(--navi-blue);
-  font-size: 11px;
-  padding: 3px 5px;
-}
 @media (max-width: 1023px) {
   .navi-conversation {
     inset: 0;
@@ -1468,12 +1406,6 @@
   }
   .navi-activity {
     animation: navi-activity-in 240ms ease-out;
-  }
-  .navi-activity-orbit {
-    animation: navi-orbit 2.8s linear infinite;
-  }
-  .navi-activity-mark > svg {
-    animation: navi-compass-breathe 2.1s ease-in-out infinite;
   }
   .navi-activity-wave i {
     animation: navi-wave 1.3s ease-in-out infinite;
@@ -1512,17 +1444,6 @@
     to {
       opacity: 1;
       transform: translateY(0);
-    }
-  }
-  @keyframes navi-orbit {
-    to {
-      transform: rotate(360deg);
-    }
-  }
-  @keyframes navi-compass-breathe {
-    50% {
-      transform: rotate(14deg);
-      opacity: 0.65;
     }
   }
   @keyframes navi-wave {
@@ -2038,3 +1959,4 @@ body:has(.alpha-product) .navi-launcher {
   outline: 2px solid #70b9e6;
   outline-offset: 2px;
 }
+.navi-error-diagnostic{margin:10px 0;min-width:0;color:var(--foreground,#304a5b)}.navi-error-diagnostic>div{display:flex;gap:10px;justify-content:space-between;align-items:center;flex-wrap:wrap}.navi-error-diagnostic code{font-size:12px;font-weight:600;overflow-wrap:anywhere;color:#a34239}.navi-error-diagnostic button{display:inline-flex;align-items:center;gap:5px;font-size:11px;border:1px solid var(--border,#dce5eb);background:var(--background,#fff);border-radius:7px;padding:5px 8px;box-shadow:none!important;min-height:28px}.navi-error-diagnostic details{margin-top:8px}.navi-error-diagnostic summary{font-size:11px;cursor:pointer}.navi-error-diagnostic details p,.navi-error-diagnostic>small{font-size:10px;color:var(--muted-foreground,#788997);line-height:1.6;margin:7px 0}.navi-error-diagnostic pre{font:11px/1.65 ui-monospace,monospace;white-space:pre-wrap;overflow-wrap:anywhere;max-height:220px;overflow:auto;padding:10px;border:1px solid var(--border,#dce5eb);border-radius:8px;background:var(--muted,#f6f8fa);user-select:text}.membership-promo{width:100%;max-width:730px;padding:10px 14px;border:1px solid #dce8f2;border-radius:10px;background:#f6faff;box-sizing:border-box;margin:4px auto 15px;flex-shrink:0}.membership-promo>span{flex:1;min-width:0}.membership-promo button{flex-shrink:0;font-size:12px}

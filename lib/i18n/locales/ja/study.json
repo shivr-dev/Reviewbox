@@ -1,4 +1,13 @@
 {
+  "math.fieldLabel": "数学の解答",
+  "math.placeholder": "数式を入力",
+  "math.分数": "分数",
+  "math.根号": "平方根",
+  "math.指数": "指数",
+  "math.下标": "下付き",
+  "math.绝对值": "絶対値",
+  "math.方程组": "連立方程式",
+  "math.单位": "単位",
   "进度未能保存，请检查设备存储后重试。": "進行状況を保存できませんでした。デバイスのストレージを確認して、もう一度試してください。",
   "保存未完成，请保留页面并重试。": "保存は完了していません。ページを保持して再試行してください。",
   "返回工作台": "学習画面に戻る",
@@ -485,7 +494,7 @@
   "navi.followup.rephrase.request": "今話していた同じ内容を、より直感的で簡潔な別の方法で説明してください。元の条件とヒントの段階を守ってください。",
   "navi.followup.example.request": "今話していた概念の短く具体的な例を一つ挙げてください。元の資料と補足例を区別し、ヒントの段階を守ってください。",
   "navi.display.fullscreen": "全画面表示",
-  "navi.display.dock": "右側ワークスペースに戻る",
+  "navi.display.dock": "会話をドッキング",
   "navi.home.placeholder": "学習の疑問を Navi に相談…",
   "navi.home.open": "Navi を開く",
   "navi.config.setGpaRule": "GPA ルールを変更",
@@ -593,5 +602,11 @@
   "navi.live.describe.highlight": "Highlight visible objects: {{ids}}",
   "navi.live.describe.clearHighlights": "Clear object highlights",
   "navi.live.describe.macro": "Macromolecule representation: {{model}}",
-  "navi.live.describe.camera": "Macromolecule camera: {{command}}"
+  "navi.live.describe.camera": "Macromolecule camera: {{command}}",
+  "navi.diagnostic.title": "エラー診断",
+  "navi.diagnostic.copy": "診断をコピー",
+  "navi.diagnostic.copied": "コピー済み",
+  "navi.diagnostic.details": "診断の詳細",
+  "navi.diagnostic.safe": "エラーと接続情報のみです。会話・問題本文・思考内容は含みません。",
+  "navi.diagnostic.copyFailed": "コピーできません。診断テキストを手動で選択してください。"
 }

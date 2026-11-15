@@ -1,13 +1,14 @@
 'use client';
 import {subjectLabel as subjectName} from '@/lib/presentation';
 import {tr} from '@/lib/i18n';
-import {presentAction,presentAgenda} from '@/lib/presentation';
-import { useEffect, useRef, useState } from 'react';
+import {presentAction,presentAgenda,presentHomeAction} from '@/lib/presentation';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   ArrowLeft,
   ArrowRight,
   BookOpen,
   CalendarDays,
+  ChevronDown,
   Clock3,
   FileText,
   GraduationCap,
@@ -15,7 +16,7 @@ import {
   Settings2,
 } from 'lucide-react';
 import { useReview } from './review-context';
-import { Penguin } from './learning-game';
+import NaviAvatar from './navi-avatar';
 import {
   studyAgenda,
   inferredSimulation,
@@ -48,7 +49,10 @@ import { POLICY_REGISTRY, policyFor } from '@/lib/policy-config';
 import { TeachingReview } from './teaching-review';
 import AutoPracticeStart from './auto-practice-start';
 
-export default function StudyPlanView() {
+export default function StudyPlanView({ renderToday, enterPlan = true }: {
+  renderToday?: (props: {planned: ReturnType<typeof studyAgenda>; onLaunch: (action: StudyAction) => void; blocked: boolean}) => ReactNode;
+  enterPlan?: boolean;
+} = {}) {
   const { data, navigate, start, refresh, notify, aiReady, section } =
     useReview();
   const launchIntent = section?.startsWith('launch:') ? section.slice(7) : '';
@@ -94,7 +98,7 @@ export default function StudyPlanView() {
   }, [ready, agenda.decisionTrace.id]);
   useEffect(() => {
     if (
-      ready &&
+    enterPlan && ready &&
       mode === 'agenda' &&
       data.settings.studyMode !== 'manual' &&
       dueScore &&
@@ -104,7 +108,7 @@ export default function StudyPlanView() {
       setSelected(dueScore);
       setMode('scores');
     }
-  }, [ready, mode, dueScore?.id, data.settings.studyMode]);
+  }, [enterPlan, ready, mode, dueScore?.id, data.settings.studyMode]);
   const milestone = adviceOpportunity(data, agenda.actions, now)?.milestone;
   useEffect(() => {
     if (!ready || !aiReady || !milestone) return;
@@ -325,11 +329,15 @@ export default function StudyPlanView() {
     'simulation',
     'import-exam',
   ].includes(action.kind);
+  const integrated = !!renderToday;
+  const completedMinutes = Math.round(agenda.plan.completedSeconds / 60);
+  const dailyMinutes = agenda.plan.settings.dailyMinutes;
+  const upcoming = agenda.actions.filter(candidate => candidate.id !== agenda.primary.id).slice(0, 4);
   return (
-    <main className="study-director">
-      <header className="director-header">
-        <button className="quiet" onClick={() => navigate('home')}>
-          <ArrowLeft size={17} />{tr("planner:首页")}</button>
+    <main className={'study-director' + (integrated ? ' rb-today-director' : '')}>
+      {(!integrated || mode !== 'agenda') && <header className="director-header">
+        <button className="quiet" onClick={() => integrated ? void back() : navigate('home')}>
+          <ArrowLeft size={17} />{tr(integrated ? 'navigation:今天' : 'planner:首页')}</button>
         <span>{tr("planner:学习计划")}</span>
         <button
           className="quiet"
@@ -338,37 +346,36 @@ export default function StudyPlanView() {
         >
           <Settings2 size={18} />
         </button>
-      </header>
-      <AutoPracticeStart
+      </header>}
+      {integrated && mode === 'agenda' && renderToday({planned:agenda, onLaunch:candidate=>void launch(candidate), blocked:busy})}
+      {<AutoPracticeStart
         ready={ready}
         pageMode={mode}
         action={agenda.primary}
         launchIntent={launchIntent}
         blocked={busy}
         onStart={() => void launch(agenda.primary)}
-      />
-      {!ready ? (
+      />}
+      {!ready ? (!integrated && (
         <div className="director-loading" role="status">
-          <Penguin action="thinking" />
+          <NaviAvatar size={96} label={null} />
           <h1>{tr("planner:看看现在适合做什么")}</h1>
           <p>{tr("planner:结合完成情况、复习间隔与考试安排")}</p>
           <span className="director-loading-dots" aria-hidden="true">
             •••
           </span>
         </div>
-      ) : (
+      )) : (
         <>
           {mode === 'teach' && (
             <TeachingReview action={action} onClose={() => void back()} />
           )}
           {mode === 'agenda' && (
             <>
-              <section className="director-current" aria-label={tr("planner:当前学习建议")}>
+              <section className={integrated ? 'rb-today-followup' : 'director-current'} aria-label={tr("planner:当前学习建议")}>
+                {!integrated && <>
                 <div className="director-companion" aria-hidden="true">
-                  <Penguin
-                    action={isAssessment ? 'thinking' : 'welcome'}
-                    skin={data.settings.gameSkin}
-                  />
+                  <NaviAvatar size={116} label={null} />
                 </div>
                 <span className="now-kicker">
                   {action.kind === 'pressure'
@@ -388,15 +395,16 @@ export default function StudyPlanView() {
                       : ''}
                   </span>
                 )}
+                </>}
                 <div className="director-actions">
-                  <button
+                  {!integrated && <button
                     className="primary"
                     disabled={busy}
                     onClick={() => void launch(action)}
                   >
                     {busy ? tr("planner:正在打开…") : action.label}
                     <ArrowRight size={18} />
-                  </button>
+                  </button>}
                   {[
                     'initial',
                     'test',
@@ -430,11 +438,39 @@ export default function StudyPlanView() {
                         : tr("planner:本地证据尚不足，不据此改变安排。")}
                       {agenda.advisor.verification.explanation}
                     </p>
-                    <small>{tr("planner:仅关键节点调用 Qwen，最多每日 1 次、滚动七天 2 次；日常安排在本地计算。")}</small>
+                    <small>{tr("planner:仅关键节点调用 AI，最多每日 1 次、滚动七天 2 次；日常安排在本地计算。")}</small>
                   </details>
                 )}
               </section>
-              <details className="director-details">
+              {integrated ? <section className="rb-today-plan" id="today-schedule" aria-labelledby="today-schedule-title">
+                <header>
+                  <div><h2 id="today-schedule-title">{tr('planner:学习计划')}</h2>
+                    <button type="button" className="quiet" onClick={() => navigate('you')}>
+                      <Settings2 size={16} />{tr('planner:管理学习设置')}
+                    </button>
+                  </div>
+                  <div className="rb-today-budget">
+                    <span><strong>{completedMinutes}</strong> / {dailyMinutes} {tr('planner:分钟')}</span>
+                    <progress value={completedMinutes} max={Math.max(1, dailyMinutes)} aria-label={tr('planner:学习计划')} />
+                  </div>
+                </header>
+                {upcoming.length > 0 ? <ol>
+                  {upcoming.map(candidate => {
+                    const next = presentHomeAction(candidate, data);
+                    return <li key={next.id}>
+                      <span className="rb-plan-stop" aria-hidden="true" />
+                      <div>{next.subjectName && <span>{next.subjectName}</span>}<strong>{next.title}</strong></div>
+                      {next.minutes > 0 && <small>{next.minutes} {tr('planner:分钟')}</small>}
+                      <button className="quiet" disabled={busy} onClick={() => void launch(candidate)}>
+                        {next.label}<ArrowRight size={16} />
+                      </button>
+                    </li>;
+                  })}
+                </ol> : <div className="rb-today-empty">
+                  <p aria-label={tr('planner:接下来的安排')}>N/A</p>
+                  <button className="quiet" onClick={() => navigate('study')}>{tr('planner:自主练习')}<ArrowRight size={16} /></button>
+                </div>}
+              </section> : <details className="director-details">
                 <summary>{tr("planner:接下来的安排")}</summary>
                 <ol>
                   {agenda.actions.slice(1, 5).map((a) => (
@@ -458,9 +494,10 @@ export default function StudyPlanView() {
                 <p>{tr("planner:每完成一段都会重新安排。今天已记录约")}{' '}
                   {Math.round(agenda.plan.completedSeconds / 60)}{tr("planner:分钟，预算")}{' '}
                   {agenda.plan.settings.dailyMinutes}{tr("planner:分钟。")}</p>
-              </details>
+              </details>}
+              <div className={integrated ? 'rb-today-tools' : undefined}>
               <details className="director-details">
-                <summary>{tr("planner:全部学习方式与报告")}</summary>
+                <summary>{integrated && <BookOpen size={17} />}{tr("planner:全部学习方式与报告")}{integrated && <ChevronDown size={16} />}</summary>
                 <div className="director-options">
                   <button
                     className="secondary"
@@ -517,7 +554,7 @@ export default function StudyPlanView() {
                 </div>
               </details>
               <details className="director-details">
-                <summary>{tr("planner:学习方式与策略")}</summary>
+                <summary>{integrated && <Settings2 size={17} />}{tr("planner:学习方式与策略")}{integrated && <ChevronDown size={16} />}</summary>
                 <label>{tr("planner:安排方式")}<select
                     aria-label={tr("planner:安排方式")}
                     value={data.settings.studyMode ?? 'guided'}
@@ -574,7 +611,8 @@ export default function StudyPlanView() {
                 )}
                 <p>{tr("planner:参数版本随推荐记录保存。实验结果不足时不会自动宣称某个策略更好。")}</p>
               </details>
-              {process.env.NODE_ENV !== 'production' && (
+              </div>
+              {!integrated && process.env.NODE_ENV !== 'production' && (
                 <details className="director-details">
                   <summary>{tr("planner:开发：完整决策记录")}</summary>
                   <pre className="director-trace">
@@ -701,7 +739,7 @@ export default function StudyPlanView() {
               <details>
                 <summary>{tr("planner:为什么这样建议")}</summary>
                 <p>{info.weekly.reason}</p>
-                <p>{tr("planner:根据实际作答与间隔保留表现调整，不把同日答对或 XP 当作长期掌握。")}</p>
+                
                 <a
                   href={info.methodSources[0]}
                   target="_blank"

@@ -63,7 +63,7 @@
   "关键节点的计划复核": "Revisión del plan de nodos clave",
   "已有独立证据支持这项假设，仅纳入策略参考。": "Existe evidencia independiente que respalda esta hipótesis y se incluye solo como referencia estratégica.",
   "本地证据尚不足，不据此改变安排。": "No hay evidencia local suficiente para cambiar el acuerdo.",
-  "仅关键节点调用 Qwen，最多每日 1 次、滚动七天 2 次；日常安排在本地计算。": "Solo los nodos clave llaman a Qwen, hasta una vez al día y dos veces durante siete días consecutivos; el horario diario se calcula localmente.",
+  "仅关键节点调用 AI，最多每日 1 次、滚动七天 2 次；日常安排在本地计算。": "Solo los nodos clave llaman a la IA, hasta una vez al día y dos veces durante siete días consecutivos; el horario diario se calcula localmente.",
   "接下来的安排": "Próximas actividades",
   "按需安排": "Planificar según las necesidades",
   "每完成一段都会重新安排。今天已记录约": "Se reorganiza cada vez que se completa una sección. Aproximadamente grabado hoy",

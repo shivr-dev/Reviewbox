@@ -1,7 +1,8 @@
+import {DiagnosticError,diagnoseNaviFailure,naviDiagnostic,safeDiagnostic} from './navi-diagnostics';
 import { z } from 'zod';
 import { naviConversation } from './navi-server';
 import { membershipFeature, MEMBERSHIP_FEATURES, hasMembershipFeature, type MembershipFeature } from './membership-policy';
-type Environment={url:string;serviceKey:string;publishableKey?:string;account?:string;tokens?:string[]};
+type Environment={url:string;serviceKey:string;publishableKey?:string;account?:string;tokens?:string[];aiModel?:string};
 type GatewayDependencies={fetch?:typeof fetch;model?:typeof naviConversation};
 const tutorRequest=z.object({action:z.literal('tutor'),requestId:z.string().uuid(),input:z.record(z.string(),z.unknown()),capability:z.enum(['navi_basic','navi_deep','agent']).default('navi_basic'),trial:z.enum(['plus','pro']).optional()}).strict();
 const memberRequest=z.object({action:z.string().max(40),payload:z.record(z.string(),z.unknown()).default({})}).strict();
@@ -16,10 +17,14 @@ export function estimatedNaviFeature(input:any,requested:'navi_basic'|'navi_deep
 export function createMembershipGateway(env:Environment,dependencies:GatewayDependencies={}) {
   const request=dependencies.fetch??fetch,model=dependencies.model??naviConversation;
   return async(req:Request)=>{
+    let trace=crypto.randomUUID();
     const origin=req.headers.get('Origin')??'';
     const allowed=!origin||origin==='https://shivr-dev.github.io'||origin==='https://review-study-kevin.shivrdream.chatgpt.site'||/^http:\/\/(?:127\.0\.0\.1|localhost):\d{2,5}$/.test(origin);
     const headers={'Content-Type':'application/json','Cache-Control':'no-store',...(allowed&&origin?{'Access-Control-Allow-Origin':origin,'Vary':'Origin'}:{}),'Access-Control-Allow-Headers':'authorization,apikey,content-type,x-cloudflare-account,x-cloudflare-token','Access-Control-Allow-Methods':'POST,OPTIONS'};
-    const reply=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers});
+    const reply=(body:unknown,status=200)=>{
+      if(status>=400){const value=body as any;const diagnostic=safeDiagnostic(value?.diagnostic)??diagnoseNaviFailure({code:value?.code},'gateway',trace);body={...value,diagnostic:{...diagnostic,requestId:trace,httpStatus:diagnostic.httpStatus??status}};console.warn(JSON.stringify({event:'navi-request-failed',code:diagnostic.code,stage:diagnostic.stage,requestId:trace,httpStatus:diagnostic.httpStatus??status}));}
+      return new Response(JSON.stringify(body),{status,headers:{...headers,'X-Review-Request-Id':trace,'Access-Control-Expose-Headers':'X-Review-Request-Id'}});
+    };
     if(!allowed)return reply({code:'origin'},403);
     if(req.method==='OPTIONS')return new Response(null,{status:204,headers});
     if(req.method!=='POST')return reply({code:'method'},405);
@@ -28,7 +33,7 @@ export function createMembershipGateway(env:Environment,dependencies:GatewayDepe
     const rpc=async(action:string,payload:Record<string,unknown>,token?:string,endpoint?:string)=>{
       const response=await request(env.url+'/rest/v1/rpc/'+(endpoint??(token?'review_membership':'review_membership_server')),{method:'POST',headers:{apikey:env.publishableKey??env.serviceKey,Authorization:'Bearer '+(token??env.serviceKey),'Content-Type':'application/json'},body:JSON.stringify({action,payload}),signal:AbortSignal.timeout(15000)});
       const result:any=await response.json().catch(()=>null);
-      if(!response.ok)throw Object.assign(new Error(result?.message??'membership_service'),{status:response.status});
+      if(!response.ok){const message=result?.message??'membership_service',code=String(message).match(/membership_[a-z_]+|workflow_[a-z_]+/)?.[0];throw new DiagnosticError(message,code?diagnoseNaviFailure({code},'membership',trace):naviDiagnostic('RB-MEMBERSHIP-RPC','membership',{requestId:trace,httpStatus:response.status,detail:message,retryable:response.status>=500}),code??'request');}
       return result;
     };
     try {
@@ -61,7 +66,7 @@ export function createMembershipGateway(env:Environment,dependencies:GatewayDepe
         }
         return reply(await rpc(parsed.action,parsed.payload,token));
       }
-      const parsed=tutorRequest.parse(input);requestId=parsed.requestId;
+      const parsed=tutorRequest.parse(input);requestId=parsed.requestId;trace=requestId;
       // BYOK compatibility is request-local; it never changes membership authority or global credentials.
       const account=env.account||req.headers.get('X-Cloudflare-Account')||'',headerToken=req.headers.get('X-Cloudflare-Token')||'';
       const tokens=env.tokens?.length?env.tokens:headerToken?[headerToken]:[];
@@ -74,7 +79,7 @@ export function createMembershipGateway(env:Environment,dependencies:GatewayDepe
         return reply({code:'request_replay',error:'此请求正在处理或已结束，请刷新对话后重试。'},409);
       }
       reserved=true;
-      const environment=(name:string)=>name==='CF_ACCOUNT_ID'||name==='CF_ACCOUNT_IDS'?account:name==='CF_AI_TOKENS'?JSON.stringify(tokens):'';
+      const environment=(name:string)=>name==='CF_ACCOUNT_ID'||name==='CF_ACCOUNT_IDS'?account:name==='CF_AI_TOKENS'?JSON.stringify(tokens):name==='CF_AI_MODEL'?env.aiModel??'':'';
       const answer=await model(parsed.input,{environment,depth:feature==='navi_basic'?'basic':feature==='agent'?'agent':'deep'});
       const plan=reservation.snapshot.plan;
       if(!hasMembershipFeature(plan,'workspace')&&parsed.trial!=='plus'&&parsed.trial!=='pro')delete answer.ui_actions;
@@ -89,7 +94,7 @@ export function createMembershipGateway(env:Environment,dependencies:GatewayDepe
       const known=Object.keys(messages).find(c=>message.includes(c));
       const modelCode=typeof (error as any)?.code==='string'?(error as any).code:undefined;
       const code=known??modelCode??(error instanceof z.ZodError?'format':'request');
-      return reply({code,error:messages[code]??'本次请求未完成，请稍后重试'},code.startsWith('membership_')?403:422);
+      return reply({code,diagnostic:diagnoseNaviFailure(error,'gateway',trace),error:messages[code]??'本次请求未完成，请稍后重试'},code.startsWith('membership_')?403:422);
     }
   };
 }

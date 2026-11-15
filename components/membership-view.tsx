@@ -48,7 +48,7 @@ export default function MembershipView(){
  </section>;
  return <section className="membership-page">
   <button className="settings-back" onClick={()=>navigate('you')}><ArrowLeft size={16}/>{text('我的')}</button>
-  <header className="membership-heading"><span className="membership-eyebrow">REVIEWBOX MEMBERSHIP</span>
+  <header className="membership-heading">
    <h1>{text('为每一个学习阶段，选择合适的支持。')}</h1>
    <p>{text('学习、考试与 GPA 始终完整。会员增加智能辅导能力，不改变你的真实学习成果。')}</p>
   </header>

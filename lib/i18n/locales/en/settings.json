@@ -246,5 +246,7 @@
   "站点配置版本暂不支持": "This configuration version is not supported.",
   "账户与会员": "Account and membership",
   "会员与用量": "Membership and usage",
-  "查看方案": "View plans"
+  "查看方案": "View plans",
+  "自动发布延迟，反馈已保存，请勿重复提交。": "Publishing is delayed. Your feedback is saved. Please don’t resubmit.",
+  "查看自动发布任务": "View publishing workflow"
 }

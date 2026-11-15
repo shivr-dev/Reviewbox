@@ -85,11 +85,7 @@ export default function NaviLearningWorkspace({
   if (layout.mode === 'default' && !controller.history.length)
     baselineFocus.current = focused;
   useEffect(() => {
-    onFocus(
-      layout.mode === 'default'
-        ? baselineFocus.current
-        : layout.mode === 'focus',
-    );
+    onFocus(layout.mode === 'focus' || baselineFocus.current);
   }, [layout.mode]);
   const exec = (actions: NaviUIAction[]) => {
     const result = controller.execute(actions, 'user');

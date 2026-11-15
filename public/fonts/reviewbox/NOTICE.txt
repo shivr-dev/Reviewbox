@@ -1,0 +1,20 @@
+Reviewbox typography attributions
+
+Alimama FangYuanTi VF — © Taobao (China) Software Co., Ltd. (Alimama).
+Official download and current license: https://www.iconfont.cn/fonts/detail?cnid=pOvFIr086ADR
+The browser uses a locally installed copy if it supports the font.
+The official portal's supplied web fonts are incompatible with the tested
+Windows Edge environment. Simplified Chinese temporarily uses MiSans there.
+
+MiSans — © Xiaomi Inc.
+Official download and MiSans Fonts Intellectual Property License Agreement:
+https://hyperos.mi.com/font/en/download/
+Reviewbox uses the unmodified official WOFF2 web font.
+
+LINE Seed EN, JP, KR, TW — © LY Corporation and respective font designers.
+Released under the SIL Open Font License, Version 1.1.
+https://seed.line.me/index_en.html
+https://seed.line.me/index_jp.html
+https://seed.line.me/index_kr.html
+https://seed.line.me/index_tw.html
+The included OFL text states the terms. No LINE Seed font has been modified.

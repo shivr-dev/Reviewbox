@@ -914,7 +914,7 @@
   background: var(--ux-soft);
 }
 .profile-account-dialog {
-  font-family: 'Review Duo', 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+  font-family: var(--font-body);
   border-radius: 16px;
   padding: 28px;
   width: 440px;

@@ -63,7 +63,7 @@
   "关键节点的计划复核": "Plan review at key milestones",
   "已有独立证据支持这项假设，仅纳入策略参考。": "There is independent evidence to support this hypothesis and is included for strategic reference only.",
   "本地证据尚不足，不据此改变安排。": "There is insufficient local evidence to change the arrangement.",
-  "仅关键节点调用 Qwen，最多每日 1 次、滚动七天 2 次；日常安排在本地计算。": "Qwen is used only at key milestones, at most once per day and twice per rolling seven days. Daily schedules are calculated locally.",
+  "仅关键节点调用 AI，最多每日 1 次、滚动七天 2 次；日常安排在本地计算。": "AI is used only at key milestones, at most once per day and twice per rolling seven days. Daily schedules are calculated locally.",
   "接下来的安排": "Up next",
   "按需安排": "Arrange on demand",
   "每完成一段都会重新安排。今天已记录约": "It will be rearranged each time a section is completed. Approximately recorded today",

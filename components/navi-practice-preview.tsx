@@ -36,11 +36,13 @@ export default function NaviPracticePreview({
   threadId,
   sourcePack,
   onClose,
+  onOutcome,
 }: {
   question: Question;
   threadId: string;
   sourcePack?: Pack;
   onClose: () => void;
+  onOutcome?: (state: 'success' | 'error') => void;
 }) {
   const { t } = useTranslation('study'),
     { data, refresh, aiReady } = useReview(),
@@ -276,6 +278,7 @@ export default function NaviPracticePreview({
       if (alive.current && currentNamespace() === owner.current) {
         await refresh();
         setStage('saved');
+        onOutcome?.('success');
       }
     } catch (e) {
       if (alive.current && currentNamespace() === owner.current)

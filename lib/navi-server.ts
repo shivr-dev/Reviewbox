@@ -1,3 +1,4 @@
+import {DiagnosticError,naviDiagnostic,diagnoseNaviFailure} from './navi-diagnostics';
 import {
   parseNaviModelResponse,
   NaviResponseFormatError,
@@ -126,7 +127,7 @@ const request = z
 // Collection/scroll/object actions refer exclusively to registered IDs, never DOM selectors or invented science.
 export async function naviConversation(input: unknown, execution?: {environment?: (name:string)=>string;depth?:'basic'|'deep'|'agent'}) {
   const parsed = request.safeParse(input);
-  if (!parsed.success) throw new NaviError('format');
+  if (!parsed.success)throw new NaviError('format',{diagnostic:naviDiagnostic('RB-INPUT-SCHEMA','request-validation',{detail:parsed.error.issues.slice(0,5).map(i=>i.path.map(String).filter(p=>/^[a-zA-Z0-9_-]+$/.test(p)).join('.')+':'+i.code).join('; ')})});
   const body = parsed.data;
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
@@ -144,7 +145,7 @@ UI actions are proposals requiring user acceptance, NEVER report them already ex
         false,
         execution?.depth==='basic'?2200:4500,
         z.toJSONSchema(naviAnswerSchema),
-        { temperature: attempt ? 0.15 : 0.4, top_p: 0.85, top_k: 20 },
+        { temperature: attempt ? 0.15 : 0.4, top_p: 0.85 },
         false,
         {
           parseResponse: parseNaviModelResponse,
@@ -181,15 +182,14 @@ UI actions are proposals requiring user acceptance, NEVER report them already ex
             ['format', 'citation'].includes(error.code)))
       )
         continue;
-      if (error instanceof NaviResponseFormatError)
-        throw new NaviError('format');
-      if (error instanceof NaviError) throw error;
+      if (error instanceof NaviResponseFormatError)throw new NaviError('format',{diagnostic:naviDiagnostic(error.reason==='truncated'?'RB-MODEL-TRUNCATED':error.reason==='reasoning-only'?'RB-MODEL-REASONING-ONLY':'RB-MODEL-JSON','model-format',{reason:error.reason,attempts:attempt+1,retryable:true})});
+      if (error instanceof NaviError){error.diagnostic??=diagnoseNaviFailure(error,'response-validation');error.diagnostic.attempts=attempt+1;throw error;}
       if (
         error instanceof Error &&
         /timeout|timed out|abort/i.test(error.message)
       )
-        throw new NaviError('timeout');
-      throw new NaviError('request');
+        throw new NaviError('timeout',{diagnostic:naviDiagnostic('RB-TIMEOUT','model',{attempts:attempt+1,retryable:true})});
+      throw new NaviError('request',{diagnostic:diagnoseNaviFailure(error,'model')});
     }
   }
   throw new NaviError('format');

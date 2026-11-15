@@ -1,4 +1,13 @@
 {
+  "math.fieldLabel": "Respuesta matemática",
+  "math.placeholder": "Escribe una fórmula",
+  "math.分数": "Fracción",
+  "math.根号": "Raíz",
+  "math.指数": "Potencia",
+  "math.下标": "Subíndice",
+  "math.绝对值": "Valor absoluto",
+  "math.方程组": "Sistema",
+  "math.单位": "Unidad",
   "进度未能保存，请检查设备存储后重试。": "No se pudo guardar el progreso, verifique el almacenamiento del dispositivo e inténtelo nuevamente.",
   "保存未完成，请保留页面并重试。": "El guardado no se completó, conserve la página e inténtelo nuevamente.",
   "返回工作台": "Volver al panel de estudio",
@@ -485,7 +494,7 @@
   "navi.followup.rephrase.request": "Explica el mismo punto que acabamos de tratar de una forma distinta, más intuitiva y breve. Mantén las condiciones originales y el nivel de pistas.",
   "navi.followup.example.request": "Da un ejemplo breve y concreto del concepto que acabamos de tratar. Distingue tu ejemplo del material original y mantén el nivel de pistas.",
   "navi.display.fullscreen": "Ampliar a pantalla completa",
-  "navi.display.dock": "Volver al espacio lateral",
+  "navi.display.dock": "Acoplar la conversación",
   "navi.home.placeholder": "Pregunta a Navi sobre tus estudios…",
   "navi.home.open": "Abrir Navi",
   "navi.config.setGpaRule": "Ajustar regla GPA",
@@ -593,5 +602,11 @@
   "navi.live.describe.highlight": "Highlight visible objects: {{ids}}",
   "navi.live.describe.clearHighlights": "Clear object highlights",
   "navi.live.describe.macro": "Macromolecule representation: {{model}}",
-  "navi.live.describe.camera": "Macromolecule camera: {{command}}"
+  "navi.live.describe.camera": "Macromolecule camera: {{command}}",
+  "navi.diagnostic.title": "Diagnóstico de error",
+  "navi.diagnostic.copy": "Copiar diagnóstico",
+  "navi.diagnostic.copied": "Copiado",
+  "navi.diagnostic.details": "Ver detalles",
+  "navi.diagnostic.safe": "Solo incluye datos del error y la conexión; no incluye conversaciones, preguntas ni razonamiento.",
+  "navi.diagnostic.copyFailed": "No se pudo copiar. Selecciona el texto manualmente."
 }

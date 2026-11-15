@@ -26,7 +26,7 @@ import androidx.wear.compose.material3.TextButtonDefaults
         Column(Modifier.fillMaxSize().padding(horizontal = maxWidth * .14f, vertical = maxHeight * .115f),
             horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Row(Modifier.height(42.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
-                Penguin(42)
+                WatchMark(42)
                 Column {
                     Text("Reviewbox", color = Blue, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                     Text(if (vm.demo) "演示 · ${task?.optInt("minutes", 5) ?: 5} 分钟" else "${task?.optInt("minutes", 5) ?: 5} 分钟 · 为你安排", color = Muted, fontSize = 10.sp)
@@ -68,7 +68,7 @@ import androidx.wear.compose.material3.TextButtonDefaults
     BoxWithConstraints(Modifier.fillMaxSize().background(Night)) {
         Column(Modifier.fillMaxSize().padding(horizontal = maxWidth * .13f, vertical = maxHeight * .11f),
             horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Box(Modifier.weight(1f), contentAlignment = Alignment.Center) { Penguin(52) }
+            Box(Modifier.weight(1f), contentAlignment = Alignment.Center) { WatchMark(52) }
             Text("学习，随腕而行", color = Ink, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
             if(vm.message.isNotBlank())Text(vm.message,color=Muted,fontSize=11.sp)
             Action(if (vm.busy) "正在准备…" else "连接账户", true, !vm.busy) { vm.beginPairing() }

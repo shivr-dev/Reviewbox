@@ -1,7 +1,7 @@
 export const isStaticSite = () =>
   typeof window !== 'undefined' && (window as any).__REVIEW_STATIC__ === true;
 export const usesPrivateCloud = () => {
-  if (typeof window === 'undefined') return false;
+  if (typeof window === 'undefined'||typeof document==='undefined'||!window.location) return false;
   if (isStaticSite()) return true;
   if (['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname))
     return true;

@@ -33,7 +33,7 @@ async function compile(body: any, revision = false) {
     false,
     14500,
     undefined,
-    { temperature: 0.7, top_p: 0.8, top_k: 20 },
+    { temperature: 0.7, top_p: 0.8 },
     true,
   );
   assertCourseHTML(html);
@@ -80,7 +80,7 @@ export async function courseConversation(body: unknown) {
     false,
     4000,
     undefined,
-    { temperature: 0.6, top_p: 0.9, top_k: 20 },
+    { temperature: 0.6, top_p: 0.9 },
   );
   return { reply: z.string().min(1).max(9000).parse(value.reply) };
 }

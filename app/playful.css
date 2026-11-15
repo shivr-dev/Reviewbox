@@ -1,0 +1,259 @@
+/* Learning adventure uses the supplied DET button mechanics. Native exam players stay isolated. */
+:root[data-review-theme='playful'] {
+  --background: #fff;
+  --foreground: #4b4b4b;
+  --card: #fff;
+  --primary: #51aff0;
+  --sidebar: #fff;
+  --border: #e5e5e5;
+  --color-ring: #51aff0;
+  --color-accent: #e1f3ff;
+  --color-accent-foreground: #167db4;
+  --color-sidebar-accent: #e1f3ff;
+  --color-sidebar-accent-foreground: #167db4;
+  --color-sidebar-ring: #51aff0;
+  --font-sans:
+    var(--font-body);
+}
+:root[data-review-theme='playful'] body {
+  font-family: var(--font-sans);
+  line-height: 1.65;
+  color: #4b4b4b;
+}
+:root[data-review-theme='playful'] h1,
+:root[data-review-theme='playful'] h2,
+:root[data-review-theme='playful'] h3,
+:root[data-review-theme='playful'] h4 {
+  font-family: var(--font-sans);
+  font-weight: 800;
+  color: #3c3c3c;
+  letter-spacing: 0;
+}
+:root[data-review-theme='playful'] .page {
+  max-width: 1200px;
+  padding: 30px 40px 65px;
+}
+:root[data-review-theme='playful'] .topbar {
+  height: 76px;
+  background: #fff;
+}
+:root[data-review-theme='playful'] .panel {
+  border: 2px solid #e5e5e5;
+  border-radius: 18px;
+  box-shadow: none;
+  padding: 24px;
+}
+:root[data-review-theme='playful'] .eyebrow {
+  display: none;
+}
+:root[data-review-theme='playful'] .page-heading h1 {
+  font-size: 32px;
+  line-height: 1.3;
+}
+:root[data-review-theme='playful'] .muted {
+  color: #777;
+}
+:root[data-review-theme='playful'] .primary,
+:root[data-review-theme='playful'] .secondary,
+:root[data-review-theme='playful'] .danger-button {
+  min-height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 15px;
+  line-height: 1.3;
+  letter-spacing: 0.1px;
+  border: 0;
+  box-shadow: 0 4px 0 #4095ca;
+  background: #51aff0;
+  color: white;
+  padding: 12px 22px;
+  transition:
+    background 0.12s,
+    transform 0.08s,
+    box-shadow 0.08s;
+}
+:root[data-review-theme='playful'] .primary:hover {
+  background: #63b8f3;
+}
+:root[data-review-theme='playful'] .secondary {
+  border: 2px solid #e5e5e5;
+  color: #168acb;
+  background: #fff;
+  box-shadow: 0 3px 0 #e5e5e5;
+}
+:root[data-review-theme='playful'] .secondary:hover {
+  background: #f4faff;
+}
+:root[data-review-theme='playful'] .danger-button {
+  background: #fff;
+  border: 2px solid #ffd1cd;
+  color: #e65d55;
+  box-shadow: 0 3px 0 #ffd1cd;
+}
+:root[data-review-theme='playful'] .primary:active,
+:root[data-review-theme='playful'] .secondary:active,
+:root[data-review-theme='playful'] .danger-button:active {
+  transform: translateY(4px);
+  box-shadow: none;
+}
+:root[data-review-theme='playful'] button:disabled:not([data-guided-option]) {
+  opacity: 1;
+  background: #e5e5e5 !important;
+  color: #999 !important;
+  box-shadow: none !important;
+  border-color: #e5e5e5 !important;
+  cursor: default;
+}
+:root[data-review-theme='playful'] button:focus-visible,
+:root[data-review-theme='playful'] input:focus-visible,
+:root[data-review-theme='playful'] textarea:focus-visible {
+  outline-color: #51aff0;
+}
+:root[data-review-theme='playful'] .nav-item {
+  font-weight: 800;
+  border: 2px solid transparent;
+  border-radius: 12px;
+  color: #777;
+}
+:root[data-review-theme='playful'] .nav-item.selected {
+  border-color: #a9d9f7;
+  background: #e1f3ff;
+  color: #168acb;
+}
+:root[data-review-theme='playful'] .nav-item:hover,
+:root[data-review-theme='playful'] .subject-nav:hover {
+  background: #f4faff;
+}
+:root[data-review-theme='playful'] .subject-nav.selected {
+  background: #e1f3ff;
+  color: #168acb;
+}
+.nav-subject-icon {
+  display: inline-flex;
+  width: 22px;
+  height: 22px;
+  align-items: center;
+  justify-content: center;
+  background: transparent !important;
+}
+:root[data-review-theme='playful'] .brand {
+  font-weight: 900;
+  color: #168acb;
+}
+:root[data-review-theme='playful'] .brand-icon {
+  background: #51aff0;
+  box-shadow: 0 3px 0 #4095ca;
+  border-radius: 12px;
+}
+:root[data-review-theme='playful'] .nav-count,
+:root[data-review-theme='playful'] .avatar,
+:root[data-review-theme='playful'] .account-avatar {
+  background: #e1f3ff;
+  color: #168acb;
+}
+:root[data-review-theme='playful']
+  .setting-switch
+  [data-slot='switch'][data-checked] {
+  background: #51aff0 !important;
+}
+:root[data-review-theme='playful'] .setting-switch [data-slot='switch-thumb'] {
+  background: #fff !important;
+  border: 1px solid #00000008;
+}
+:root[data-review-theme='playful'] .appearance-options .selected {
+  background: #e1f3ff;
+  color: #168acb;
+}
+:root[data-review-theme='playful'] .page-tabs button.active {
+  border-color: #51aff0;
+  color: #168acb;
+}
+:root[data-review-theme='playful'] input:not([type='checkbox']),
+:root[data-review-theme='playful'] textarea,
+:root[data-review-theme='playful'] select {
+  border: 2px solid #e5e5e5;
+  border-radius: 12px;
+  background: #fafafa;
+}
+:root[data-review-theme='playful'] .study-surface:not(.focus-mode) {
+  position: relative;
+}
+:root[data-review-theme='playful'] .practice-surface.focus-mode {
+  position: fixed;
+  background: #fff;
+  color: #4b4b4b;
+}
+:root[data-review-theme='playful'] .focus-mode .session-top {
+  background: #fff;
+  border-color: #e5e5e5;
+  color: #777;
+}
+:root[data-review-theme='playful'] .focus-mode .session-top b {
+  color: #168acb;
+}
+:root[data-review-theme='playful'] .focus-mode .session-progress {
+  margin-bottom: 15px;
+  background: #e5e5e5 !important;
+}
+:root[data-review-theme='playful']
+  .focus-mode
+  .session-progress
+  [data-slot='progress-indicator'] {
+  background: #58cc02 !important;
+}
+:root[data-review-theme='playful'] .practice-surface .question-card {
+  border: 2px solid #e5e5e5;
+  border-radius: 22px;
+  box-shadow: none;
+  background: #fff;
+}
+:root[data-review-theme='playful'] .question-prompt {
+  font-family: var(--font-sans);
+  font-weight: 700;
+  color: #3c3c3c;
+  line-height: 1.7;
+}
+:root[data-review-theme='playful'] .question-options button {
+  border: 2px solid #e5e5e5;
+  border-radius: 12px;
+  box-shadow: 0 3px 0 #e5e5e5;
+  background: white;
+  color: #4b4b4b;
+}
+:root[data-review-theme='playful'] .question-options button.chosen {
+  background: #e1f3ff;
+  color: #168acb;
+  border-color: #a9d9f7;
+  box-shadow: 0 3px 0 #a9d9f7;
+}
+:root[data-review-theme='playful'] .question-options button:active {
+  transform: translateY(3px);
+  box-shadow: none;
+}
+:root[data-review-theme='playful'] .confidence-picker button.selected {
+  background: #e1f3ff;
+  border-color: #a9d9f7;
+  color: #168acb;
+}
+:root[data-review-theme='playful'] .answer-modal {
+  border: 2px solid #e5e5e5;
+  background: #fff;
+  border-radius: 22px;
+}
+:root[data-review-theme='playful'] .answer-modal .answer-label {
+  color: #168acb;
+}
+:root[data-review-theme='playful'] .answer-modal .answer-reveal > h3 {
+  font-family: var(--font-sans);
+  font-weight: 800;
+  color: #3c3c3c;
+}
+:root[data-review-theme='playful']
+  .session-progress
+  [data-slot='progress-indicator'] {
+  background: #58cc02;
+}

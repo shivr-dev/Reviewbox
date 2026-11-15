@@ -1,0 +1,174 @@
+.rb-community {
+  --catalog-line: var(--rb-stroke);
+  --catalog-inset: clamp(12px, 2.5vw, 27px);
+  color: var(--rb-ink);
+}
+.rb-community-masthead, .rb-community-detail-heading, .rb-community-publish > h1 {
+  margin-block-end: clamp(17px, 3vw, 30px);
+}
+:root .rb-community :is(.rb-community-back,.rb-community-filter),
+:root .rb-community-filter-dialog .rb-community-back {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  min-height: 42px; padding: 6px 10px; border: 1px solid transparent; border-radius: var(--rb-radius-control);
+  background: transparent; color: var(--rb-violet); font: 650 .9rem/1.35 var(--font-body);
+  transition: background-color .18s var(--rb-ease), border-color .18s var(--rb-ease);
+}
+:root .rb-community .rb-community-back:hover,
+:root .rb-community-filter-dialog .rb-community-back:hover { background: var(--rb-wash); }
+.rb-community-masthead > .rb-community-back, .rb-community-detail > .rb-community-back, .rb-community-publish > .rb-community-back {
+  margin-inline-start: -10px;
+}
+.rb-community-heading-row {
+  display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 10px 20px;
+  padding-block-start: 9px;
+}
+:root .rb-community h1 {
+  margin: 0; color: var(--rb-ink);
+  font: 700 clamp(2rem, 4.3vw, 3.65rem)/1.12 var(--font-display);
+  font-variation-settings: var(--rb-locale-variation, normal);
+  overflow-wrap: anywhere;
+}
+:root .rb-community h1:focus { outline: none; }
+.rb-community-heading-row > button, .rb-community-pack-facts button { display: inline-flex; gap: 8px; align-items: center; }
+.rb-community [hidden] { display: none; }
+
+.rb-community-toolbar {
+  display: grid; grid-template-columns: minmax(10rem, 1fr) auto auto auto; align-items: stretch; gap: 9px;
+  padding: 9px; background: var(--rb-wash); border: 1px solid var(--catalog-line);
+  border-radius: calc(var(--rb-radius-control) + 5px);
+}
+.rb-community-search {
+  display: flex; align-items: center; gap: 10px; min-width: 0; padding-inline: 12px 8px;
+  margin: 0;
+  color: var(--rb-violet); background: var(--rb-paper); border: 1px solid var(--catalog-line); border-radius: var(--rb-radius-control);
+}
+.rb-community-search:focus-within { outline: 2px solid var(--rb-violet); outline-offset: -1px; }
+.rb-community-search svg { flex: none; }
+:root .rb-community .rb-community-search input[type=search] {
+  min-width: 0; width: 100%; min-height: 44px; margin: 0; padding: 4px 0;
+  border: 0; border-radius: 0; background: transparent; box-shadow: none; outline: none;
+  color: var(--rb-ink); font: 500 1rem/1.3 var(--font-body);
+}
+:root .rb-community-toolbar select, :root .rb-community-filter-dialog .rb-community-fields :is(input, select) {
+  width: 100%; min-width: 0; max-width: 100%; min-height: 44px; margin: 0; padding: 5px 10px;
+  border: 1px solid var(--rb-stroke); border-radius: var(--rb-radius-control);
+  background: var(--rb-paper); color: var(--rb-ink); font: 550 .9rem/1.3 var(--font-body);
+}
+:root .rb-community-filter-dialog .rb-community-fields :is(input, select):focus-visible {
+  outline: 2px solid var(--rb-violet); outline-offset: 1px;
+}
+:root .rb-community .rb-community-filter { background: var(--rb-paper); border-color: var(--catalog-line); }
+:root .rb-community .rb-community-filter:is(:hover,[data-filtered]) { border-color: var(--rb-violet); }
+.rb-community-filter span {
+  display: grid; place-items: center; min-width: 19px; min-height: 19px; padding-inline: 4px;
+  border-radius: 99px; color: var(--rb-paper); background: var(--rb-violet); font-size: .73rem;
+}
+.rb-community-applied { display: flex; flex-wrap: wrap; gap: 7px; margin-block: 10px 0; }
+:root .rb-community-applied button {
+  display: inline-flex; align-items: center; gap: 7px; min-height: 36px; padding: 4px 9px;
+  background: var(--rb-wash); color: var(--rb-violet); border: 1px solid var(--catalog-line); border-radius: var(--rb-radius-control);
+  font: 550 .88rem/1.3 var(--font-body); overflow-wrap: anywhere;
+}
+.rb-community-applied button svg { flex: none; }
+.rb-community-list { margin-block-start: clamp(18px, 3vw, 29px); border-block-start: 1px solid var(--catalog-line); }
+.rb-community-list[aria-busy=true] .rb-community-entry { opacity: .68; }
+:root .rb-community .rb-community-entry {
+  display: grid; grid-template-columns: auto minmax(0,1fr) auto auto; gap: clamp(10px, 2vw, 23px);
+  align-items: center; width: 100%; padding: 17px var(--catalog-inset); margin: 0;
+  border: 0; border-block-end: 1px solid var(--catalog-line); border-radius: 0;
+  background: var(--rb-paper); color: var(--rb-ink); text-align: start;
+  transition: background-color .2s var(--rb-ease), opacity .2s var(--rb-ease);
+}
+:root .rb-community .rb-community-entry:hover { background: var(--rb-wash); }
+:root .rb-community .rb-community-entry:focus-visible { outline-offset: -2px; border-radius: var(--rb-radius-control); }
+.rb-community-entry-icon {
+  display: grid; place-items: center; width: 48px; aspect-ratio: 1;
+  border-radius: 13px; color: var(--rb-violet);
+  background: color-mix(in srgb, currentColor 12%, var(--rb-paper));
+}
+.rb-community-entry-text { display: grid; gap: 4px; min-width: 0; overflow-wrap: anywhere; }
+.rb-community-entry-title { font: 700 clamp(1.05rem, 2vw, 1.28rem)/1.3 var(--font-body); }
+.rb-community-entry-description {
+  overflow: hidden; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical;
+  color: var(--rb-muted); font: 500 .9rem/1.45 var(--font-body);
+}
+.rb-community-entry-tags { color: var(--rb-violet); font: 650 .83rem/1.4 var(--font-body); }
+.rb-community-entry-meta { display: grid; gap: 2px; text-align: end; font-size: .82rem; color: var(--rb-muted); white-space: nowrap; }
+.rb-community-entry-meta strong { color: var(--rb-ink); font-size: .93rem; }
+.rb-community-entry-arrow { color: var(--rb-violet); transition: transform .2s var(--rb-ease); }
+.rb-community-entry:hover .rb-community-entry-arrow { transform: translateX(3px); }
+.rb-community-state {
+  min-height: 180px; display: flex; flex-direction: column; justify-content: center; align-items: center;
+  gap: 10px; padding: 20px; color: var(--rb-muted); text-align: center;
+}
+.rb-community-state p { margin: 0; }
+.rb-community-state > svg { color: var(--rb-violet); }
+
+.rb-community-detail, .rb-community-publish, .rb-community-install { animation: rb-community-in .26s var(--rb-ease) both; }
+@keyframes rb-community-in { from { opacity: 0; transform: translateY(5px); } }
+.rb-community-detail-heading { padding-block: clamp(14px, 3vw, 26px) 0; }
+.rb-community-detail-heading > p { margin-block: 10px 0; color: var(--rb-muted); }
+.rb-community-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 11px; }
+.rb-community-tags:not(:empty) { margin-block-end: 10px; }
+.rb-community-tags > span { color: var(--rb-violet); font: 650 .9rem/1.4 var(--font-body); }
+.rb-community-tags > span + span { border-inline-start: 1px solid var(--catalog-line); padding-inline-start: 11px; }
+.rb-community-detail-grid, .rb-community-publish-grid {
+  display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(235px, 1fr); align-items: start;
+  gap: clamp(18px, 4vw, 50px); border-block-start: 1px solid var(--catalog-line); padding-block-start: 21px;
+}
+:root .rb-community h2 { margin: 0 0 11px; font: 700 1.18rem/1.35 var(--font-body); }
+.rb-community-description p {
+  margin: 0; max-width: 65ch; color: var(--rb-muted); line-height: 1.72; white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.rb-community-pack-facts, .rb-community-publish-preview {
+  border: 1px solid var(--catalog-line); border-radius: var(--rb-radius-panel, 16px);
+  padding: var(--catalog-inset); background: var(--rb-wash);
+}
+.rb-community-pack-count { display: flex; align-items: center; gap: 10px; padding-block-end: 11px; color: var(--rb-violet); }
+.rb-community-pack-count span { margin-inline-start: auto; font-size: .86rem; color: var(--rb-muted); }
+.rb-community-pack-facts dl { margin: 0 0 15px; border-block-start: 1px solid var(--catalog-line); }
+.rb-community-pack-facts dl > div {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 10px;
+  padding-block: 9px; border-block-end: 1px solid var(--catalog-line); font-size: .88rem; overflow-wrap: anywhere;
+}
+.rb-community-pack-facts dt { color: var(--rb-muted); }
+.rb-community-pack-facts dd { margin: 0; text-align: end; }
+.rb-community-pack-facts > button { width: 100%; justify-content: center; }
+.rb-community-pack-facts > button + button { margin-block-start: 5px; }
+.rb-community-publish > h1 { margin-block: 8px 21px; }
+.rb-community-publish-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.rb-community-publish-grid p { color: var(--rb-muted); }
+.rb-community-publish-preview { max-width: 750px; }
+.rb-community-publish-preview p { color: var(--rb-muted); }
+.rb-community-publish-preview label { display: flex; align-items: baseline; gap: 9px; margin-block: 17px; }
+.rb-community-manage-list { margin: 0; padding: 0; list-style: none; border-block-start: 1px solid var(--catalog-line); }
+:root .rb-community-manage-list > :is(button,li) {
+  display: flex; align-items: center; gap: 10px; width: 100%; min-height: 62px; padding: 8px;
+  border: 0; border-block-end: 1px solid var(--catalog-line); border-radius: 0; background: transparent;
+  color: var(--rb-ink); text-align: start; overflow-wrap: anywhere;
+}
+:root .rb-community-manage-list > button:hover { background: var(--rb-wash); }
+.rb-community-manage-list > :is(button,li) > :last-child { margin-inline-start: auto; flex: none; color: var(--rb-violet); }
+.rb-community-manage-list small { display: block; color: var(--rb-muted); margin-block-start: 3px; }
+
+:root .rb-community-filter-dialog { width: min(90vw, 500px); max-height: 90dvh; overflow: auto; background: var(--rb-paper); }
+.rb-community-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 11px 15px; margin-block: 2px 20px; }
+.rb-community-fields label { display: grid; gap: 5px; color: var(--rb-muted); font-size: .9rem; }
+.rb-community-filter-dialog .button-row { justify-content: space-between; }
+@media (max-width: 650px) {
+  .rb-community-toolbar { grid-template-columns: minmax(0,1fr) minmax(0,1fr) max-content; }
+  .rb-community-search { grid-column: 1 / -1; }
+  .rb-community-detail-grid, .rb-community-publish-grid { grid-template-columns: minmax(0,1fr); }
+  .rb-community-entry-icon { width: 38px; border-radius: 10px; }
+  .rb-community-entry-icon svg, .rb-community-entry-arrow { width: 17px; }
+}
+@media (max-width: 390px) {
+  :root .rb-community-toolbar select { padding-inline: 5px; }
+  :root .rb-community .rb-community-filter { padding-inline: 6px; }
+  .rb-community-filter svg { width: 15px; }
+  .rb-community-entry-description { -webkit-line-clamp: 2; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rb-community *, .rb-community-filter-dialog * { transition-duration: 0s !important; }
+  .rb-community-detail, .rb-community-publish, .rb-community-install { animation: none; }
+}

@@ -2,7 +2,7 @@ import {readFileSync as read,writeFileSync as write,readdirSync,mkdirSync} from 
 import ts from 'typescript';
 const chinese=/[\u3400-\u9fff]/;
 const files=readdirSync('components').filter(f=>f.endsWith('.tsx')).map(f=>'components/'+f);
-const namespace=f=>/you-view|clear-data|profile/.test(f)?'settings':/pack|library|import|manual-import|content-review/.test(f)?'library':/knowledge-map|subjects/.test(f)?'subjects':/grade|grading|rubric|teaching-review/.test(f)?'grading':/study-plan|auto-practice|onboarding/.test(f)?'planner':/study-view|math-answer|question-review|pressure|assessment|remediation|course-room/.test(f)?'study':/exam|results|analytics/.test(f)?'results':/workshop|equipment|adventure|rewards|chest|home-item|learning-game/.test(f)?'workshop':/watch|device/.test(f)?'devices':/home-view/.test(f)?'dashboard':'common';
+const namespace=f=>/you-view|clear-data|profile/.test(f)?'settings':/pack|library|import|manual-import|content-review/.test(f)?'library':/knowledge-map|subjects/.test(f)?'subjects':/grade|grading|rubric|teaching-review/.test(f)?'grading':/study-plan|auto-practice|onboarding/.test(f)?'planner':/study-view|math-answer|question-review|pressure|assessment|remediation|course-room/.test(f)?'study':/exam|results|analytics/.test(f)?'results':/watch|device/.test(f)?'devices':/home-view/.test(f)?'dashboard':'common';
 const catalogs={};const edits=[];
 function add(ns,key){if(!chinese.test(key)||key.length>600)return false;catalogs[ns]??={};catalogs[ns][key]=key;return true;}
 for(const file of files){let source=read(file,'utf8'),patches=[],ns=namespace(file);const sf=ts.createSourceFile(file,source,ts.ScriptTarget.Latest,true,ts.ScriptKind.TSX);

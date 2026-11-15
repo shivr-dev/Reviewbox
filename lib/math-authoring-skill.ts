@@ -9,7 +9,7 @@ export const MATH_AUTHORING_SKILL=`
 - answerFormat 可选 "text"、"latex"、"mixed"。省略时视为旧版 text，绝不要求批量迁移旧答案。latex 的 answer 为不带 $ 包裹的单个 LaTeX 表达式；mixed 的 answer 是自然语言与 $...$ 内嵌公式。prompt、explanation、solution 继续使用已有 $...$ / $$...$$ 约定；JSON 中反斜线写双反斜线。
 - blank 的 acceptedAnswers 仍可提供完整的等价文本答案。不能把选择题答案改为 LaTeX：choice.answer 仍须与一个完整选项严格一致。pinyin、matching 格式完全不变。
 - MathLive 可编辑分数、根式、指数、下标、方程组、不等式、希腊字母与单位；这不代表每一种表达式都能自动判分。
-- Compute Engine 只为客观数学表达式提供“等价 / 不等价 / 无法确定”证据。它不会替代 Qwen 的主观过程评分，最终公式正确也不免除 Rubric 中的过程要求。
+- Compute Engine 只为客观数学表达式提供“等价 / 不等价 / 无法确定”证据。主观过程评分仍按 Rubric 核对，最终公式正确也不免除过程要求。
 - 不用随机数代入宣称恒等。x/x 与 1 的定义域不同、sqrt(x²) 与 x 的符号条件、三角恒等式、方程增根、单位换算等须明确给出题目条件；当前保守核验若不能确定，会要求人工检查，不能标成错误或伪造 verified:true。
 - 物理单位可用 \\mathrm{m} 等排版，但系统不会静默删除或换算单位。不能把单位正确性等同于数值正确性。
 - 不输出 HTML、链接、宏定义、脚本、\\href、\\htmlData、\\newcommand、\\input 等指令。公式最长4000字符，自动核验最长1000字符；复杂证明与长篇推导交给已有主观评分。

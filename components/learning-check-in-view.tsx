@@ -38,7 +38,7 @@ import { useReview } from './review-context';
 import ExamScopePicker from './exam-scope-picker';
 import OnboardingAccount from './onboarding-account';
 import { UsageAgreement } from './usage-agreement';
-import { Penguin } from './learning-game';
+import NaviAvatar from './navi-avatar';
 import SubjectIcon from './subject-icon';
 import { CheckInOptions } from './check-in-options';
 import {
@@ -368,7 +368,7 @@ export default function LearningCheckInView({
     >
       <header>
         <span className="onboarding-brand">
-          review<span>.</span>
+          Reviewbox<span>.</span>
         </span>
         <button
           className="quiet"
@@ -407,7 +407,7 @@ export default function LearningCheckInView({
       <section className="onboarding-content">
         {step !== 'welcome' && (
           <div className="onboarding-coach" key={'coach:' + step}>
-            <Penguin action="welcome" actionKey={'guide:' + step} />
+            <NaviAvatar size={74} label={null} />
             <div>
               <h1 id="onboarding-title" ref={heading} tabIndex={-1}>
                 {title}

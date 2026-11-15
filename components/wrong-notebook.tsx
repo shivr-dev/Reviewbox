@@ -10,11 +10,13 @@ import {
 } from '@/lib/question-tools';
 import { Choice, SubjectChoice, Empty } from './shared';
 import MathText from './math-text';
-export default function WrongNotebook() {
+import { ArrowLeft, ArrowRight } from 'lucide-react';
+import type { Question } from '@/lib/model';
+export default function WrongNotebook({standalone = false}: {standalone?: boolean} = {}) {
   const { data, start } = useReview();
   const [subject, setSubject] = useState('all'),
     [type, setType] = useState('all'),
-    [blind, setBlind] = useState(false);
+    [blind, setBlind] = useState(false), [active, setActive] = useState<string>();
   const blindIds = new Set(blindSpots(data).map((q) => q.id));
   const questions = wrongQuestions(data).filter(
     (q) =>
@@ -22,11 +24,23 @@ export default function WrongNotebook() {
       (type === 'all' || (type === 'pinyin' ? isPinyin(q) : q.type === type)) &&
       (!blind || blindIds.has(q.id)),
   );
+  const exercise = (q: Question) => start([{question:q, reason:'错题专项', priority:1}]);
+  const answer = (q: Question) => <>
+    <p><MathText>{q.type === 'matching' ? q.explanation : q.answer}</MathText></p>
+    <p className="muted"><MathText>{q.explanation}</MathText></p>
+  </>;
+  const selected = standalone ? questions.find(question => question.id === active) : undefined;
+  if (selected) return <article className="rb-library-question-page">
+    <button className="quiet rb-library-link" onClick={() => setActive(undefined)}><ArrowLeft size={16} />{tr('common:错题本')}</button>
+    <h3><MathText>{selected.prompt}</MathText></h3>
+    <div className="rb-reader-answer"><h4>{tr('library:参考答案')}</h4>{answer(selected)}</div>
+    <button className="primary" onClick={() => exercise(selected)}>{tr('common:重练此题')}</button>
+  </article>;
   return (
     <section className="panel">
       <div className="section-head">
         <div>
-          <h2>{tr("common:错题本")}</h2>
+          {!standalone && <h2>{tr("common:错题本")}</h2>}
           <p className="muted">{tr("common:答错或不确定的题目自动收录，练会后自动移出待巩固列表。")}</p>
         </div>
         <button
@@ -62,7 +76,9 @@ export default function WrongNotebook() {
             onChange={(e) => setBlind(e.target.checked)}
           />{tr("common:自信却答错")}</label>
       </div>
-      {questions.slice(0, 40).map((q) => (
+      {standalone ? <div className="rb-library-tool-list">{questions.slice(0,40).map(q => <button key={q.id} onClick={() => setActive(q.id)}>
+        <MathText>{q.prompt}</MathText><ArrowRight size={16} aria-hidden="true" />
+      </button>)}</div> : questions.slice(0, 40).map((q) => (
         <details className="notebook-item" key={q.id}>
           <summary>
             <span>
@@ -74,19 +90,10 @@ export default function WrongNotebook() {
                 : QUESTION_TYPES.find((t) => t.id === q.type)?.label}
             </small>
           </summary>
-          <p>
-            <MathText>
-              {q.type === 'matching' ? q.explanation : q.answer}
-            </MathText>
-          </p>
-          <p className="muted">
-            <MathText>{q.explanation}</MathText>
-          </p>
+          {answer(q)}
           <button
             className="quiet"
-            onClick={() =>
-              start([{ question: q, reason: '错题专项', priority: 1 }])
-            }
+            onClick={() => exercise(q)}
           >{tr("common:重练此题")}</button>
         </details>
       ))}
