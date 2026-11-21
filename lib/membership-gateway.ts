@@ -1,6 +1,7 @@
 import {DiagnosticError,diagnoseNaviFailure,naviDiagnostic,safeDiagnostic} from './navi-diagnostics';
 import { z } from 'zod';
 import { naviConversation } from './navi-server';
+import { naviProgressType, type NaviProgress } from './navi-progress';
 import { membershipFeature, MEMBERSHIP_FEATURES, hasMembershipFeature, type MembershipFeature } from './membership-policy';
 type Environment={url:string;serviceKey:string;publishableKey?:string;account?:string;tokens?:string[];aiModel?:string};
 type GatewayDependencies={fetch?:typeof fetch;model?:typeof naviConversation};
@@ -16,10 +17,10 @@ export function estimatedNaviFeature(input:any,requested:'navi_basic'|'navi_deep
 /** Server is the authority for identity, plan and credits. No client plan/balance field is accepted. */
 export function createMembershipGateway(env:Environment,dependencies:GatewayDependencies={}) {
   const request=dependencies.fetch??fetch,model=dependencies.model??naviConversation;
-  return async(req:Request)=>{
+  const handle = async (req: Request, onProgress?: (step: NaviProgress) => void) => {
     let trace=crypto.randomUUID();
     const origin=req.headers.get('Origin')??'';
-    const allowed=!origin||origin==='https://shivr-dev.github.io'||origin==='https://review-study-kevin.shivrdream.chatgpt.site'||/^http:\/\/(?:127\.0\.0\.1|localhost):\d{2,5}$/.test(origin);
+    const allowed = allowedMembershipOrigin(origin);
     const headers={'Content-Type':'application/json','Cache-Control':'no-store',...(allowed&&origin?{'Access-Control-Allow-Origin':origin,'Vary':'Origin'}:{}),'Access-Control-Allow-Headers':'authorization,apikey,content-type,x-cloudflare-account,x-cloudflare-token','Access-Control-Allow-Methods':'POST,OPTIONS'};
     const reply=(body:unknown,status=200)=>{
       if(status>=400){const value=body as any;const diagnostic=safeDiagnostic(value?.diagnostic)??diagnoseNaviFailure({code:value?.code},'gateway',trace);body={...value,diagnostic:{...diagnostic,requestId:trace,httpStatus:diagnostic.httpStatus??status}};console.warn(JSON.stringify({event:'navi-request-failed',code:diagnostic.code,stage:diagnostic.stage,requestId:trace,httpStatus:diagnostic.httpStatus??status}));}
@@ -31,7 +32,15 @@ export function createMembershipGateway(env:Environment,dependencies:GatewayDepe
     if(!env.url||!env.serviceKey)return reply({code:'membership_unconfigured',error:'会员服务尚未配置'},503);
     let reserved=false,userId='',requestId='';
     const rpc=async(action:string,payload:Record<string,unknown>,token?:string,endpoint?:string)=>{
-      const response=await request(env.url+'/rest/v1/rpc/'+(endpoint??(token?'review_membership':'review_membership_server')),{method:'POST',headers:{apikey:env.publishableKey??env.serviceKey,Authorization:'Bearer '+(token??env.serviceKey),'Content-Type':'application/json'},body:JSON.stringify({action,payload}),signal:AbortSignal.timeout(15000)});
+      const headers: Record<string,string> = {
+        apikey: token ? env.publishableKey || env.serviceKey : env.serviceKey,
+        'Content-Type': 'application/json',
+      };
+      // Managed secret keys authenticate through apikey. A user session or a legacy
+      // service-role JWT is still carried separately as a Bearer token.
+      if (token) headers.Authorization = 'Bearer ' + token;
+      else if (!env.serviceKey.startsWith('sb_secret_')) headers.Authorization = 'Bearer ' + env.serviceKey;
+      const response=await request(env.url+'/rest/v1/rpc/'+(endpoint??(token?'review_membership':'review_membership_server')),{method:'POST',headers,body:JSON.stringify({action,payload}),signal:AbortSignal.timeout(15000)});
       const result:any=await response.json().catch(()=>null);
       if(!response.ok){const message=result?.message??'membership_service',code=String(message).match(/membership_[a-z_]+|workflow_[a-z_]+/)?.[0];throw new DiagnosticError(message,code?diagnoseNaviFailure({code},'membership',trace):naviDiagnostic('RB-MEMBERSHIP-RPC','membership',{requestId:trace,httpStatus:response.status,detail:message,retryable:response.status>=500}),code??'request');}
       return result;
@@ -80,7 +89,8 @@ export function createMembershipGateway(env:Environment,dependencies:GatewayDepe
       }
       reserved=true;
       const environment=(name:string)=>name==='CF_ACCOUNT_ID'||name==='CF_ACCOUNT_IDS'?account:name==='CF_AI_TOKENS'?JSON.stringify(tokens):name==='CF_AI_MODEL'?env.aiModel??'':'';
-      const answer=await model(parsed.input,{environment,depth:feature==='navi_basic'?'basic':feature==='agent'?'agent':'deep'});
+      const answer=await model(parsed.input,{environment,depth:feature==='navi_basic'?'basic':feature==='agent'?'agent':'deep',
+        requestId, signal: req.signal, onProgress});
       const plan=reservation.snapshot.plan;
       if(!hasMembershipFeature(plan,'workspace')&&parsed.trial!=='plus'&&parsed.trial!=='pro')delete answer.ui_actions;
       if(!hasMembershipFeature(plan,'agent')&&parsed.trial!=='pro'){delete answer.configuration_actions;delete answer.tutor_actions;}
@@ -97,5 +107,37 @@ export function createMembershipGateway(env:Environment,dependencies:GatewayDepe
       return reply({code,diagnostic:diagnoseNaviFailure(error,'gateway',trace),error:messages[code]??'本次请求未完成，请稍后重试'},code.startsWith('membership_')?403:422);
     }
   };
+  return async (req: Request) => {
+    if (req.method !== 'POST' || req.headers.get('Accept') !== naviProgressType) return handle(req);
+    const origin = req.headers.get('Origin') ?? '';
+    if (!allowedMembershipOrigin(origin)) return handle(req);
+    let closed = false;
+    const output = new ReadableStream<Uint8Array>({
+      start(controller) {
+        const encoder = new TextEncoder();
+        const emit = (event: unknown) => {
+          if (!closed) controller.enqueue(encoder.encode(JSON.stringify(event) + '\n'));
+        };
+        void handle(req, (step) => emit({ type: 'progress', step })).then(async (result) => {
+          emit({ type: 'result', status: result.status, body: await result.json() });
+          if (!closed) controller.close();
+        }).catch((error) => {
+          if (!closed) controller.error(error);
+        });
+      },
+      cancel() { closed = true; },
+    });
+    return new Response(output, { headers: {
+      'Content-Type': naviProgressType,
+      'Cache-Control': 'no-store',
+      Vary: 'Origin, Accept',
+      ...(origin ? { 'Access-Control-Allow-Origin': origin } : {}),
+    } });
+  };
+}
+function allowedMembershipOrigin(origin: string) {
+  return !origin || origin === 'https://shivr-dev.github.io' ||
+    origin === 'https://review-study-kevin.shivrdream.chatgpt.site' ||
+    /^http:\/\/(?:127\.0\.0\.1|localhost):\d{2,5}$/.test(origin);
 }
 async function digest(text:string){return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text))),b=>b.toString(16).padStart(2,'0')).join('');}

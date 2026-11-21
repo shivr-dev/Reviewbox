@@ -1,4 +1,6 @@
 import { workersFinalContent, WorkersModelOutputError } from './workers-ai-response';
+import type { WorkersModel } from '../supabase/functions/_shared/workers-ai-models';
+import { jsonrepair } from 'jsonrepair';
 
 export class NaviResponseFormatError extends Error {
   constructor(public reason: 'structure' | 'truncated' | 'reasoning-only') {
@@ -29,10 +31,10 @@ function finalObject(input: unknown) {
   return value;
 }
 /** Read final content only. Never use a model's separate reasoning as an answer. */
-export function parseNaviModelResponse(body: any): unknown {
+export function parseNaviModelResponse(body: any, model?: WorkersModel): unknown {
   if (body?.success === false) throw new Error('Model request failed');
   let content: unknown;
-  try { content = workersFinalContent(body); }
+  try { content = workersFinalContent(body, model); }
   catch (error) {
     if (error instanceof WorkersModelOutputError) throw new NaviResponseFormatError(error.reason);
     throw error;
@@ -84,7 +86,10 @@ export function parseNaviModelResponse(body: any): unknown {
   try {
     return finalObject(JSON.parse(objects[0]));
   } catch {
-    throw new NaviResponseFormatError('structure');
+    // Repair one complete object before asking the model again. Never invent a
+    // missing closing boundary when the provider returned a partial answer.
+    try { return finalObject(JSON.parse(jsonrepair(objects[0]))); }
+    catch { throw new NaviResponseFormatError('structure'); }
   }
 }
 

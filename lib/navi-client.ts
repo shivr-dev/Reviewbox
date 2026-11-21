@@ -4,7 +4,8 @@ import type {
   NaviConfigurationAction,
   configurationContext,
 } from './navi-configuration';
-import { apiFetch } from './runtime';
+import { apiFetch, usesPrivateCloud } from './runtime';
+import { naviProgressType, naviSummary, readNaviResponse, type NaviProgress, type NaviSummaryStep } from './navi-progress';
 import { currentNamespace, saveRecords, loadData } from './store';
 import { NaviError, verifyNaviAnswer, type NaviContext } from './navi-context';
 import type { LocalRecord } from './model';
@@ -26,6 +27,7 @@ export type NaviMessage = {
   at: string;
   citations?: { source_id: string; source_version: string; quote: string }[];
   supplementary?: boolean;
+  analysisSummary?: NaviSummaryStep[];
   privateEvidence?: boolean;
   external_sources?: {
     source_id: string;
@@ -145,6 +147,7 @@ export async function requestNavi(
     configuration?: ReturnType<typeof configurationContext>;
   },
   billing?:{capability:'navi_basic'|'navi_deep'|'agent';trial?:'plus'|'pro'},
+  onProgress?: (step: NaviProgress) => void,
 ) {
   const requestId=crypto.randomUUID();
   try {
@@ -162,22 +165,29 @@ export async function requestNavi(
         return [value];
       })
       .reverse();
-    const res = await apiFetch('/api/course', {
+    const payload = { message, contexts, history, locale, tutor };
+    const envelope = { action: 'tutor', requestId, capability: billing?.capability ?? 'navi_basic', trial: billing?.trial };
+    const requestSignal = AbortSignal.any([AbortSignal.timeout(115000), ...(signal ? [signal] : [])]);
+    const readAnswer = (value: any) => {
+      const { membership, analysisSummary, ...answer } = value;
+      return {
+        ...verifyNaviAnswer(answer, contexts),
+        analysisSummary: naviSummary(analysisSummary),
+        ...(membership?.requestId ? { membershipReceipt: String(membership.requestId) } : {}),
+      };
+    };
+    if (usesPrivateCloud()) {
+      const { membershipRequest } = await import('./membership-client');
+      const answer = readAnswer(await membershipRequest('tutor', { ...envelope, input: payload }, requestSignal, onProgress));
+      window.dispatchEvent(new Event('review:membership-updated'));
+      return answer;
+    }
+    const res = await readNaviResponse(await apiFetch('/api/course', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action: 'tutor',requestId,capability:billing?.capability??'navi_basic',trial:billing?.trial,
-        message,
-        contexts,
-        history,
-        locale,
-        tutor,
-      }),
-      signal: AbortSignal.any([
-        AbortSignal.timeout(90000),
-        ...(signal ? [signal] : []),
-      ]),
-    });
+      headers: { 'Content-Type': 'application/json', ...(onProgress ? { Accept: naviProgressType } : {}) },
+      body: JSON.stringify({ ...envelope, ...payload }),
+      signal: requestSignal,
+    }), onProgress);
     const value = await res.json().catch(() => {
       throw new NaviError('format',{diagnostic:naviDiagnostic('RB-GATEWAY-NONJSON','client',{requestId,httpStatus:res.status,retryable:true})});
     });
@@ -190,10 +200,17 @@ export async function requestNavi(
         {diagnostic:safeDiagnostic((value as any)?.diagnostic)??naviDiagnostic('RB-GATEWAY-HTTP','gateway',{requestId,httpStatus:res.status,detail:(value as any)?.error,retryable:res.status>=500})},
       );
     }
-    const {membership,...answer}=value as any;
-    return {...verifyNaviAnswer(answer, contexts),...(membership?.requestId?{membershipReceipt:String(membership.requestId)}:{})};
+    return readAnswer(value);
   } catch (e) {
     if (e instanceof NaviError) throw e;
+    const diagnostic = safeDiagnostic((e as any)?.diagnostic);
+    if (diagnostic) {
+      const code = (e as any).code;
+      throw new NaviError(
+        ['context', 'timeout', 'format', 'citation', 'save', 'membership_upgrade', 'membership_credits', 'auth', 'ai_unconfigured'].includes(code)
+          ? code : 'request', { diagnostic },
+      );
+    }
     if (e instanceof Error && e.name === 'TimeoutError')
       throw new NaviError('timeout',{diagnostic:diagnoseNaviFailure(e,'client',requestId)});
     throw new NaviError('request',{diagnostic:diagnoseNaviFailure(e,'client',requestId)});

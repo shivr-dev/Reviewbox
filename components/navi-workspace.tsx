@@ -55,6 +55,7 @@ import {
 import { useReview } from './review-context';
 import MathText from './math-text';
 import { listCommunity } from '@/lib/community-client';
+import { naviSummary, type NaviProgress } from '@/lib/navi-progress';
 import { naviContextSchema } from '@/lib/navi-context';
 import { requestCommunitySearch } from '@/lib/community-navigation';
 import { parseWorkspaceRoute } from '@/lib/workspace-route';
@@ -193,6 +194,7 @@ export default function NaviWorkspace() {
     [draft, setDraft] = useState(''),
     [busy, setBusy] = useState(false),
     [requestPending, setRequestPending] = useState(false),
+    [analysisProgress, setAnalysisProgress] = useState<NaviProgress>(),
     [replyMotion, setReplyMotion] = useState<'explaining' | 'guiding' | null>(null),
     [resting, setResting] = useState(false),
     [motionRun, setMotionRun] = useState(0),
@@ -603,6 +605,7 @@ export default function NaviWorkspace() {
     setBusy(true);
     setReplyMotion(null);
     setOperationMotion(null);
+    setAnalysisProgress(undefined);
     setError('');
     controller.current = new AbortController();
     const owner = ns,
@@ -755,6 +758,7 @@ export default function NaviWorkspace() {
       );
       if (publicContext && cloudUser && !pack) {
         setLoadingPack(true);
+        setAnalysisProgress('loading-pack');
         try {
           const response = await watchRequest('pack-get', {
             id: publicContext.source_id,
@@ -791,7 +795,9 @@ export default function NaviWorkspace() {
             ? 4
             : (helpLevel as 1 | 2 | 3 | 4),
         );
+      setAnalysisProgress(retrieved.some((context) => context.knowledge_refs.length > 0) ? 'found-knowledge' : undefined);
       setRequestPending(true);
+      const requestController = controller.current;
       const answer = await requestNavi(
         text,
         contexts,
@@ -821,11 +827,39 @@ export default function NaviWorkspace() {
                 target: live.target,
               }
             : undefined,
-        },{capability:membershipMode,trial:membershipTrial||undefined},
+        }, { capability: membershipMode, trial: membershipTrial || undefined },
+        (step) => {
+          if (currentNamespace() === owner && !requestController.signal.aborted) setAnalysisProgress(step);
+        },
       );
       setRequestPending(false);
       setMembershipTrial('');
       if (currentNamespace() !== owner || controller.current.signal.aborted) return;
+      const responseId = 'navi-message:' + (answer.membershipReceipt ?? crypto.randomUUID());
+      await saveNavi(
+        updatedThread,
+        [
+          {
+            id: responseId,
+            kind: 'navi-message',
+            threadId: next.id,
+            role: 'assistant',
+            text: answer.reply,
+            at: new Date().toISOString(),
+            citations: answer.citations,
+            supplementary: answer.supplementary,
+            analysisSummary: answer.analysisSummary,
+            privateEvidence: !!evidence,
+            ui_actions: answer.ui_actions,membershipReceipt:answer.membershipReceipt,
+            tutor_actions: answer.tutor_actions,
+            configuration_actions: answer.configuration_actions,
+            uiQuestionId: live?.readEvidence?.().questionId,
+            uiTargetId: boundTarget,
+          },
+        ],
+        owner,
+      );
+      if (currentNamespace() !== owner || requestController.signal.aborted) return;
       let autoApplied = false;
       if (
         autoUI &&
@@ -838,7 +872,6 @@ export default function NaviWorkspace() {
         if (result.ok) setReceipt(t('tool.autoApplied'));
         showOutcome(result.ok ? 'success' : 'error');
       }
-      const responseId = 'navi-message:' + crypto.randomUUID();
       if (answer.configuration_actions?.[0]) {
         closeTool();
         setConfiguration({
@@ -861,28 +894,6 @@ export default function NaviWorkspace() {
         });
         setMenu(false);
       }
-      await saveNavi(
-        updatedThread,
-        [
-          {
-            id: responseId,
-            kind: 'navi-message',
-            threadId: next.id,
-            role: 'assistant',
-            text: answer.reply,
-            at: new Date().toISOString(),
-            citations: answer.citations,
-            supplementary: answer.supplementary,
-            privateEvidence: !!evidence,
-            ui_actions: answer.ui_actions,membershipReceipt:answer.membershipReceipt,
-            tutor_actions: answer.tutor_actions,
-            configuration_actions: answer.configuration_actions,
-            uiQuestionId: live?.readEvidence?.().questionId,
-            uiTargetId: boundTarget,
-          },
-        ],
-        owner,
-      );
       setDraft('');
       await refresh();
       if (currentNamespace() === owner && !controller.current.signal.aborted) {
@@ -900,6 +911,7 @@ export default function NaviWorkspace() {
       if (currentNamespace() === owner) {
         setBusy(false);
         setRequestPending(false);
+        setAnalysisProgress(undefined);
       }
     }
   }
@@ -1489,6 +1501,7 @@ export default function NaviWorkspace() {
             aria-live="polite"
           >
             {messages.map((m) => {
+              const summary = m.role === 'assistant' ? naviSummary(m.analysisSummary) : [];
               const webPreviewMessage = research && m.id === toolMessageId && m.text === t('web.privacy');
               const operationId =
                 'navi-config:' + m.id.replace('navi-message:', '');
@@ -1498,6 +1511,10 @@ export default function NaviWorkspace() {
               return (
                 <article key={m.id} className={m.role}>
                   <small>{m.role === 'user' ? t('you') : 'Navi'}</small>
+                  {summary.length > 0 && <details className="navi-analysis-summary">
+                    <summary>{t('analysis.complete')}</summary>
+                    <ul>{summary.map((step) => <li key={step}>{t('analysis.summary.' + step)}</li>)}</ul>
+                  </details>}
                   {!webPreviewMessage && <div className="navi-message-body">
                     {m.role === 'assistant' ? (
                       <NaviResponse text={m.text} />
@@ -1656,7 +1673,7 @@ export default function NaviWorkspace() {
             {!toolMessageId && inlineTool}
             {busy && (
               <NaviActivity
-                label={requestPending ? t('thinking') : t('activity.reading')}
+                label={t('analysis.progress.' + (analysisProgress ?? 'analysis'))}
                 state={avatarState}
               />
             )}

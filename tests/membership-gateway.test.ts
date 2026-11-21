@@ -10,6 +10,32 @@ function fixture(fail=false,plan='plus'){
 const request=()=>({action:'tutor',requestId:crypto.randomUUID(),input:{message:'Explain',contexts:[]},capability:'navi_deep'});
 test('membership gateway requires fresh authenticated identity and rejects forged plan fields',async()=>{const f=fixture();assert.equal((await f.send(request(),false)).status,401);assert.equal((await f.send({...request(),plan:'pro'})).status,422);assert.equal(f.models(),0);});
 test('successful request settles once and duplicate request returns the same final response',async()=>{const f=fixture(),r=request();const first=await f.send(r),second=await f.send(r);assert.equal(first.status,200);assert.deepEqual(await first.json(),await second.json());assert.equal(f.models(),1);assert.equal(f.calls.filter(c=>c==='settle').length,1);});
+test('private billing RPC uses the managed secret key without presenting it as a JWT', async () => {
+ const credentials = { ...env, serviceKey: 'sb_secret_test-placeholder', publishableKey: 'sb_publishable_test-placeholder' };
+ const calls: string[] = [];
+ const gateway = createMembershipGateway(credentials, {
+  fetch: async (url, init) => {
+   const headers = new Headers(init?.headers);
+   if (String(url).endsWith('/user')) {
+    assert.equal(headers.get('apikey'), credentials.publishableKey);
+    assert.equal(headers.get('authorization'), 'Bearer user-session');
+    return Response.json({ id: user });
+   }
+   assert.match(String(url), /review_membership_server$/);
+   assert.equal(headers.get('apikey'), credentials.serviceKey);
+   assert.equal(headers.has('authorization'), false);
+   const { action } = JSON.parse(String(init?.body));
+   calls.push(action);
+   return Response.json(action === 'reserve' ? { snapshot: { plan: 'plus' }, reserved: 3 } : {});
+  },
+  model: async () => ({ reply: 'Explanation', citations: [], supplementary: true }),
+ });
+ const response = await gateway(new Request('https://service.test', {
+  method: 'POST', headers: { Authorization: 'Bearer user-session' }, body: JSON.stringify(request()),
+ }));
+ assert.equal(response.status, 200);
+ assert.deepEqual(calls, ['reserve', 'settle']);
+});
 test('failed model refunds reservation, never returns a fabricated successful result',async()=>{const f=fixture(true),r=request();assert.equal((await f.send(r)).status,422);assert.equal(f.ledger.get(r.requestId).status,'refunded');assert.equal((await f.send(r)).status,409);assert.equal(f.models(),1);});
 test('model tool output cannot promote Free permissions and checkout cannot fake payment',async()=>{const f=fixture(false,'free'),r=request();r.capability='navi_basic';const result:any=await (await f.send(r)).json();assert.equal(result.ui_actions,undefined);assert.equal(result.configuration_actions,undefined);assert.equal((await f.send({action:'checkout',payload:{plan:'pro'}})).status,503);});
 test('server estimates multi-source and writing features instead of accepting a forged cost',()=>{assert.equal(estimatedNaviFeature({tutor:{mode:'writing'}}),'diagnosis');assert.equal(estimatedNaviFeature({contexts:[{provenance:'original-material'},{provenance:'learning-pack'}]}),'multi_context');});

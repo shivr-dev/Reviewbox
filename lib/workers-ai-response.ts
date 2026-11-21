@@ -1,3 +1,5 @@
+import { GLM, QWEN, type WorkersModel } from '../supabase/functions/_shared/workers-ai-models';
+
 export class WorkersModelOutputError extends Error {
   constructor(public reason: 'structure' | 'truncated' | 'reasoning-only') {
     super(reason);
@@ -16,7 +18,7 @@ function textParts(content: unknown[]): string {
 }
 
 /** The chat and native endpoints wrap the final answer differently. Reasoning is never a fallback. */
-export function workersFinalContent(body: any): unknown {
+export function workersFinalContent(body: any, model?: WorkersModel): unknown {
   const result = body?.result ?? body;
   const choice = result?.choices?.[0];
   if (result?.status === 'incomplete' ||
@@ -24,7 +26,11 @@ export function workersFinalContent(body: any): unknown {
     throw new WorkersModelOutputError('truncated');
   if (choice?.message?.refusal || ['content_filter', 'tool_calls', 'function_call'].includes(choice?.finish_reason))
     throw new WorkersModelOutputError('structure');
-  let content = choice?.message?.content ?? result?.response ?? result?.output_text;
+  const chatContent = choice?.message?.content;
+  const nativeContent = result?.response;
+  let content = model === GLM ? chatContent ?? nativeContent
+    : model === QWEN ? nativeContent ?? chatContent
+    : chatContent ?? nativeContent ?? result?.output_text;
   if (content == null && Array.isArray(result?.output)) {
     const final = result.output.filter((part: any) => part?.type === 'message' && part.role === 'assistant');
     if (final.length) content = final.map((part: any) => textParts(part.content ?? [])).join('');

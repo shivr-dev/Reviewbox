@@ -1,4 +1,4 @@
-import { GEMMA, isReviewModel } from '../_shared/workers-ai-models.ts';
+import { GEMMA, GLM, isReviewModel, workersProfiles } from '../_shared/workers-ai-models.ts';
 
 // Caller-owned Cloudflare credentials authenticate at Cloudflare. No server AI
 // secret or database access is used. Supabase login is only needed for sync.
@@ -24,8 +24,8 @@ export async function handle(request: Request) {
       return json({error:'请先解锁网站的私有学习配置'},401);
     const source = await request.text();
     if (source.length > 150000) return json({error:'请求内容过大'},413);
-    const { model = GEMMA, ...body } = JSON.parse(source);
-    if (!isReviewModel(model)) return json({error:'不支持所选模型'},400);
+    const { model = GLM, ...body } = JSON.parse(source);
+    if (!isReviewModel(model) && model !== GEMMA) return json({error:'不支持所选模型'},400);
     if (body.action === 'check') {
       // Model discovery validates the actual AI credential without inference.
       const search = new URLSearchParams({ search: model.split('/').at(-1)!, per_page: '1' });
@@ -44,7 +44,7 @@ export async function handle(request: Request) {
       method:'POST',
       headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
       body:JSON.stringify(body),
-      signal:AbortSignal.timeout(55000),
+      signal:AbortSignal.timeout(workersProfiles[model].timeoutMs),
     });
     return new Response(upstream.body,{
       status:upstream.status,

@@ -1116,6 +1116,26 @@
   line-height: 1.95;
   overflow-wrap: anywhere;
 }
+.navi-analysis-summary {
+  margin-block: 6px 10px;
+  color: var(--rb-muted);
+  font-size: .85rem;
+  line-height: 1.5;
+  border-inline-start: 2px solid var(--rb-stroke);
+  padding-inline-start: 11px;
+}
+.navi-analysis-summary summary {
+  cursor: pointer;
+  width: fit-content;
+  padding-block: 6px;
+}
+.navi-analysis-summary summary:hover { color: var(--rb-ink); }
+.navi-analysis-summary ul {
+  margin: 2px 0 6px;
+  padding-inline-start: 1.2em;
+  list-style: disc;
+}
+.navi-analysis-summary li + li { margin-block-start: 3px; }
 .navi-message-body .rich-text {
   white-space: pre-wrap;
 }

@@ -3,13 +3,13 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { build } from 'esbuild';
 import vm from 'node:vm';
-import { GEMMA, GLM, GPT_OSS } from '../supabase/functions/_shared/workers-ai-models';
+import { QWEN, GLM, GPT_OSS } from '../supabase/functions/_shared/workers-ai-models';
 
 test('Pages AI transport uses caller Cloudflare credentials without a Supabase login or inference for checks',async()=>{
   const { outputFiles:[bundle] }=await build({entryPoints:['supabase/functions/review-ai-proxy/index.ts'],bundle:true,write:false,format:'iife'});
   const calls:{url:string;init:RequestInit}[]=[];let handler:(r:Request)=>Promise<Response>;
   const sandbox={Deno:{serve:(h:typeof handler)=>handler=h},Response,Request,AbortSignal,URLSearchParams,
-    fetch:async(url:string,init:RequestInit)=>{calls.push({url,init});return Response.json({success:true,result:[{name:GEMMA}]});}};
+    fetch:async(url:string,init:RequestInit)=>{calls.push({url,init});return Response.json({success:true,result:[{name:GLM}]});}};
   vm.runInNewContext(bundle.text,sandbox);
   const headers={Origin:'https://shivr-dev.github.io','X-Cloudflare-Account':'68ab52ee180f593d1f508aedba898452','X-Cloudflare-Token':'cfut_'+'a'.repeat(40),'Content-Type':'application/json'};
   const check=await handler!(new Request('https://proxy.test',{method:'POST',headers,body:JSON.stringify({action:'check'})}));
@@ -23,10 +23,12 @@ test('Pages AI transport uses caller Cloudflare credentials without a Supabase l
   const makeRequest=(model:string)=>new Request('https://proxy.test',{method:'POST',headers,body:JSON.stringify({model,messages:[{role:'system',content:'JSON only'},{role:'user',content:'{}'}],max_tokens:100,stream:false})});
   assert.equal((await handler!(makeRequest(GPT_OSS))).status,400);
   assert.equal(calls.length,1);
-  const inference=await handler!(makeRequest(GLM));
-  assert.equal(inference.headers.get('X-Reviewbox-Model'),GLM);
-  assert.ok(calls[1].url.endsWith('/ai/run/'+GLM));
-  assert.equal(JSON.parse(String(calls[1].init.body)).model,undefined);
+  for (const model of [GLM,QWEN]) {
+    const inference=await handler!(makeRequest(model));
+    assert.equal(inference.headers.get('X-Reviewbox-Model'),model);
+    assert.ok(calls.at(-1)!.url.endsWith('/ai/run/'+model));
+    assert.equal(JSON.parse(String(calls.at(-1)!.init.body)).model,undefined);
+  }
   const preflight=await handler!(new Request('https://proxy.test',{method:'OPTIONS',headers:{Origin:headers.Origin}}));assert.equal(preflight.status,204);
   const cloudSource=await readFile('lib/pages-cloud.ts','utf8'),aiSource=await readFile('lib/ai-server.ts','utf8');
   assert.match(cloudSource,/aiReady:\s*config\.cloudflareTokens\.length\s*>\s*0/);

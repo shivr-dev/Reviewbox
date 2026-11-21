@@ -1,8 +1,8 @@
 // Checks credentials and transport without sending an inference request.
 import { createDecipheriv, pbkdf2Sync } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
-import { GEMMA, isReviewModel } from '../supabase/functions/_shared/workers-ai-models.ts';
-const model = process.env.CF_AI_MODEL || GEMMA;
+import { GLM, isReviewModel } from '../supabase/functions/_shared/workers-ai-models.ts';
+const model = process.env.CF_AI_MODEL || GLM;
 if (!isReviewModel(model)) throw new Error('Unsupported CF_AI_MODEL');
 let password = '';
 for await (const part of process.stdin) password += part;
