@@ -1,0 +1,92 @@
+:root .guided-assessment.guided-practice {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  grid-template-rows: var(--guided-top) minmax(0, 1fr);
+  height: 100dvh;
+  padding: 0 var(--guided-gutter) var(--guided-bottom);
+  background: var(--rb-paper);
+  color: var(--rb-ink);
+  overflow: hidden;
+  isolation: isolate;
+}
+.guided-assessment .guided-header-actions { justify-self: end; }
+.guided-assessment .guided-stage { padding-block: clamp(19px, 5vh, 46px); }
+.assessment-focus-reading { width: min(100%, 670px); margin-inline: auto; min-width: 0; }
+.assessment-focus-overview {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 4px 16px; flex-wrap: wrap;
+}
+.assessment-focus-overview h1 {
+  margin: 0;
+  font: 700 clamp(.94rem, 2vw, 1.15rem)/1.4 var(--font-body);
+}
+.assessment-focus-overview span { color: var(--rb-muted); font-size: .83rem; }
+.assessment-focus-index {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  padding-block: 12px; margin-bottom: clamp(16px, 4vh, 36px);
+  border-bottom: 1px solid var(--rb-stroke);
+}
+:root .assessment-focus-index button {
+  min-width: 36px; min-height: 36px; padding: 5px 7px;
+  font-variant-numeric: tabular-nums;
+  border: 1px solid transparent; border-radius: 9px;
+  color: var(--rb-muted); background: var(--rb-paper); box-shadow: none;
+}
+:root .assessment-focus-index button:is(:hover, .answered) {
+  border-color: var(--rb-stroke);
+  color: var(--rb-violet); background: var(--rb-wash);
+}
+:root .assessment-focus-index button[aria-current] {
+  border-color: var(--rb-violet); color: var(--rb-paper); background: var(--rb-violet);
+}
+.assessment-focus-question, .assessment-focus-review {
+  display: grid; gap: 14px; min-width: 0; overflow-wrap: anywhere;
+  animation: teaching-reveal .24s var(--rb-ease) both;
+}
+.assessment-focus-question h2 {
+  margin: 0;
+  font: 700 clamp(1.18rem, 3vw, 1.8rem)/1.45 var(--font-body);
+}
+.assessment-focus-reading :is(.question-visual, textarea) { min-width: 0; max-width: 100%; }
+.assessment-focus-reading .question-visual:empty { display: none; }
+.assessment-focus-reading .math-display { max-width: 100%; overflow-x: auto; }
+.assessment-focus-reading blockquote {
+  margin: 0; padding: 14px 16px; border-inline-start: 2px solid var(--rb-stroke-strong);
+  background: var(--rb-canvas); line-height: 1.7;
+}
+.assessment-focus-question :is(.question-options, .matching-input) { margin: 0; }
+:root .assessment-focus-question .question-options button {
+  min-height: 48px; box-shadow: none; transition: background var(--rb-time), border-color var(--rb-time);
+}
+:root .assessment-focus-question .question-options button.chosen {
+  border-color: var(--rb-violet); background: var(--rb-wash); color: var(--rb-ink);
+}
+.assessment-focus-question textarea { width: 100%; resize: vertical; min-height: 100px; }
+.assessment-focus-footer {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  border-top: 1px solid var(--rb-stroke);
+  padding: 12px 14px; background: var(--rb-paper);
+  border-radius: 0 0 26px 26px;
+}
+:root .assessment-focus-footer .primary { min-height: 48px; min-width: min(52vw, 225px); }
+body:has(.guided-assessment) [data-slot='dialog-content'] { z-index: 111; }
+body:has(.guided-assessment) [data-slot='dialog-overlay'] { z-index: 110; }
+.assessment-focus-results h1 { margin: 0 0 6px; font-size: clamp(1.68rem, 4vw, 2.9rem); }
+.assessment-focus-results :is(.summary-stats, .remedy-launch) { margin-block: 16px; }
+.assessment-focus-results .assessment-focus-index { margin-top: 16px; }
+.assessment-focus-review header { display: flex; flex-wrap: wrap; align-items: start; gap: 7px 18px; }
+.assessment-focus-review header h2 { flex: 1 1 220px; margin: 0; font-size: 1.15rem; line-height: 1.55; }
+.assessment-focus-review header b { padding: 4px 10px; border-radius: 9px; font-size: .81rem; background: var(--rb-wash); }
+.assessment-focus-review header b[data-outcome='correct'] { color: var(--rb-green); background: var(--rb-green-wash); }
+.assessment-focus-review header b[data-outcome='wrong'] { color: var(--rb-warn); background: var(--rb-warn-wash); }
+.assessment-focus-review > :is(p,h3) { margin: 0; }
+@media (max-width: 680px) {
+  .guided-assessment .guided-progress-header { grid-template-columns: auto minmax(0, 1fr) auto; }
+  :root .assessment-focus-index button { min-width: 44px; min-height: 44px; }
+  .assessment-focus-footer { padding-inline: 9px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .assessment-focus-question, .assessment-focus-review { animation: none; }
+}

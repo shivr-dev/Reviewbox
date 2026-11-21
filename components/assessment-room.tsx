@@ -1,6 +1,6 @@
 'use client';
 import {tr} from '@/lib/i18n';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ArrowLeft, ArrowRight, Flag, Check, Minus, X } from 'lucide-react';
 import {
   Dialog,
@@ -19,10 +19,37 @@ import {
   type AssessmentDraft,
 } from '@/lib/assessment';
 import MathText from './math-text';
+import GuidedFocusHeader from './guided-focus-header';
 import MatchingInput from './matching-input';
 import QuestionVisual from './question-visual';
 import QuestionReviewButton from './question-review';
 import { RemediationLauncher } from './remediation-course';
+
+function AssessmentFocus({
+  title, total, position, progress, onExit, exitLabel, children, actions, busy,
+}: {
+  title: string;
+  total: number;
+  position: number;
+  progress: number;
+  onExit: () => void;
+  exitLabel: string;
+  children: ReactNode;
+  actions: ReactNode;
+  busy?: boolean;
+}) {
+  return (
+    <section className="guided-practice guided-assessment" aria-label={title}>
+      <GuidedFocusHeader onExit={onExit} exitLabel={exitLabel}
+        progress={progress} progressLabel={title} position={`${position} / ${total}`} busy={busy} />
+      <div className="guided-canvas">
+        {children}
+        <footer className="assessment-focus-footer">{actions}</footer>
+      </div>
+    </section>
+  );
+}
+
 export default function AssessmentRoom({
   session,
   finish,
@@ -40,7 +67,8 @@ export default function AssessmentRoom({
     })),
     [busy, setBusy] = useState(false),
     [confirm, setConfirm] = useState(false),
-    [error, setError] = useState('');
+    [error, setError] = useState(''),
+    [reviewIndex, setReviewIndex] = useState<number | null>(null);
   const ref = useRef(draft),
     ns = useRef(currentNamespace()),
     writes = useRef(Promise.resolve()),
@@ -49,6 +77,15 @@ export default function AssessmentRoom({
     visible = useRef(true);
   const q = session.items[draft.index]?.question;
   const events = data.events.filter((e) => e.sessionId === session.id);
+  const focusStage = useRef<HTMLDivElement>(null);
+  const reviewedIndex = reviewIndex ?? session.items.findIndex(({ question }) =>
+    isPinyin(question) && !events.some((e) => e.id === assessmentEventId(session.id, question)));
+  const resultIndex = Math.max(0, reviewedIndex);
+  useEffect(() => {
+    if (session.sprint) return;
+    focusStage.current?.scrollTo?.({ top: 0 });
+    focusStage.current?.querySelector<HTMLElement>('[data-assessment-heading]')?.focus({ preventScroll: true });
+  }, [draft.index, draft.status, session.sprint]);
   function save(d: AssessmentDraft) {
     ref.current = d;
     setDraft(d);
@@ -166,12 +203,11 @@ export default function AssessmentRoom({
         (!session.sprint || draft.answers[q.id]?.trim()) &&
         !events.some((e) => e.id === assessmentEventId(session.id, q)),
     );
-    return (
-      <div className="assessment-result">
-        <button className="quiet" onClick={() => void exit()}>
-          <ArrowLeft size={16} />{session.sprint && draft.status==='complete' ? tr('dashboard:sprint.next') : tr("study:返回工作台")}</button>
-        <p className="eyebrow">ASSESSMENT REVIEW</p>
-        <h1>{pending.length ? tr("study:测试已交卷，完成最后的检查") : tr("study:测试已完成")}</h1>
+    const exitLabel = tr(session.sprint && draft.status === 'complete'
+      ? 'dashboard:sprint.next' : 'study:返回工作台');
+    const summary = (
+      <>
+        <h1 data-assessment-heading tabIndex={-1}>{pending.length ? tr("study:测试已交卷，完成最后的检查") : tr("study:测试已完成")}</h1>
         <p className="muted">
           {session.title} · {events.length}/{session.items.length}{tr("study:题已评分")}</p>
         <div className="summary-stats">
@@ -209,32 +245,23 @@ export default function AssessmentRoom({
         {!session.sprint && !pending.length && (
           <RemediationLauncher sessionId={session.id} title={session.title} />
         )}
-        {session.items.map(({ question: q }, i) => {
+      </>
+    );
+    const renderAnswer = (i: number) => {
+          const { question: q } = session.items[i];
           const e = events.find(
             (e) => e.id === assessmentEventId(session.id, q),
           );
-          return (
-            <details
-              key={q.id}
-              className="panel assessment-answer"
-              open={isPinyin(q) && !e}
-            >
-              <summary>
-                <span>
+          const status = tr(e
+            ? e.outcome === 'correct' ? 'common:答对' : e.outcome === 'unsure' ? 'common:不确定' : 'common:答错'
+            : isPinyin(q) ? 'common:等待手动检查' : 'common:等待评分');
+          const prompt = (
+            <span>
                   {i + 1}. <MathText>{q.prompt}</MathText>
-                </span>
-                <b>
-                  {e
-                    ? e.outcome === 'correct'
-                      ? tr("common:答对")
-                      : e.outcome === 'unsure'
-                        ? tr("common:不确定")
-                        : tr("common:答错")
-                    : isPinyin(q)
-                      ? tr("common:等待手动检查")
-                      : tr("common:等待评分")}
-                </b>
-              </summary>
+            </span>
+          );
+          const details = (
+            <>
               {q.passage && (
                 <blockquote>
                   <MathText>{q.passage}</MathText>
@@ -257,11 +284,9 @@ export default function AssessmentRoom({
               <p>
                 <MathText>{q.explanation}</MathText>
               </p>
-              {q.solution?.map((s, i) => (
-                <p key={i}>
-                  Step {i + 1} · <MathText>{s}</MathText>
-                </p>
-              ))}
+              {!!q.solution?.length && <ol className="teaching-steps">
+                {q.solution.map((s, i) => <li key={i}><MathText>{s}</MathText></li>)}
+              </ol>}
               {isPinyin(q) && !e && (
                 <>
                   <p className="muted">{tr("study:对照自己刚才回忆或纸上写下的答案，手动判断。")}</p>
@@ -307,10 +332,48 @@ export default function AssessmentRoom({
                   <p>{e.grade.feedback}</p>
                 </>
               )}
-            </details>
+            </>
           );
-        })}
+          return session.sprint ? (
+            <details key={q.id} className="panel assessment-answer" open={isPinyin(q) && !e}>
+              <summary>{prompt}<b>{status}</b></summary>
+              {details}
+            </details>
+          ) : (
+            <article className="assessment-focus-review" key={q.id}>
+              <header><h2>{prompt}</h2><b data-outcome={e?.outcome}>{status}</b></header>
+              <QuestionVisual question={q} solution />
+              {details}
+            </article>
+          );
+    };
+    const exitButton = <button type="button" className={session.sprint ? 'quiet' : 'primary'}
+      onClick={() => void exit()}>{session.sprint && <ArrowLeft size={16} />}{exitLabel}</button>;
+    if (session.sprint) return (
+      <div className="assessment-result">
+        {exitButton}
+        <p className="eyebrow">ASSESSMENT REVIEW</p>
+        {summary}
+        {session.items.map((_, i) => renderAnswer(i))}
       </div>
+    );
+    return (
+      <AssessmentFocus title={session.title} total={session.items.length} position={events.length}
+        progress={(events.length / session.items.length) * 100} onExit={() => void exit()} exitLabel={exitLabel}
+        actions={exitButton}>
+        <div className="guided-stage" ref={focusStage}>
+          <div className="assessment-focus-reading assessment-focus-results">
+            {summary}
+            <nav className="assessment-focus-index" aria-label={tr('study:测试报告')}>
+              {session.items.map(({question}, i) => (
+                <button type="button" key={question.id} aria-current={i === resultIndex ? 'true' : undefined}
+                  onClick={() => setReviewIndex(i)}>{i + 1}</button>
+              ))}
+            </nav>
+            {renderAnswer(resultIndex)}
+          </div>
+        </div>
+      </AssessmentFocus>
     );
   }
   const answer = draft.answers[q.id] ?? '';
@@ -319,33 +382,26 @@ export default function AssessmentRoom({
       ...ref.current,
       answers: { ...ref.current.answers, [q.id]: answer },
     });
-  return (
-    <div className="assessment-room">
-      {!session.sprint && <header>
-        <button onClick={() => void exit()}>
-          <ArrowLeft size={16} />{tr("study:保存并退出")}</button>
-        <div>
-          <p>ASSESSMENT</p>
-          <h1>{session.title}</h1>
-        </div>
-        <b>
-          {draft.index + 1} / {session.items.length}
-        </b>
-      </header>}
-      {error && (
+  const saveError = error && (
         <p role="alert">
           {error}
           <button onClick={() => save(ref.current)}>{tr("study:重试保存")}</button>
         </p>
-      )}
-      <div className="assessment-layout">
-        <nav aria-label={tr("study:测试题目导航")}>
+  );
+  const answered = (id: string) => !!draft.answers[id]?.trim() || draft.completedQuestions.includes(id);
+  const answeredCount = session.items.filter(({question}) => answered(question.id)).length;
+  const navigation = (
+        <nav className={session.sprint ? undefined : 'assessment-focus-index'} aria-label={tr("study:测试题目导航")}>
           {session.items.map(({ question: q }, i) => (
             <button
+              type="button"
               key={q.id}
+              aria-current={i === draft.index ? 'step' : undefined}
+              aria-label={`${i + 1} / ${session.items.length} · ${tr(answered(q.id)
+                ? 'dashboard:sprint.attempts' : 'study:navi.live.noAnswer')}`}
               className={
                 (i === draft.index ? 'selected ' : '') +
-                (draft.answers[q.id] || draft.completedQuestions.includes(q.id)
+                (answered(q.id)
                   ? 'answered'
                   : '')
               }
@@ -355,14 +411,16 @@ export default function AssessmentRoom({
             </button>
           ))}
         </nav>
-        <article key={q.id}>
-          <p className="eyebrow">QUESTION {draft.index + 1}</p>
+  );
+  const question = (
+        <>
+          {session.sprint && <p className="eyebrow">QUESTION {draft.index + 1}</p>}
           {q.passage && (
             <blockquote>
               <MathText>{q.passage}</MathText>
             </blockquote>
           )}
-          <h2>
+          <h2 data-assessment-heading tabIndex={-1}>
             <MathText>{q.prompt}</MathText>
           </h2>
           <QuestionVisual question={q}/>{' '}
@@ -400,6 +458,7 @@ export default function AssessmentRoom({
               {q.options.map((o, i) => (
                 <button
                   className={answer === o ? 'chosen' : ''}
+                  aria-pressed={answer === o}
                   key={i}
                   onClick={() => change(o)}
                 >
@@ -421,7 +480,10 @@ export default function AssessmentRoom({
               }
             />
           )}
-          <footer>
+        </>
+  );
+  const actions = (
+    <>
             <button
               className="secondary"
               disabled={draft.index === 0}
@@ -433,9 +495,9 @@ export default function AssessmentRoom({
             ) : (
               <button className="primary" onClick={() => setConfirm(true)}>{tr("study:交卷并查看解析")}</button>
             )}
-          </footer>
-        </article>
-      </div>
+    </>
+  );
+  const submission = (
       <Dialog open={confirm} onOpenChange={setConfirm}>
         <DialogContent>
           <DialogTitle>{tr("study:交卷并开始检查？")}</DialogTitle>
@@ -446,6 +508,35 @@ export default function AssessmentRoom({
           </div>
         </DialogContent>
       </Dialog>
+  );
+  if (session.sprint) return (
+    <div className="assessment-room">
+      {saveError}
+      <div className="assessment-layout">
+        {navigation}
+        <article key={q.id}>{question}<footer>{actions}</footer></article>
+      </div>
+      {submission}
     </div>
+  );
+  return (
+    <>
+      <AssessmentFocus title={session.title} total={session.items.length} position={draft.index + 1}
+        progress={(answeredCount / session.items.length) * 100}
+        onExit={() => void exit()} exitLabel={tr('study:保存并退出')} actions={actions} busy={busy}>
+        <div className="guided-stage" ref={focusStage}>
+          <div className="assessment-focus-reading">
+            <div className="assessment-focus-overview">
+              <h1>{session.title}</h1>
+              <span>{tr('dashboard:sprint.attempts')} {answeredCount} / {session.items.length}</span>
+            </div>
+            {navigation}
+            {saveError}
+            <article className="assessment-focus-question" key={q.id}>{question}</article>
+          </div>
+        </div>
+      </AssessmentFocus>
+      {submission}
+    </>
   );
 }
