@@ -3,9 +3,9 @@ import {lazy, Suspense, useEffect, useState} from 'react';
 import {openDB} from 'idb';
 import WebsiteView from './website-view';
 import WorkspaceLoading from './workspace-loading';
-import {workspaceHash} from '@/lib/workspace-route';
 const Workspace = lazy(() => import('../app/workspace'));
-const systemRoute = () => typeof location !== 'undefined' && !!location.hash && !['#website', '#home'].includes(location.hash);
+const systemRoute = () => typeof location !== 'undefined' && !!location.hash &&
+  !location.hash.startsWith('#web-') && !['#website', '#home'].includes(location.hash);
 
 async function returningLearner() {
   // Read only the current namespace. Do not create, migrate or seed a database on the website.
@@ -33,14 +33,27 @@ async function returningLearner() {
 }
 export default function AppEntry(){
   const [system,setSystem] = useState(systemRoute);
+  useEffect(() => {
+    // Give the controls and route bundles priority over the large CJK web fonts.
+    const timer = window.setTimeout(() => {
+      document.documentElement.dataset.rbWebFonts = '';
+      const fallback = document.querySelector<HTMLLinkElement>('#review-cjk-fallback');
+      if (fallback) fallback.media = 'all';
+    }, 2000);
+    return () => window.clearTimeout(timer);
+  }, []);
   useEffect(()=>{
     let active=true;
-    const route=()=>{if(location.hash==='#website')setSystem(false);else if(systemRoute())setSystem(true);else void returningLearner().then(found=>{if(active)setSystem(found);}).catch(()=>{});};
+    let request = 0;
+    const route=()=>{
+      const current = ++request;
+      if(location.hash==='#website')setSystem(false);
+      else if(systemRoute())setSystem(true);
+      else if (!location.hash.startsWith('#web-'))
+        void returningLearner().then(found=>{if(active && current === request && !systemRoute() && location.hash !== '#website')setSystem(found);}).catch(()=>{});
+    };
     route(); window.addEventListener('hashchange',route);window.addEventListener('popstate',route);
     return()=>{active=false;window.removeEventListener('hashchange',route);window.removeEventListener('popstate',route);};
   },[]);
-  function navigate(page:string,subject='all',section=''){
-    history.pushState(null,'',workspaceHash({page,subject,section}));setSystem(true);window.scrollTo(0,0);
-  }
-  return system ? <Suspense fallback={<WorkspaceLoading/>}><Workspace/></Suspense> : <WebsiteView navigate={navigate}/>;
+  return system ? <Suspense fallback={<WorkspaceLoading/>}><Workspace/></Suspense> : <WebsiteView/>;
 }

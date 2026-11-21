@@ -16,7 +16,7 @@ export default function RootLayout({
   return (
     <html lang="zh-CN">
       <head>
-        <link rel="stylesheet" href="/fonts/noto-sc/font.css" />
+        <link id="review-cjk-fallback" rel="stylesheet" href="/fonts/noto-sc/font.css" media="print" />
         <link rel="stylesheet" href="/fonts/reviewbox/font.css" />
       </head>
       <body className="antialiased">

@@ -9,10 +9,11 @@ import {
   Snowflake,
   Target,
 } from 'lucide-react';
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { tr } from '@/lib/i18n';
-import LibraryView from './library-view';
 import NaviAvatar from './navi-avatar';
+
+const LibraryView = lazy(() => import('./library-view'));
 
 export function OnboardingWelcome() {
   return (
@@ -114,7 +115,9 @@ export function OnboardingImport({
       </div>
       {open && (
         <div id="onboarding-library">
-          <LibraryView />
+          <Suspense fallback={<p role="status">{tr('common:加载中…')}</p>}>
+            <LibraryView />
+          </Suspense>
         </div>
       )}
     </>

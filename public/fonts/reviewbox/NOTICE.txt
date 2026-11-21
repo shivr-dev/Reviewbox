@@ -2,9 +2,11 @@ Reviewbox typography attributions
 
 Alimama FangYuanTi VF — © Taobao (China) Software Co., Ltd. (Alimama).
 Official download and current license: https://www.iconfont.cn/fonts/detail?cnid=pOvFIr086ADR
-The browser uses a locally installed copy if it supports the font.
-The official portal's supplied web fonts are incompatible with the tested
-Windows Edge environment. Simplified Chinese temporarily uses MiSans there.
+The site embeds the original WOFF2 from the Alibaba Design portal, v1.004 beta:
+https://www.alibabafonts.com/#/more
+The build fetches the original font without changing or subsetting it.
+Firefox renders this file. The tested Windows Edge rejects the font data,
+including on the publisher's preview. Titles fall back to MiSans in that case.
 
 MiSans — © Xiaomi Inc.
 Official download and MiSans Fonts Intellectual Property License Agreement:

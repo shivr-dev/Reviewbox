@@ -105,6 +105,35 @@ test('model deadline falls back while a caller cancellation stops before the bac
   assert.deepEqual(calls, [GLM, QWEN, GLM]);
  } finally { globalThis.fetch = saved; }
 });
+test('Navi delivers an answer despite one unverifiable citation and an invalid operation', async () => {
+ const saved = globalThis.fetch;
+ let calls = 0;
+ const citation = { source_id: 'item', source_version: '2', quote: 'Both sides remain equal.' };
+ try {
+  globalThis.fetch = async () => {
+   calls++;
+   return Response.json({ result: { response: {
+    reply: 'Subtract the same number from each side.',
+    citations: [citation, { ...citation, source_version: '1' }],
+    supplementary: false,
+    tutor_actions: [{ action: 'unrecognized' }],
+   } } });
+  };
+  const answer = await naviConversation({
+   ...input,
+   contexts: [{
+    context_type: 'material', source_id: 'item', source_version: '2', title: 'Equalities',
+    relevant_content: 'Both sides remain equal.', selected_text: '', related_question_ids: [],
+    knowledge_refs: [], source_location: {}, provenance: 'original-material',
+   }],
+  }, { environment });
+  assert.equal(answer.reply, 'Subtract the same number from each side.');
+  assert.deepEqual(answer.citations, [citation]);
+  assert.equal(answer.supplementary, true);
+  assert.equal(answer.tutor_actions, undefined);
+  assert.equal(calls, 1);
+ } finally { globalThis.fetch = saved; }
+});
 test('stream reports real events and returns a settled response without repeating a replay', async () => {
  const actions: string[] = [];
  const owner = crypto.randomUUID();

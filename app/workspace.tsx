@@ -1,9 +1,8 @@
 'use client';
-import MembershipView from '@/components/membership-view';
 
 import {useTranslation} from 'react-i18next';
 import {ProductLocale} from '@/components/product-locale';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   BookOpen,
   Home,
@@ -19,27 +18,13 @@ import {
   Armchair,
 } from 'lucide-react';
 import { ReviewContext } from '@/components/review-context';
-import AssessmentRoom from '@/components/assessment-room';
-import ExamRoom from '@/components/exam-room';
-import CourseRoom from '@/components/course-room';
-import RemediationCourse from '@/components/remediation-course';
-import HomeView from '@/components/home-view';
 import WebsiteView from '@/components/website-view';
 import WorkspaceLoading from '@/components/workspace-loading';
 import NaviWorkspace from '@/components/navi-workspace';
 import { hasLearningWorkspace } from '@/lib/visitor-entry';
-import StudyView from '@/components/study-view';
-import YouView from '@/components/you-view';
 import ProductInsights from '@/components/product-insights';
 import { trackProductEvent } from '@/lib/product-insights';
-import WatchDevices from '@/components/watch-devices';
 import ProductShell, { ProductHome } from '@/components/product-shell';
-import {
-  ProductSubjects,
-  ProductResults,
-} from '@/components/product-workspaces';
-import OnboardingView from '@/components/onboarding-view';
-import ExamSprintView from '@/components/exam-sprint-view';
 import { assetPath } from '@/lib/runtime';
 import { isRetiredWorkspaceRoute, parseWorkspaceRoute, workspaceHash } from '@/lib/workspace-route';
 import { sessionForView } from '@/lib/session-view';
@@ -58,6 +43,18 @@ import {
   put,
   currentNamespace,
 } from '@/lib/store';
+const MembershipView = lazy(() => import('@/components/membership-view'));
+const AssessmentRoom = lazy(() => import('@/components/assessment-room'));
+const ExamRoom = lazy(() => import('@/components/exam-room'));
+const CourseRoom = lazy(() => import('@/components/course-room'));
+const RemediationCourse = lazy(() => import('@/components/remediation-course'));
+const StudyView = lazy(() => import('@/components/study-view'));
+const YouView = lazy(() => import('@/components/you-view'));
+const WatchDevices = lazy(() => import('@/components/watch-devices'));
+const OnboardingView = lazy(() => import('@/components/onboarding-view'));
+const ExamSprintView = lazy(() => import('@/components/exam-sprint-view'));
+const ProductSubjects = lazy(() => import('@/components/product-workspaces').then((module) => ({ default: module.ProductSubjects })));
+const ProductResults = lazy(() => import('@/components/product-workspaces').then((module) => ({ default: module.ProductResults })));
 const base: StudyData = {
   nodes: [],
   questions: [],
@@ -310,9 +307,12 @@ export default function Workspace() {
         try {
           const v = await account();
           if (alive) {
-            d = await switchAccount(v.user?.id ?? null);
+            const nextAccount = v.user?.id ?? null;
+            if (currentNamespace() !== (nextAccount ?? 'local')) {
+              d = await switchAccount(nextAccount);
+              if (alive) setData(d);
+            }
             if (alive) {
-              setData(d);
               setCloudUser(v.user);
               setAiReady(v.aiReady);
             }
@@ -461,7 +461,7 @@ export default function Workspace() {
       {ready && !website && <ProductInsights page={page} />}
       {ready && identityReady && !website && !['exam','assessment','sprint','onboarding'].includes(page) && session?.mode!=='test' && <NaviWorkspace key={currentNamespace()}/>}
       <div className="review-application" data-page={page}>
-      {page === 'website' || (ready && identityReady && website) ? <WebsiteView navigate={navigate} locale={data.settings.locale}/> : !ready || (page === 'home' && !identityReady) ? <WorkspaceLoading/> : ready &&
+      {page === 'website' || (ready && identityReady && website) ? <WebsiteView locale={data.settings.locale}/> : !ready || (page === 'home' && !identityReady) ? <WorkspaceLoading/> : ready &&
       [
         'home',
         'devices',
@@ -476,6 +476,7 @@ export default function Workspace() {
         'sprint',
       ].includes(page) ? (
         <ProductShell key={currentNamespace()} page={page}>
+          <Suspense fallback={<WorkspaceLoading/>}>
           {page === 'home' || page === 'plan' ? (
             <ProductHome enterPlan={page === 'plan'} />
           ) : page === 'sprint' ? (
@@ -534,8 +535,9 @@ export default function Workspace() {
               <YouView />
             </div>
           ) : page === 'membership' || page === 'super' ? <MembershipView /> : null}
+          </Suspense>
         </ProductShell>
-      ) : page === 'course' && ready ? <CourseRoom key={subject+currentNamespace()} courseId={subject}/> : page === 'remedy' && ready ? <RemediationCourse key={subject+currentNamespace()} courseId={subject}/> : page === 'onboarding' && ready ? <OnboardingView key={currentNamespace()}/> : page === 'exam' && ready ? <ExamRoom key={subject+currentNamespace()} runId={subject}/> : page === 'assessment' && ready ? (()=>{const draft=data.jobs?.find(j=>j.id===subject&&j.kind==='assessment');return draft?.session?<AssessmentRoom key={subject+currentNamespace()} session={draft.session} finish={()=>navigate('results')}/>:<div role="status">此测试尚未同步完整<button onClick={()=>void sync()}>同步后重试</button></div>})() : <div role="status">正在读取学习记录…</div>}
+      ) : <Suspense fallback={<WorkspaceLoading/>}>{page === 'course' && ready ? <CourseRoom key={subject+currentNamespace()} courseId={subject}/> : page === 'remedy' && ready ? <RemediationCourse key={subject+currentNamespace()} courseId={subject}/> : page === 'onboarding' && ready ? <OnboardingView key={currentNamespace()}/> : page === 'exam' && ready ? <ExamRoom key={subject+currentNamespace()} runId={subject}/> : page === 'assessment' && ready ? (()=>{const draft=data.jobs?.find(j=>j.id===subject&&j.kind==='assessment');return draft?.session?<AssessmentRoom key={subject+currentNamespace()} session={draft.session} finish={()=>navigate('results')}/>:<div role="status">此测试尚未同步完整<button onClick={()=>void sync()}>同步后重试</button></div>})() : <div role="status">正在读取学习记录…</div>}</Suspense>}
       </div>
       {message && (
         <div className="toast" role="status">

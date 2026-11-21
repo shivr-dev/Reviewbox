@@ -142,7 +142,7 @@ test('citation checks recognize escaped source text and whitespace without accep
     ),
   );
 });
-test('Navi retries format/citation failures once, preserves strict schemas, and never retries authentication errors', async () => {
+test('Navi retries malformed replies once and drops unsupported citations without retrying', async () => {
   const original = globalThis.fetch;
   let calls: any[] = [];
   installAIEnvironment((name) =>
@@ -190,11 +190,10 @@ test('Navi retries format/citation failures once, preserves strict schemas, and 
         }),
       });
     };
-    await assert.rejects(
-      naviConversation(request),
-      (e: any) => e.code === 'citation',
-    );
-    assert.equal(calls.length, 2);
+    assert.deepEqual(await naviConversation(request), {
+      ...answer, citations: [], supplementary: true,
+    });
+    assert.equal(calls.length, 1);
     calls = [];
     globalThis.fetch = async () => {
       calls.push(1);

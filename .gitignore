@@ -45,6 +45,7 @@ next-env.d.ts
 
 /pages-dist/
 /public/ocr/
+/public/fonts/reviewbox/alimama-fang-yuan-ti-v1.004.woff2
 
 /public/vendor/rdkit/
 /public/vendor/molstar/

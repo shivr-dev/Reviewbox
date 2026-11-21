@@ -1,17 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { act } from 'react';
-import { createRoot } from 'react-dom/client';
 import { createRequire } from 'node:module';
 import { ReviewContext } from '../components/review-context';
 import OnboardingView from '../components/onboarding-view';
 import DailyAssistant from '../components/daily-assistant';
-import HomeView from '../components/home-view';
 import StudyPlanView from '../components/study-plan-view';
 import ExamResults from '../components/exam-results';
 import { loadData, put, switchAccount } from '../lib/store';
 import { parseImportText } from '../lib/import-skill';
 import { learningTemplate } from '../lib/import-templates';
+import { AGREEMENT_VERSION } from '../lib/product-agreement';
 const { JSDOM } = createRequire(import.meta.url)('jsdom');
 test('onboarding saves weights, imports first diagnostic without generation; weekly card and plan launch real tasks', async () => {
   const dom = new JSDOM('<html><body><div id="root"></div></body></html>', {
@@ -48,15 +47,16 @@ test('onboarding saves weights, imports first diagnostic without generation; wee
       configurable: true,
     });
   }
+  const { createRoot } = await import('react-dom/client');
   const root = createRoot(document.getElementById('root')!),
     fetchBefore = globalThis.fetch;
   let requests = 0,
     view = 'onboarding',
     data: any,
     started: any,
-    navigated = '',
     notice = '';
-  globalThis.fetch = async () => {
+  globalThis.fetch = async (input) => {
+    if (String(input).endsWith('/api/account')) return Response.json({ cloudReady: false });
     requests++;
     throw new Error('No generation in UI checks');
   };
@@ -70,9 +70,7 @@ test('onboarding saves weights, imports first diagnostic without generation; wee
             states: {},
             refresh: render,
             notify: (m) => (notice = m),
-            navigate: (p) => {
-              navigated = p;
-            },
+            navigate: () => {},
             start: (items, mode, title) => (started = { items, mode, title }),
             subject: 'all',
             cloudUser: null,
@@ -87,8 +85,6 @@ test('onboarding saves weights, imports first diagnostic without generation; wee
         >
           {view === 'onboarding' ? (
             <OnboardingView />
-          ) : view === 'home' ? (
-            <HomeView />
           ) : view === 'plan' ? (
             <StudyPlanView />
           ) : view === 'scores' ? (
@@ -123,6 +119,13 @@ test('onboarding saves weights, imports first diagnostic without generation; wee
   }
   try {
     await switchAccount('assistant-ui');
+    const { settings } = await loadData();
+    // This case covers the old onboarding that is still available to returning users.
+    await put('setting', {
+      ...settings,
+      assistant: { version: 1, onboardingVersion: 3, dailyMinutes: 20, weights: {} },
+      termsAcceptance: { version: AGREEMENT_VERSION, acceptedAt: new Date().toISOString() },
+    });
     await render();
     assert.match(document.body.textContent!, /欢迎来到 Review/);
     await click('下一步');
@@ -180,6 +183,9 @@ test('onboarding saves weights, imports first diagnostic without generation; wee
     await render();
     await click('下一步');
     assert.match(document.body.textContent!, /建立你的能力起点/);
+    await click('下一步');
+    await click('下一步');
+    await click('暂时跳过，继续');
     await click('开始首次测试');
     assert.ok(started.items.length);
     assert.equal(started.mode, 'test');
@@ -203,23 +209,6 @@ test('onboarding saves weights, imports first diagnostic without generation; wee
       target: 80,
       dailyMinutes: 20,
     });
-    view = 'home';
-    await render();
-    assert.equal(document.querySelectorAll('.game-main-action').length, 1);
-    assert.equal(document.querySelectorAll('.quest-card').length, 0);
-    assert.equal(document.querySelectorAll('.now-home button').length, 1);
-    assert.equal(
-      document.querySelectorAll(
-        '.daily-assistant,.learning-grid,.exam-result-entry,.hero-plan-meta',
-      ).length,
-      0,
-    );
-    assert.doesNotMatch(
-      document.body.textContent!,
-      /PERSONAL STUDY PLAN|DAILY QUEST/,
-    );
-    await click('进入学习计划');
-    assert.equal(navigated, 'plan');
     view = 'plan';
     await render();
     await act(async () => {

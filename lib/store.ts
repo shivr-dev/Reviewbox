@@ -253,17 +253,20 @@ export async function undoPackUpdate(versionId:string,ns=currentNamespace()) {
     await tx.done;
   }catch(e){try{tx.abort();}catch{}await tx.done.catch(()=>{});throw e;}
 }
+let requestedPersistentStorage = false;
 export async function initialize() {
   // Production spaces start empty. Content is installed only by the learner.
   // The 2.0 migration archives only hash-matching originals. Edited content,
   // independent notes, shared nodes, scores and immutable attempts are protected.
-  for(const packId of ['review-core','review-framework']){
-    if((await allRecords()).some(r=>r.kind==='pack'&&!r.deleted&&r.payload.id===packId))await removeInstalledPack(await inspectPackRemoval(packId));
+  const data = await loadData();
+  const archived = data.packs.filter((pack) => ['review-core', 'review-framework'].includes(pack.id));
+  for (const pack of archived) await removeInstalledPack(await inspectPackRemoval(pack.id));
+  // Browser policy can resolve persistence slowly. Local records are usable either way.
+  if (!requestedPersistentStorage && typeof navigator !== 'undefined' && navigator.storage?.persist) {
+    requestedPersistentStorage = true;
+    void Promise.resolve().then(() => navigator.storage.persist()).catch(() => {});
   }
-  try {
-    await navigator.storage?.persist?.();
-  } catch {}
-  return loadData();
+  return archived.length ? loadData() : data;
 }
 export async function getMeta(id: string) {
   return (await database()).get('meta', id);

@@ -379,6 +379,34 @@ export function verifyNaviAnswer(input: unknown, contexts: NaviContext[]) {
   if (!parsed.data.citations.length) parsed.data.supplementary = true;
   return parsed.data;
 }
+
+/** Salvage the visible reply independently from optional evidence and proposals. */
+export function acceptNaviAnswer(input: unknown, contexts: NaviContext[]) {
+  if (!input || typeof input !== 'object' || Array.isArray(input))
+    return verifyNaviAnswer(input, contexts);
+  const raw = input as Record<string, unknown>;
+  const proposals = naviAnswerSchema.pick({
+    ui_actions: true, tutor_actions: true, configuration_actions: true, understanding_check: true,
+  }).shape;
+  const citations = (Array.isArray(raw.citations) ? raw.citations : []).slice(0, 8).flatMap((item) => {
+    const result = naviAnswerSchema.shape.citations.element.safeParse(item);
+    if (!result.success) return [];
+    const citation = result.data;
+    const source = contexts.find((context) => context.source_id === citation.source_id &&
+      context.source_version === citation.source_version);
+    return source && naviQuoteMatches(source.relevant_content, citation.quote) ? [citation] : [];
+  });
+  const accepted: Record<string, unknown> = {
+    reply: typeof raw.reply === 'string' ? raw.reply.trim() : raw.reply,
+    citations,
+    supplementary: raw.supplementary !== false || !Array.isArray(raw.citations) || citations.length !== raw.citations.length,
+  };
+  for (const [key, schema] of Object.entries(proposals)) {
+    const result = schema.safeParse(raw[key]);
+    if (result.success && result.data !== undefined) accepted[key] = result.data;
+  }
+  return verifyNaviAnswer(accepted, contexts);
+}
 export function naviSearchConditions(context: NaviContext, data: StudyData) {
   const nodes = data.nodes.filter((n) => context.knowledge_refs.includes(n.id));
   return {

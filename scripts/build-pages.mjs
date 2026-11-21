@@ -4,6 +4,7 @@ import {watchDownloadHtml} from './watch-download-page.mjs';
 import './prepare-ocr.mjs';
 import './prepare-math-assets.mjs';
 import './prepare-science-assets.mjs';
+import './prepare-display-font.mjs';
 await build({ configFile: 'vite.pages.config.ts' });
 await mkdir('pages-dist/watch', {recursive:true});
 await writeFile('pages-dist/watch/index.html', watchDownloadHtml());

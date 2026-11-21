@@ -12,6 +12,13 @@
   font-display: swap;
 }
 @font-face {
+  font-family: 'Alimama FangYuanTi Web';
+  src: url('./alimama-fang-yuan-ti-v1.004.woff2') format('woff2');
+  font-weight: 200 700;
+  font-display: swap;
+  unicode-range: U+2E80-2EFF, U+3000-30FF, U+31C0-31EF, U+3400-4DBF, U+4E00-9FFF, U+F900-FAFF, U+FF00-FFEF;
+}
+@font-face {
   font-family: 'LINE Seed EN';
   src: url('./seed-en-regular.woff2') format('woff2');
   font-weight: 400;
@@ -66,10 +73,14 @@
   --rb-locale-variation: normal;
 }
 :where(:lang(zh-CN), :lang(zh-Hans)) {
-  --rb-locale-body: 'MiSans';
-  --rb-locale-display: 'Alimama FangYuanTi', 'LINE Seed EN', 'MiSans';
+  --rb-locale-body: var(--rb-zh-body, 'PingFang SC', 'Microsoft YaHei', system-ui);
+  --rb-locale-display: 'Alimama FangYuanTi', var(--rb-zh-display, 'LINE Seed EN'), var(--rb-locale-body);
   --rb-locale-fallback: 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC';
   --rb-locale-variation: 'BEVL' 55;
+}
+:root[data-rb-web-fonts] {
+  --rb-zh-body: 'MiSans';
+  --rb-zh-display: 'Alimama FangYuanTi Web', 'LINE Seed EN';
 }
 :where(:lang(ja)) {
   --rb-locale-body: 'LINE Seed JP', 'LINE Seed EN';
