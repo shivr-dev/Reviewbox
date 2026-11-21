@@ -161,11 +161,22 @@
   animation: guided-task-in .22s var(--rb-ease) both;
 }
 @keyframes guided-task-in { from { opacity: 0; transform: translateY(6px); } }
-:root .guided-stage .question-prompt {
-  margin: 0 0 clamp(16px, 3vh, 28px);
-  font: 780 clamp(24px, 3.15vw, 46px)/1.24 var(--font-display);
+:root .guided-stage :is(.question-card, .assessment-focus-question) {
+  container-type: inline-size;
+}
+:root .guided-stage .guided-question-prompt {
+  margin: 0;
+  font: 780 clamp(1.5rem, 6.6cqi, var(--guided-prompt-max, 2.875rem))/1.24 var(--font-display);
   text-wrap: pretty;
 }
+:root .guided-stage .guided-question-prompt[data-density='compact'] {
+  font: 700 clamp(1.3rem, 4.3cqi, 1.875rem)/1.42 var(--font-body);
+}
+:root .guided-stage .guided-question-prompt[data-density='reading'] {
+  font: 500 clamp(1.0625rem, 3.15cqi, 1.3125rem)/1.62 var(--font-body);
+}
+.guided-stage .question-card > .guided-question-prompt { margin-block-end: clamp(16px, 3vh, 28px); }
+.guided-assessment { --guided-prompt-max: 1.875rem; }
 .guided-stage .question-options { margin-block: 16px 2px; }
 .guided-stage .question-visual { margin-inline: auto; width: min(100%, var(--guided-content)); }
 .guided-stage .question-visual .publication-diagram[data-diagram-kind='optics'] {

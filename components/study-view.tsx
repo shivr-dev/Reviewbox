@@ -4,6 +4,7 @@ import NaviLearningWorkspace from './navi-learning-workspace';
 import {subjectLabel as subjectName} from '@/lib/presentation';
 import {tr} from '@/lib/i18n';
 import MathText from './math-text';
+import GuidedQuestionPrompt from './guided-question-prompt';
 import MatchingInput from './matching-input';
 import {matchingSignature} from '@/lib/matching';
 import MathAnswerComposer from './math-answer-input';
@@ -992,9 +993,9 @@ export default function StudyView({
       <NaviLearningWorkspace key={q.id} question={q} answer={answer} grade={grade} focused={focusMode} protected={isTest||sprint} onFocus={setFocusMode} onHelp={()=>openNavi({type:'question',id:q.id})} onAssistance={level=>setHintLevel(old=>{const levels=['light','method','step','answer'] as const;return levels[Math.max(level-1,old?levels.indexOf(old):0)];})}>
       <article className="question-card" key={q.id}>
         {guided && questionScaffold}
-        <h2 className="question-prompt">
-          <MathText>{q.prompt}</MathText>
-        </h2>
+        {guided ? <GuidedQuestionPrompt prompt={q.prompt} /> : (
+          <h2 className="question-prompt"><MathText>{q.prompt}</MathText></h2>
+        )}
         {q.passage && !q.prompt.includes(q.passage) && (
           <blockquote>
             <MathText>{q.passage}</MathText>

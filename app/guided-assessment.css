@@ -45,10 +45,6 @@
   display: grid; gap: 14px; min-width: 0; overflow-wrap: anywhere;
   animation: teaching-reveal .24s var(--rb-ease) both;
 }
-.assessment-focus-question h2 {
-  margin: 0;
-  font: 700 clamp(1.18rem, 3vw, 1.8rem)/1.45 var(--font-body);
-}
 .guided-assessment [data-assessment-heading]:focus { outline: none; }
 .assessment-focus-reading :is(.question-visual, textarea) { min-width: 0; max-width: 100%; }
 .assessment-focus-reading .question-visual:empty { display: none; }

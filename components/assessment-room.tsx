@@ -19,6 +19,7 @@ import {
   type AssessmentDraft,
 } from '@/lib/assessment';
 import MathText from './math-text';
+import GuidedQuestionPrompt from './guided-question-prompt';
 import GuidedFocusHeader from './guided-focus-header';
 import MatchingInput from './matching-input';
 import QuestionVisual from './question-visual';
@@ -420,9 +421,7 @@ export default function AssessmentRoom({
               <MathText>{q.passage}</MathText>
             </blockquote>
           )}
-          <h2 data-assessment-heading tabIndex={-1}>
-            <MathText>{q.prompt}</MathText>
-          </h2>
+          <GuidedQuestionPrompt prompt={q.prompt} focusTarget />
           <QuestionVisual question={q}/>{' '}
           {isPinyin(q) ? (
             <div className="pinyin-test-note">
