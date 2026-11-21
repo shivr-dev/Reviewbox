@@ -320,6 +320,9 @@ export default function StudyPlanView({ renderToday, enterPlan = true }: {
     setClock(Date.now());
     await refresh();
   }
+  if (ready && mode === 'teach' && selected)
+    return <TeachingReview key={selected.id} action={action} onClose={() => void back()} />;
+
   const spec = data.exams.find((e) => e.id === action.examId),
     sim = spec ? inferredSimulation(spec) : undefined;
   const isAssessment = [
@@ -367,9 +370,6 @@ export default function StudyPlanView({ renderToday, enterPlan = true }: {
         </div>
       )) : (
         <>
-          {mode === 'teach' && (
-            <TeachingReview action={action} onClose={() => void back()} />
-          )}
           {mode === 'agenda' && (
             <>
               <section className={integrated ? 'rb-today-followup' : 'director-current'} aria-label={tr("planner:当前学习建议")}>
