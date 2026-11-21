@@ -202,6 +202,10 @@ export function reduceNaviUI(
     if (!cap.panels.includes(p)) throw new Error('unsupported');
   };
   for (const a of actions) {
+    if (cap.collection && cap.panels.length === 0 &&
+      !['setFilter', 'setSort', 'scrollToTarget', 'restoreLayout', 'restoreWorkspace', 'highlightTarget',
+        'clearHighlights', 'setMacromolecule', 'setCamera'].includes(a.type))
+      throw new Error('unsupported');
     if(a.type==='setFilter'||a.type==='setSort') {
       if(!cap.collection)throw new Error('unsupported');
       if(a.type==='setFilter')next.collectionFocus=undefined;
@@ -486,8 +490,12 @@ export function parseNaviToolIntent(
     return 'course-editor';
 }
 
+export function isNaviPageEditRequest(text: string) {
+  return /(?:编辑|編輯|修改|调整|調整|更改|重排|改一下|改成|换成|換成|优化|優化|重新设计|重新設計|放大|缩小|縮小).{0,18}(?:页面|頁面|界面|版面|排版|布局|佈局|字[号號体體]|面板)|(?:页面|頁面|界面|版面|排版|布局|佈局|字[号號体體]|面板).{0,18}(?:改成|调成|調成|調整|调整|放大|缩小|縮小|变大|變大|变小|變小)|\b(?:edit|adjust|change|redesign|rearrange|resize)\b.{0,36}\b(?:page|layout|font size|panel)\b/i.test(text);
+}
+
 /** Local commands work without an AI request. Unrecognized language goes to the tutor. */
-export function parseNaviUICommand(text: string): NaviUIAction[] | null {
+export function parseNaviUICommand(text: string, fontSize = 18): NaviUIAction[] | null {
   const s = text.trim().toLowerCase();
   if (
     /不要|別|别|不想|don.t|do not|ne .*pas|no quiero|しない|말고|하지 마|не надо|什么是|什麼是|what is|how does|是什么意思|是什麼意思/.test(
@@ -495,6 +503,12 @@ export function parseNaviUICommand(text: string): NaviUIAction[] | null {
     )
   )
     return null;
+  const font = s.match(/^(?:(?:请|請|帮我|幫我|please)\s*)?(?:把\s*|将\s*|將\s*|set\s+|change\s+|调整\s*|調整\s*)?(?:当前页面的?|當前頁面的?|the\s+)?(?:字号|字號|字体大小|字體大小|font size)\s*(?:设为|設為|改成|调到|調到|调成|調成|改为|改為|to|=|[:：])?\s*(\d{2})\s*(?:px)?[。.!！]?$/);
+  if (font && +font[1] >= 14 && +font[1] <= 26)
+    return [{ type: 'setFontSize', value: Number(font[1]) }];
+  const relativeFont = s.match(/^(?:(?:请|請|帮我|幫我)\s*)?(?:把|将|將)?(?:当前页面的?|當前頁面的?)?(?:字号|字號|字体|字體)(?:调|調|改|变|變)?([大小])(?:一?点|一?點|一些)?[。.!！]?$/);
+  if (relativeFont)
+    return [{ type: 'setFontSize', value: Math.max(14, Math.min(26, fontSize + (relativeFont[1] === '大' ? 2 : -2))) }];
   if (
     /^(撤销|undo|元に戻す|실행 취소|annuler|deshacer|отменить)[。.!！]?$/.test(
       s,
@@ -516,7 +530,7 @@ export function parseNaviUICommand(text: string): NaviUIAction[] | null {
   )
     return [{ type: 'setFocusMode', enabled: true }];
   if (
-    /左右并排|左右並排|左右两[侧边]|左右兩[側邊]|side.by.side|split view|côte à côte|lado a lado|並べて|나란히|рядом/.test(
+    /左右并排|左右並排|左右两[侧边]|左右兩[側邊]|题目.{0,8}左边.{0,10}解析.{0,8}右边|題目.{0,8}左邊.{0,10}解析.{0,8}右邊|side.by.side|split view|côte à côte|lado a lado|並べて|나란히|рядом/.test(
       s,
     )
   )

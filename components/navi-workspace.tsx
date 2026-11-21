@@ -65,9 +65,12 @@ import type { Pack } from '@/lib/model';
 import {
   currentNaviUI,
   executeNaviUI,
+  isNaviPageEditRequest,
   parseNaviUICommand,
+  reduceNaviUI,
   focusNaviTarget,
   type NaviUIAction,
+  type NaviUIController,
   canAutoApplyNaviUI,
   parseNaviToolIntent,
 } from '@/lib/navi-ui';
@@ -78,6 +81,14 @@ import { queryNaviContexts, naviSourceData } from '@/lib/navi-query';
 import { NaviActivity, NaviLayer, NaviSurface } from './navi-presentation';
 import NaviResponse from './navi-response';
 const t = (key: string) => tr('study:navi.' + key);
+type EditTrace = {
+  messageId: string;
+  proposalId?: string;
+  scope: 'page' | 'protected' | 'unavailable';
+  pageTitle?: string;
+  stage: 'preparing' | 'local' | 'sent' | 'preview' | 'applying' | 'applied' | 'apply-failed' | 'no-change' | 'failed' | 'cancelled';
+  progress?: NaviProgress;
+};
 export function openNavi(target?: NaviTarget) {
   window.dispatchEvent(new CustomEvent('review:navi', { detail: target }));
 }
@@ -147,6 +158,11 @@ export default function NaviWorkspace() {
   const [menu, setMenu] = useState(false),
     [pendingUI, setPendingUI] = useState<NaviMessage | null>(null),
     [autoSaving, setAutoSaving] = useState(false);
+  const [editTrace, setEditTrace] = useState<EditTrace>();
+  const pendingTarget = useRef<NaviUIController | undefined>(undefined);
+  const applyingUI = useRef(false);
+  const markEditProposal = (proposalId: string, stage: EditTrace['stage']) =>
+    setEditTrace((trace) => trace?.proposalId === proposalId ? { ...trace, stage } : trace);
   const autoUI =
     data.jobs?.find(
       (j) => j.id === 'navi-ui-preferences' && j.kind === 'navi-preferences',
@@ -297,23 +313,33 @@ export default function NaviWorkspace() {
     questionId?: string,
     targetId?: string,
     membershipReceipt?:string,
+    expectedController?: NaviUIController,
   ) {
-    if (
-      (targetId && currentNaviUI()?.target?.id !== targetId) ||
-      (questionId &&
-        currentNaviUI()?.readEvidence?.().questionId !== questionId)
-    ) {
+    if (applyingUI.current) return false;
+    const live = currentNaviUI(), owner = currentNamespace();
+    const stillCurrent = () => live && currentNamespace() === owner &&
+      currentNaviUI() === live && (!expectedController || expectedController === live) &&
+      (!targetId || live.target?.id === targetId) &&
+      (!questionId || live.readEvidence?.().questionId === questionId);
+    if (!stillCurrent()) {
       setReceipt(t('live.error.unsupported'));
       showOutcome('error');
       return false;
     }
-    try{await permitMembership('workspace',membershipReceipt);}catch(e){setReceipt((e as Error).message);showOutcome('error');return false;}
-    const result = executeNaviUI(actions);
-    setReceipt(
-      result.ok ? t('live.applied') : t('live.error.' + result.reason),
-    );
-    showOutcome(result.ok ? 'success' : 'error');
-    return result.ok;
+    applyingUI.current = true;
+    try {
+      await permitMembership('workspace',membershipReceipt);
+      const result = stillCurrent() ? live!.execute(actions) : { ok: false, reason: 'unsupported' };
+      setReceipt(result.ok ? t('live.applied') : t('live.error.' + result.reason));
+      showOutcome(result.ok ? 'success' : 'error');
+      return result.ok;
+    } catch (e) {
+      setReceipt(e instanceof Error ? e.message : t('error.request'));
+      showOutcome('error');
+      return false;
+    } finally {
+      applyingUI.current = false;
+    }
   }
   function openAction(
     action: NonNullable<NaviMessage['tutor_actions']>[number],
@@ -621,6 +647,22 @@ export default function NaviWorkspace() {
       text,
       at,
     };
+    const activePage = currentNaviUI();
+    const commands = check ? undefined : parseNaviUICommand(text, activePage?.snapshot().fontSize);
+    const pageEdit = !check && (!!commands || isNaviPageEditRequest(text));
+    const editTarget = pageEdit ? activePage : undefined;
+    const setEdit = (stage: EditTrace['stage'], progress?: NaviProgress, proposalId?: string) => {
+      if (pageEdit && currentNamespace() === owner) {
+        setEditTrace((previous) => previous?.messageId === user.id
+          ? { ...previous, stage, progress: progress ?? previous.progress, proposalId: proposalId ?? previous.proposalId } : previous);
+      }
+    };
+    if (pageEdit) setEditTrace({
+      messageId: user.id,
+      scope: editTarget?.capabilities.protected ? 'protected' : editTarget ? 'page' : 'unavailable',
+      pageTitle: editTarget?.target && current.contexts.find((context) => context.source_id === editTarget.target?.id)?.title,
+      stage: 'preparing',
+    });
     const next = {
       ...current,
       title: !messages.length ? text.slice(0, 70) : current.title,
@@ -724,30 +766,45 @@ export default function NaviWorkspace() {
         await refresh();
         return;
       }
-      const commands = check ? undefined : parseNaviUICommand(text);
       if (commands) {
-        await permitMembership('workspace');
-        const result = executeNaviUI(commands);
-        showOutcome(result.ok ? 'success' : 'error');
-        const reply = result.ok
-          ? t('live.applied')
-          : t('live.error.' + result.reason);
-        await saveNavi(
-          next,
-          [
-            {
-              id: 'navi-message:' + crypto.randomUUID(),
-              kind: 'navi-message',
-              threadId: next.id,
-              role: 'assistant',
-              text: reply,
-              at: new Date().toISOString(),
-            },
-          ],
-          owner,
-        );
+        if (controller.current.signal.aborted || currentNamespace() !== owner) return;
+        closeTool();
+        let blocked: 'unsupported' | 'protected' | 'empty' | undefined;
+        if (!editTarget || editTarget !== currentNaviUI()) blocked = 'unsupported';
+        else if (editTarget.capabilities.protected) blocked = 'protected';
+        else if (commands[0].type === 'restoreLayout' && commands[0].target !== 'default') {
+          if (!editTarget.history.length) blocked = 'empty';
+        } else {
+          try { reduceNaviUI(editTarget.snapshot(), commands, editTarget.capabilities); }
+          catch { blocked = 'unsupported'; }
+        }
+        const proposal: NaviMessage = {
+          id: 'navi-message:' + crypto.randomUUID(),
+          kind: 'navi-message',
+          threadId: next.id,
+          role: 'assistant',
+          text: blocked ? t('live.error.' + blocked) : t('edit.preview'),
+          at: new Date().toISOString(),
+          ...(!blocked && editTarget ? {
+            ui_actions: commands,
+            uiTargetId: editTarget.target?.id,
+            uiQuestionId: editTarget.readEvidence?.().questionId,
+          } : {}),
+        };
+        await saveNavi(next, [proposal.uiTargetId || proposal.uiQuestionId ? proposal : { ...proposal, ui_actions: undefined }], owner);
+        if (controller.current.signal.aborted || currentNamespace() !== owner) return;
+        if (!blocked) {
+          pendingTarget.current = editTarget;
+          setPendingUI(proposal);
+        }
+        setEdit(blocked ? 'no-change' : 'local', undefined, blocked ? undefined : proposal.id);
         setDraft('');
         await refresh();
+        return;
+      }
+      if (pageEdit && (!editTarget || editTarget.capabilities.protected || currentNaviUI() !== editTarget)) {
+        setEdit('no-change');
+        setError(t('live.error.' + (editTarget?.capabilities.protected ? 'protected' : 'unsupported')));
         return;
       }
       let pack = publicPack;
@@ -756,7 +813,7 @@ export default function NaviWorkspace() {
           c.context_type === 'pack' &&
           !data.packs.some((p) => p.id === c.source_id),
       );
-      if (publicContext && cloudUser && !pack) {
+      if (!pageEdit && publicContext && cloudUser && !pack) {
         setLoadingPack(true);
         setAnalysisProgress('loading-pack');
         try {
@@ -770,21 +827,23 @@ export default function NaviWorkspace() {
           setLoadingPack(false);
         }
       }
-      const retrieved = queryNaviContexts(data, next.contexts, text, pack),
+      const retrieved = pageEdit ? next.contexts : queryNaviContexts(data, next.contexts, text, pack),
         live = currentNaviUI(),
         boundTarget = live?.target?.id,
-        evidence = relatedNaviEvidence(
+        evidence = !pageEdit ? relatedNaviEvidence(
           data,
           retrieved,
           consent,
           live?.readEvidence?.(),
           states,
-        ),
-        contexts = evidence ? [...retrieved.slice(-2), evidence] : retrieved;
+        ) : undefined,
+        contexts = pageEdit
+          ? retrieved.filter((context) => context.source_id === live?.target?.id).slice(-1)
+          : evidence ? [...retrieved.slice(-2), evidence] : retrieved;
       const updatedThread = { ...next, contexts: retrieved };
       setThread(updatedThread);
       if (
-        next.contexts.some((c) =>
+        !pageEdit && next.contexts.some((c) =>
           c.related_question_ids.includes(
             live?.readEvidence?.().questionId ?? '',
           ),
@@ -798,17 +857,19 @@ export default function NaviWorkspace() {
       setAnalysisProgress(retrieved.some((context) => context.knowledge_refs.length > 0) ? 'found-knowledge' : undefined);
       setRequestPending(true);
       const requestController = controller.current;
+      setEdit('sent');
+      const history = messages.filter((m) => consent || !m.privateEvidence);
       const answer = await requestNavi(
         text,
         contexts,
-        messages.filter((m) => consent || !m.privateEvidence),
+        pageEdit ? history.filter((m) => !m.privateEvidence).slice(-4).map((m) => ({ ...m, text: m.text.slice(0, 600) })) : history,
         i18n.resolvedLanguage ?? 'zh-CN',
         controller.current.signal,
         {
-          mode: tutorMode,
-          helpLevel,
+          mode: pageEdit ? 'auto' : tutorMode,
+          helpLevel: pageEdit ? 1 : helpLevel,
           check,
-          configuration: configurationContext(
+          configuration: pageEdit ? undefined : configurationContext(
             data,
             text +
               ' ' +
@@ -829,7 +890,10 @@ export default function NaviWorkspace() {
             : undefined,
         }, { capability: membershipMode, trial: membershipTrial || undefined },
         (step) => {
-          if (currentNamespace() === owner && !requestController.signal.aborted) setAnalysisProgress(step);
+          if (currentNamespace() === owner && !requestController.signal.aborted) {
+            setAnalysisProgress(step);
+            setEdit('sent', step);
+          }
         },
       );
       setRequestPending(false);
@@ -862,7 +926,7 @@ export default function NaviWorkspace() {
       if (currentNamespace() !== owner || requestController.signal.aborted) return;
       let autoApplied = false;
       if (
-        autoUI &&
+        !pageEdit && autoUI &&
         answer.ui_actions?.length &&
         live === currentNaviUI() &&
         canAutoApplyNaviUI(answer.ui_actions, live.capabilities)
@@ -881,6 +945,7 @@ export default function NaviWorkspace() {
         setMenu(false);
       }
       if (answer.ui_actions?.length && !autoApplied) {
+        pendingTarget.current = live;
         setPendingUI({
           id: responseId,
           kind: 'navi-message',
@@ -894,6 +959,7 @@ export default function NaviWorkspace() {
         });
         setMenu(false);
       }
+      setEdit(answer.ui_actions?.length ? 'preview' : 'no-change', undefined, responseId);
       setDraft('');
       await refresh();
       if (currentNamespace() === owner && !controller.current.signal.aborted) {
@@ -902,11 +968,16 @@ export default function NaviWorkspace() {
         setMotionRun((run) => run + 1);
       }
     } catch (e) {
+      setEdit(controller.current.signal.aborted ? 'cancelled' : 'failed');
       if (currentNamespace() === owner && !controller.current.signal.aborted){
         setError(t('error.' + (e instanceof NaviError ? e.code : 'request')));
         setDiagnostic(diagnoseNaviFailure(e,'client'));
       }
     } finally {
+      if (controller.current.signal.aborted) {
+        setEditTrace((previous) => previous?.messageId === user.id && ['preparing', 'sent'].includes(previous.stage)
+          ? { ...previous, stage: 'cancelled' } : previous);
+      }
       gate.current = false;
       if (currentNamespace() === owner) {
         setBusy(false);
@@ -1106,16 +1177,24 @@ export default function NaviWorkspace() {
             key={pendingUI.id}
             actions={pendingUI.ui_actions!}
             onAccept={async() => {
-              if (
-                await applyUI(
-                  pendingUI.ui_actions!,
-                  pendingUI.uiQuestionId,
-                  pendingUI.uiTargetId,pendingUI.membershipReceipt,
-                )
-              )
-                setPendingUI(null);
+              if (applyingUI.current) return;
+              markEditProposal(pendingUI.id, 'applying');
+              const applied = await applyUI(
+                pendingUI.ui_actions!,
+                pendingUI.uiQuestionId,
+                pendingUI.uiTargetId,
+                pendingUI.membershipReceipt,
+                pendingTarget.current,
+              );
+              markEditProposal(pendingUI.id, applied ? 'applied' : 'apply-failed');
+              if (applied) {
+                setPendingUI((current) => current?.id === pendingUI.id ? null : current);
+              }
             }}
-            onCancel={() => setPendingUI(null)}
+            onCancel={() => {
+              markEditProposal(pendingUI.id, 'cancelled');
+              setPendingUI(null);
+            }}
           />
         )}
         {pendingNote && (
@@ -1522,6 +1601,16 @@ export default function NaviWorkspace() {
                       <MathText>{m.text}</MathText>
                     )}
                   </div>}
+                  {editTrace?.messageId === m.id && (
+                    <details className="navi-analysis-summary">
+                      <summary>{t('edit.title')} · {t('edit.stage.' + editTrace.stage)}</summary>
+                      <dl>
+                        <dt>{t('edit.request')}</dt><dd>{m.text}</dd>
+                        <dt>{t('edit.scope')}</dt><dd>{editTrace.pageTitle && <>{editTrace.pageTitle} · </>}{t('edit.scope.' + editTrace.scope)}</dd>
+                        {editTrace.progress && <><dt>{t('edit.progress')}</dt><dd>{t('analysis.progress.' + editTrace.progress)}</dd></>}
+                      </dl>
+                    </details>
+                  )}
                   {m.supplementary && (
                     <small className="navi-supplement">{t('supplement')}</small>
                   )}

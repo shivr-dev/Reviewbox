@@ -5,6 +5,7 @@ import {
   canAutoApplyNaviUI,
   parseNaviToolIntent,
   parseNaviUICommand,
+  isNaviPageEditRequest,
   defaultLayout,
   workspaceLayoutSchema,
   registerNaviUI,
@@ -32,6 +33,17 @@ test('UI commands update, undo and reset actual controller state', () => {
   assert.equal(c.state.zoom, 1);
   c.execute([{ type: 'restoreLayout', target: 'default' }]);
   assert.equal(c.state.mode, 'default');
+});
+test('clear font requests resolve locally and unsupported collection edits leave state intact', () => {
+  assert.deepEqual(parseNaviUICommand('把当前页面的字号调到22px'), [{ type: 'setFontSize', value: 22 }]);
+  assert.deepEqual(parseNaviUICommand('把字号调大一点', 24), [{ type: 'setFontSize', value: 26 }]);
+  assert.equal(parseNaviUICommand('不要把字号调大一点', 24), null);
+  assert.equal(isNaviPageEditRequest('帮我重新设计当前页面的布局'), true);
+  assert.equal(isNaviPageEditRequest('帮我证明这个方程'), false);
+  const collection = new NaviUIController({ ...cap, panels: [], collection: true });
+  const previous = collection.snapshot();
+  assert.equal(collection.execute([{ type: 'setFontSize', value: 22 }]).reason, 'unsupported');
+  assert.equal(collection.snapshot(), previous);
 });
 test('invalid final step rolls back the whole batch, including malicious or unsupported parameters', () => {
   const c = new NaviUIController(cap);
