@@ -49,6 +49,7 @@
   margin: 0;
   font: 700 clamp(1.18rem, 3vw, 1.8rem)/1.45 var(--font-body);
 }
+.guided-assessment [data-assessment-heading]:focus { outline: none; }
 .assessment-focus-reading :is(.question-visual, textarea) { min-width: 0; max-width: 100%; }
 .assessment-focus-reading .question-visual:empty { display: none; }
 .assessment-focus-reading .math-display { max-width: 100%; overflow-x: auto; }
