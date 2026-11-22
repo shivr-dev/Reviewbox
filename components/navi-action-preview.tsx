@@ -1,7 +1,7 @@
 'use client';
 import { useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
-import NaviQuestionDiagram from './navi-question-diagram';
+import NaviQuestionDiagram, { naviPanelLabelKey } from './navi-question-diagram';
 import {
   currentNaviUI,
   reduceNaviUI,
@@ -77,7 +77,7 @@ export default function NaviActionPreview({
       return t('navi.live.describe.grid', { value: a.columns });
     if (a.type === 'resizePanel' || a.type === 'resizeComponent')
       return t('navi.live.describe.resize', {
-        panel: t('navi.live.panel.' + a.panel),
+        panel: t(naviPanelLabelKey(a.panel, controller?.visualQuestion)),
       });
     if (a.type === 'arrangeComponents') return t('navi.live.describe.arrange');
     const name =
@@ -91,7 +91,7 @@ export default function NaviActionPreview({
               ? 'explanation'
               : 'answer';
     return t('navi.live.describe.panel', {
-      panel: t('navi.live.panel.' + name),
+      panel: t(naviPanelLabelKey(name, controller?.visualQuestion)),
     });
   };
   const miniature = (layout: WorkspaceLayout) => (
@@ -100,7 +100,7 @@ export default function NaviActionPreview({
       <div>
         <span>{t('navi.live.primaryContent')}</span>
         {layout.panels.slice(0, 4).map((p) => (
-          <span key={p}>{t('navi.live.panel.' + p)}</span>
+          <span key={p}>{t(naviPanelLabelKey(p, controller?.visualQuestion))}</span>
         ))}
       </div>
       <small>

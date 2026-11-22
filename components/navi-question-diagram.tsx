@@ -6,6 +6,10 @@ import { naviQuestionSketch, originalNaviDiagram, questionHasOriginalVisual } fr
 import Diagram from './diagram';
 import QuestionVisual from './question-visual';
 
+export function naviPanelLabelKey(panel: string, question?: Question) {
+  return 'navi.live.panel.' + (panel === 'diagram' && question && !questionHasOriginalVisual(question) ? 'sketch' : panel);
+}
+
 export default function NaviQuestionDiagram({ question }: { question: Question }) {
   if (questionHasOriginalVisual(question)) {
     return <QuestionVisual question={{ ...question, diagram: originalNaviDiagram(question) }} stage="question" />;

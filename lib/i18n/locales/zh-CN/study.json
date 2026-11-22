@@ -2,6 +2,7 @@
   "navi.analysis.complete": "已完成分析 · 查看思考摘要",
   "navi.edit.title": "本次操作",
   "navi.live.sketchCaption": "根据题干给出的时间和路程绘制",
+  "navi.live.panel.sketch": "辅助示意图",
   "navi.live.noDiagramProposal": "这页暂时没有可预览的图示。你可以调整字号、布局，或打开一份带图的资料。",
   "navi.live.partialProposal": "我根据当前页面准备了可应用的部分，请先看预览。",
   "navi.live.noSupportedProposal": "这次没有找到可应用的调整。可以试试调整字号或切换专注布局。",

@@ -19,6 +19,7 @@ import {
 import { currentNamespace, put } from '@/lib/store';
 import { useReview } from './review-context';
 import { NaviDiagramContext } from './navi-diagram-control';
+import { naviPanelLabelKey } from './navi-question-diagram';
 
 export default function NaviWorkspaceFrame({
   controller,
@@ -242,7 +243,7 @@ export default function NaviWorkspaceFrame({
                     .filter((p) => !layout.panels.includes(p as any))
                     .map((p) => (
                       <option value={p} key={p}>
-                        {t('navi.live.panel.' + p)}
+                        {t(naviPanelLabelKey(p, controller.visualQuestion))}
                       </option>
                     ))}
                 </select>
@@ -354,7 +355,7 @@ export default function NaviWorkspaceFrame({
                       >
                         <GripVertical size={14} />
                       </button>
-                      <h3>{t('navi.live.panel.' + panel)}</h3>
+                      <h3>{t(naviPanelLabelKey(panel, controller.visualQuestion))}</h3>
                       <span>
                         <button
                           type="button"

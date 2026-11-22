@@ -2,6 +2,7 @@
   "navi.analysis.complete": "Analysis complete · View summary",
   "navi.edit.title": "This operation",
   "navi.live.sketchCaption": "Drawn from the time and distance stated in the question",
+  "navi.live.panel.sketch": "Supporting sketch",
   "navi.live.noDiagramProposal": "There is no diagram to preview here. You can adjust the text size or layout, or open a source with an illustration.",
   "navi.live.partialProposal": "I prepared the changes this page supports. Review the preview before applying.",
   "navi.live.noSupportedProposal": "I couldn't find an applicable change. Try adjusting the text size or switching to focus layout.",
