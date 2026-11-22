@@ -21,6 +21,7 @@ import { ReviewContext } from '@/components/review-context';
 import WebsiteView from '@/components/website-view';
 import WorkspaceLoading from '@/components/workspace-loading';
 import NaviWorkspace from '@/components/navi-workspace';
+import NaviPageSurface from '@/components/navi-page-surface';
 import { hasLearningWorkspace } from '@/lib/visitor-entry';
 import ProductInsights from '@/components/product-insights';
 import { trackProductEvent } from '@/lib/product-insights';
@@ -435,6 +436,8 @@ export default function Workspace() {
     });
     return () => controller.abort();
   }, []);
+  const naviAvailable = ready && identityReady && !website &&
+    !['website', 'exam', 'assessment', 'sprint', 'onboarding'].includes(page) && session?.mode !== 'test';
   return (
     <ReviewContext.Provider
       value={{
@@ -459,8 +462,8 @@ export default function Workspace() {
     >
       <ProductLocale locale={data.settings.locale} ready={ready}/>
       {ready && !website && <ProductInsights page={page} />}
-      {ready && identityReady && !website && !['exam','assessment','sprint','onboarding'].includes(page) && session?.mode!=='test' && <NaviWorkspace key={currentNamespace()}/>}
-      <div className="review-application" data-page={page}>
+      {naviAvailable && <NaviWorkspace key={currentNamespace()}/>}
+      <NaviPageSurface page={page} scope={JSON.stringify([currentNamespace(), page, subject, section])} enabled={naviAvailable}>
       {page === 'website' || (ready && identityReady && website) ? <WebsiteView locale={data.settings.locale}/> : !ready || (page === 'home' && !identityReady) ? <WorkspaceLoading/> : ready &&
       [
         'home',
@@ -538,7 +541,7 @@ export default function Workspace() {
           </Suspense>
         </ProductShell>
       ) : <Suspense fallback={<WorkspaceLoading/>}>{page === 'course' && ready ? <CourseRoom key={subject+currentNamespace()} courseId={subject}/> : page === 'remedy' && ready ? <RemediationCourse key={subject+currentNamespace()} courseId={subject}/> : page === 'onboarding' && ready ? <OnboardingView key={currentNamespace()}/> : page === 'exam' && ready ? <ExamRoom key={subject+currentNamespace()} runId={subject}/> : page === 'assessment' && ready ? (()=>{const draft=data.jobs?.find(j=>j.id===subject&&j.kind==='assessment');return draft?.session?<AssessmentRoom key={subject+currentNamespace()} session={draft.session} finish={()=>navigate('results')}/>:<div role="status">此测试尚未同步完整<button onClick={()=>void sync()}>同步后重试</button></div>})() : <div role="status">正在读取学习记录…</div>}</Suspense>}
-      </div>
+      </NaviPageSurface>
       {message && (
         <div className="toast" role="status">
           <span>{message}</span>

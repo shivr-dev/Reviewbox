@@ -122,6 +122,7 @@ export default function NaviWorkspaceFrame({
         style={
           {
             '--navi-panel-width': layout.width + '%',
+            '--navi-reading-size': layout.fontSize === 18 ? undefined : layout.fontSize + 'px',
             '--navi-font': layout.fontSize + 'px',
             '--navi-zoom': layout.zoom,
             '--navi-grid-columns': layout.columns,

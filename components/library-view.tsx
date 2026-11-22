@@ -2,6 +2,7 @@
 import {parseWorkspaceRoute} from '@/lib/workspace-route';
 import {NaviButton} from './navi-workspace';
 import NaviSourceWorkspace from './navi-source-workspace';
+import { naviReadingStyle } from './navi-page-surface';
 import {subjectLabel as subjectName} from '@/lib/presentation';
 import {tr} from '@/lib/i18n';
 import {lazy,Suspense,useMemo,useSyncExternalStore,useLayoutEffect} from 'react';
@@ -84,7 +85,7 @@ export default function LibraryView({
   initialTab = 'materials',packageRequest, embedded = false, openImport = false, page,
 }: { initialTab?: string;packageRequest?:typeof watchRequest; embedded?: boolean; openImport?: boolean; page?: string } = {}) {
   const { data, refresh, start, notify, navigate, subject: routeSubject } = useReview();
-  const collection=useMemo(()=>{const c=new NaviUIController({panels:[],questionIds:[],molecule:false,protected:false,collection:true});c.state.collection={query:'',subject:SUBJECTS.some(s=>s.id===routeSubject)?routeSubject as any:'all',sort:'new'};return c;},[routeSubject]);
+  const collection=useMemo(()=>{const c=new NaviUIController({panels:[],questionIds:[],molecule:false,protected:false,collection:true,pagePresentation:true});c.state.collection={query:'',subject:SUBJECTS.some(s=>s.id===routeSubject)?routeSubject as any:'all',sort:'new'};return c;},[routeSubject]);
   const collectionState=useSyncExternalStore(collection.subscribe,collection.snapshot,collection.snapshot);
   const search=collectionState.collection?.query??'',filter=collectionState.collection?.subject??(SUBJECTS.some(s=>s.id===routeSubject)?routeSubject:'all');
   const setSearch=(query:string)=>collection.execute([{type:'setFilter',query}], 'user');
@@ -448,7 +449,8 @@ export default function LibraryView({
   const questionPagination = <footer className="pack-pagination"><button disabled={qp===0} onClick={()=>setQuestionPage(qp-1)}>{tr('library:上一页')}</button><span>{qp+1} / {questionPages}</span><button disabled={qp+1>=questionPages} onClick={()=>setQuestionPage(qp+1)}>{tr('library:下一页')}</button></footer>;
   const ExportPanel = embedded ? 'section' : 'details';
   return (
-    <div className={'library-page settings-scope' + (embedded ? ' rb-library-workspace' : '')}>
+    <div className={'library-page settings-scope navi-reading-surface' + (embedded ? ' rb-library-workspace' : '')}
+      data-navi-reading-mode={collectionState.mode} style={naviReadingStyle(collectionState)}>
       {questionBank ? <header className="rb-library-head">
         <h2>{tr('library:题库管理')}</h2>
         {actions}

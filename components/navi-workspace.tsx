@@ -66,6 +66,8 @@ import {
   currentNaviUI,
   executeNaviUI,
   isNaviPageEditRequest,
+  isNaviDiagramRequest,
+  prepareNaviUIProposal,
   parseNaviUICommand,
   reduceNaviUI,
   focusNaviTarget,
@@ -226,7 +228,7 @@ export default function NaviWorkspace() {
   const avatarState: NaviMotionState = !open ? 'sleeping' : requestPending || loadingPack ? 'thinking' :
     error ? 'error' : operationMotion ?? (hasProposal ? 'guiding' : replyMotion ?? (resting ? 'sleeping' : 'idle'));
   const draftNeedsConnection = !aiReady && !!draft.trim() &&
-    !parseNaviUICommand(draft) && !parseNaviToolIntent(draft) &&
+    !parseNaviUICommand(draft) && !isNaviDiagramRequest(draft) && !parseNaviToolIntent(draft) &&
     !offlineConfigurationRequest(draft) && parseNaviWebIntent(draft) === undefined;
   const canSuggestFollowups = aiReady && !busy && !draft.trim() && !hasProposal;
   function openConnectionSettings() {
@@ -648,7 +650,10 @@ export default function NaviWorkspace() {
       at,
     };
     const activePage = currentNaviUI();
-    const commands = check ? undefined : parseNaviUICommand(text, activePage?.snapshot().fontSize);
+    const diagramRequested = !check && isNaviDiagramRequest(text);
+    const commands: NaviUIAction[] | null | undefined = check ? undefined : diagramRequested
+      ? [{ type: 'mountRegisteredComponent', component: 'diagram' }]
+      : parseNaviUICommand(text, activePage?.snapshot().fontSize);
     const pageEdit = !check && (!!commands || isNaviPageEditRequest(text));
     const editTarget = pageEdit ? activePage : undefined;
     const setEdit = (stage: EditTrace['stage'], progress?: NaviProgress, proposalId?: string) => {
@@ -783,7 +788,7 @@ export default function NaviWorkspace() {
           kind: 'navi-message',
           threadId: next.id,
           role: 'assistant',
-          text: blocked ? t('live.error.' + blocked) : t('edit.preview'),
+          text: blocked ? t(diagramRequested && blocked === 'unsupported' ? 'live.noDiagramProposal' : 'live.error.' + blocked) : t('edit.preview'),
           at: new Date().toISOString(),
           ...(!blocked && editTarget ? {
             ui_actions: commands,
@@ -859,6 +864,7 @@ export default function NaviWorkspace() {
       const requestController = controller.current;
       setEdit('sent');
       const history = messages.filter((m) => consent || !m.privateEvidence);
+      const { pagePresentation: _pagePresentation, ...remoteCapabilities } = live?.capabilities ?? {};
       const answer = await requestNavi(
         text,
         contexts,
@@ -881,7 +887,7 @@ export default function NaviWorkspace() {
           ),
           ui: live
             ? {
-                ...live.capabilities,scrollTargets:live.capabilities.scrollTargets?.slice(0,500),scientificIds:live.capabilities.scientificIds?.slice(0,100),
+                ...remoteCapabilities,scrollTargets:live.capabilities.scrollTargets?.slice(0,500),scientificIds:live.capabilities.scientificIds?.slice(0,100),
                 questionIds: live.capabilities.questionIds.slice(0, 30),
                 knowledgeIds: live.capabilities.knowledgeIds?.slice(0, 30),
                 state: live.snapshot(),
@@ -899,6 +905,13 @@ export default function NaviWorkspace() {
       setRequestPending(false);
       setMembershipTrial('');
       if (currentNamespace() !== owner || controller.current.signal.aborted) return;
+      if (answer.ui_actions?.length) {
+        const actions = live && currentNaviUI() === live ? prepareNaviUIProposal(live, answer.ui_actions) : [];
+        if (JSON.stringify(actions) !== JSON.stringify(answer.ui_actions)) {
+          answer.reply = t(actions.length ? 'live.partialProposal' : 'live.noSupportedProposal');
+          answer.ui_actions = actions.length ? actions : undefined;
+        }
+      }
       const responseId = 'navi-message:' + (answer.membershipReceipt ?? crypto.randomUUID());
       await saveNavi(
         updatedThread,

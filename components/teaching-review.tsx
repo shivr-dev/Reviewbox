@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ArrowRight, Check } from 'lucide-react';
 import { tr } from '@/lib/i18n';
 import type { StudyAction } from '@/lib/study-orchestrator';
@@ -9,6 +9,7 @@ import { useReview } from './review-context';
 import GuidedFocusHeader from './guided-focus-header';
 import MathText from './math-text';
 import NaviAvatar from './navi-avatar';
+import NaviSourceWorkspace from './navi-source-workspace';
 import QuestionVisual from './question-visual';
 import { openNavi } from './navi-workspace';
 
@@ -77,6 +78,12 @@ export function TeachingReview({
     }
   }
 
+  const readingWorkspace = (content: ReactNode) => q ? (
+    <NaviSourceWorkspace target={{ type: 'question', id: q.id }} subject={q.subject} priority={35}>
+      {content}
+    </NaviSourceWorkspace>
+  ) : content;
+
   return (
     <section className="guided-practice guided-teaching" aria-labelledby="teaching-title">
       <GuidedFocusHeader
@@ -90,7 +97,7 @@ export function TeachingReview({
       />
       <div className="guided-canvas">
         <div className="guided-stage" ref={stage}>
-          <article className="teaching-reading">
+          {readingWorkspace(<article className="teaching-reading">
             <h1 id="teaching-title" ref={heading} tabIndex={-1}>
               {q ? action.title : tr('grading:这份学习材料已更新')}
             </h1>
@@ -170,7 +177,7 @@ export function TeachingReview({
                 </div>
               </>
             )}
-          </article>
+          </article>)}
         </div>
         <footer className="guided-footer teaching-footer">
           {q && (

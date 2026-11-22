@@ -1,6 +1,7 @@
 'use client';
 import { useState, useSyncExternalStore } from 'react';
 import { useTranslation } from 'react-i18next';
+import NaviQuestionDiagram from './navi-question-diagram';
 import {
   currentNaviUI,
   reduceNaviUI,
@@ -30,7 +31,7 @@ export default function NaviActionPreview({
   if (dismissed) return null;
   let after: WorkspaceLayout | undefined;
   try {
-    if (controller)
+    if (controller && !controller.capabilities.protected)
       after =
         actions.length === 1 &&
         actions[0].type === 'restoreLayout' &&
@@ -127,6 +128,9 @@ export default function NaviActionPreview({
             {miniature(after)}
           </section>
         </div>
+      )}
+      {after?.panels.includes('diagram') && !before.panels.includes('diagram') && controller?.visualQuestion && (
+        <div className="navi-preview-diagram"><NaviQuestionDiagram question={controller.visualQuestion} /></div>
       )}
       {!after && <p>{t('navi.live.error.unsupported')}</p>}
       <div className="button-row">

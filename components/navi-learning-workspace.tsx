@@ -19,6 +19,8 @@ import { currentNamespace } from '@/lib/store';
 import { useReview } from './review-context';
 import MathText from './math-text';
 import QuestionVisual from './question-visual';
+import NaviQuestionDiagram from './navi-question-diagram';
+import { naviQuestionSketch, questionHasOriginalVisual } from '@/lib/navi-question-visual';
 import NaviWorkspaceFrame from './navi-workspace-frame';
 
 /** Wrap the real answer form; layout changes never remount or replace its input state. */
@@ -48,13 +50,14 @@ export default function NaviLearningWorkspace({
     ns = currentNamespace();
   const live = useRef({ questionId: q.id, answer, grade: grade ?? undefined });
   live.current = { questionId: q.id, answer, grade: grade ?? undefined };
+  const hasDiagram = !!(questionHasOriginalVisual(q) || naviQuestionSketch(q));
   const controller = useMemo(
     () =>
       new NaviUIController({
         panels: panelNames.filter(
           (p) =>
             !['content', 'material'].includes(p) &&
-            (p !== 'diagram' || !!q.diagram || !!q.media?.length),
+            (p !== 'diagram' || hasDiagram),
         ),
         questionIds: data.questions
           .filter((v) => v.subject === q.subject)
@@ -68,9 +71,10 @@ export default function NaviLearningWorkspace({
         ),
         protected: locked,
       }),
-    [q.id, ns, locked],
+    [q.id, ns, locked, hasDiagram],
   );
   controller.target = { type: 'question', id: q.id };
+  controller.visualQuestion = hasDiagram && !locked ? q : undefined;
   controller.readEvidence = () => live.current;
   controller.assistance = onAssistance;
   const layout = useSyncExternalStore(
@@ -189,11 +193,7 @@ export default function NaviLearningWorkspace({
           </>
         );
       case 'diagram':
-        return q.diagram || q.media?.length ? (
-          <QuestionVisual question={q} stage="question" />
-        ) : (
-          <p>{t('navi.live.noDiagram')}</p>
-        );
+        return <NaviQuestionDiagram question={q} />;
       case 'steps':
         return (
           <>

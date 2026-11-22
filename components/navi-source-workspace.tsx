@@ -13,6 +13,8 @@ import { useReview } from './review-context';
 import NaviWorkspaceFrame from './navi-workspace-frame';
 import MathText from './math-text';
 import QuestionVisual from './question-visual';
+import NaviQuestionDiagram from './navi-question-diagram';
+import { naviQuestionSketch, questionHasOriginalVisual } from '@/lib/navi-question-visual';
 
 /** A source-aware host around existing content, not a second reader or page system. */
 export default function NaviSourceWorkspace({
@@ -62,6 +64,10 @@ export default function NaviSourceWorkspace({
       section?.content?.process?.steps?.map(
         (s: any) => s.title + '\n' + s.explanation,
       ) ?? [];
+  const diagrams = target.type === 'question'
+    ? data.questions.filter((q) => q.id === target.id && (questionHasOriginalVisual(q) || naviQuestionSketch(q)))
+    : questions.filter((q) => questionHasOriginalVisual(q));
+  const hasDiagram = diagrams.length > 0;
   const controller = useMemo(
     () =>
       new NaviUIController({
@@ -73,7 +79,7 @@ export default function NaviSourceWorkspace({
           'material',
           'comparison',
           ...(steps.length ? ['steps', 'formula'] : []),
-          ...(questions.some((q) => q.diagram) ? ['diagram'] : []),
+          ...(hasDiagram ? ['diagram'] : []),
         ],
         questionIds: questions.map((q) => q.id),
         knowledgeIds: nodes.map((n) => n.id),
@@ -81,9 +87,10 @@ export default function NaviSourceWorkspace({
         molecule: false,
         protected: false,
       }),
-    [target.type, target.id, target.sectionId, ns],
+    [target.type, target.id, target.sectionId, ns, hasDiagram],
   );
   controller.target = target;
+  controller.visualQuestion = diagrams[0];
   useEffect(() => registerNaviUI(controller, priority), [controller, priority]);
   const details = material?.text ?? section?.source ?? pack?.description ?? '';
   function chooseKnowledge(index: number, id: string, layout: WorkspaceLayout) {
@@ -164,12 +171,7 @@ export default function NaviSourceWorkspace({
     if (panel === 'diagram')
       return (
         <>
-          {questions
-            .filter((q) => q.diagram)
-            .slice(0, 4)
-            .map((q) => (
-              <QuestionVisual question={q} key={q.id} stage="question" />
-            ))}
+          {diagrams.slice(0, 4).map((q) => <NaviQuestionDiagram question={q} key={q.id} />)}
         </>
       );
     if (panel === 'comparison')

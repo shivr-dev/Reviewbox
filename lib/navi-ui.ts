@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { Question } from './model';
 
 export const workspaceModes = [
   'default',
@@ -171,6 +172,8 @@ export type UICapabilities = {
   scrollTargets?:readonly string[];
   scientificIds?:readonly string[];
   macromolecule?:boolean;
+  /** A page that actually renders reading width and text size from its controller. */
+  pagePresentation?: boolean;
 };
 export type UIReceipt = {
   ok: boolean;
@@ -202,7 +205,12 @@ export function reduceNaviUI(
     if (!cap.panels.includes(p)) throw new Error('unsupported');
   };
   for (const a of actions) {
+    const presentation = a.type === 'setFontSize' || a.type === 'setFocusMode' ||
+      (a.type === 'setLayout' && (a.mode === 'default' || a.mode === 'focus'));
+    if (cap.pagePresentation && !cap.collection && !presentation && a.type !== 'restoreLayout')
+      throw new Error('unsupported');
     if (cap.collection && cap.panels.length === 0 &&
+      !(cap.pagePresentation && presentation) &&
       !['setFilter', 'setSort', 'scrollToTarget', 'restoreLayout', 'restoreWorkspace', 'highlightTarget',
         'clearHighlights', 'setMacromolecule', 'setCamera'].includes(a.type))
       throw new Error('unsupported');
@@ -326,6 +334,7 @@ export class NaviUIController {
   history: WorkspaceLayout[] = [];
   private listeners = new Set<() => void>();
   manualAt = 0;
+  visualQuestion?: Question;
   readEvidence?: () => {
     questionId: string;
     answer: string;
@@ -494,6 +503,41 @@ export function isNaviPageEditRequest(text: string) {
   return /(?:编辑|編輯|修改|调整|調整|更改|重排|改一下|改成|换成|換成|优化|優化|重新设计|重新設計|放大|缩小|縮小).{0,18}(?:页面|頁面|界面|版面|排版|布局|佈局|字[号號体體]|面板)|(?:页面|頁面|界面|版面|排版|布局|佈局|字[号號体體]|面板).{0,18}(?:改成|调成|調成|調整|调整|放大|缩小|縮小|变大|變大|变小|變小)|\b(?:edit|adjust|change|redesign|rearrange|resize)\b.{0,36}\b(?:page|layout|font size|panel)\b/i.test(text);
 }
 
+export function isNaviDiagramRequest(text: string) {
+  if (/不要|别|別|不用|无需|不需要|do not|don't|without/i.test(text)) return false;
+  return /(?:给|給|画|畫|加|生成|打开|打開|显示|顯示|看)(?:我|我看)?\s*(?:一[个個张張幅]|[个個张張])?\s*(?:示意图|示意圖|图示|圖示|图解|圖解|图[。.!！?？\s，,]*$|圖[。.!！?？\s，,]*$)|\b(?:show|add|draw|give me)\b.{0,20}\b(?:diagram|sketch)\b/i.test(text);
+}
+
+export function prepareNaviUIProposal(controller: NaviUIController, actions: NaviUIAction[]) {
+  const current = controller.snapshot(), capabilities = controller.capabilities;
+  if (capabilities.protected) return [];
+  const [first] = actions;
+  if (actions.length === 1 && first.type === 'restoreLayout' && first.target !== 'default')
+    return controller.history.length ? actions : [];
+  try {
+    reduceNaviUI(current, actions, capabilities);
+    return actions;
+  } catch (error) {
+    if (!(error instanceof Error) || error.message !== 'unsupported') return [];
+  }
+  let layout = current;
+  const accepted: NaviUIAction[] = [];
+  for (const action of actions) {
+    if (action.type === 'restoreLayout' && action.target !== 'default') continue;
+    const candidate = action.type === 'arrangeComponents'
+      ? { ...action, panels: action.panels.filter((panel) => capabilities.panels.includes(panel)) }
+      : action;
+    if (candidate.type === 'arrangeComponents' && !candidate.panels.length) continue;
+    try {
+      const next = reduceNaviUI(layout, [candidate], capabilities);
+      if (JSON.stringify(next) === JSON.stringify(layout)) continue;
+      accepted.push(candidate);
+      layout = next;
+    } catch {}
+  }
+  return accepted;
+}
+
 /** Local commands work without an AI request. Unrecognized language goes to the tutor. */
 export function parseNaviUICommand(text: string, fontSize = 18): NaviUIAction[] | null {
   const s = text.trim().toLowerCase();
@@ -524,7 +568,7 @@ export function parseNaviUICommand(text: string, fontSize = 18): NaviUIAction[] 
   if (/恢复刚才|previous layout|布局撤销/.test(s))
     return [{ type: 'restoreLayout', target: 'previous' }];
   if (
-    /专注模式|專注模式|focus mode|集中モード|집중 모드|mode concentration|modo concentración|режим фокуса/.test(
+    /专注模式|專注模式|阅读模式|閱讀模式|focus mode|reading mode|集中モード|집중 모드|mode concentration|modo concentración|режим фокуса/.test(
       s,
     )
   )

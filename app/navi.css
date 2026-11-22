@@ -1136,6 +1136,22 @@
   list-style: disc;
 }
 .navi-analysis-summary li + li { margin-block-start: 3px; }
+
+.navi-reading-surface[data-navi-reading-mode='focus'] :is(.rb-home, .rb-results-desk, .alpha-workspace, .membership-page, .remediation-course),
+.library-page[data-navi-reading-mode='focus'],
+.navi-layout-focus .rb-subject-workspace {
+  max-inline-size: min(100%, 60rem);
+  margin-inline: auto;
+}
+:root .navi-reading-surface[style*='--navi-reading-size'] :is(.alpha-product-content, .remediation-course) :where(p, li, dt, dd, label, td, th),
+:root .library-page.navi-reading-surface[style*='--navi-reading-size'] :where(p, li, dt, dd, label, td, th),
+:root .navi-live-learning[style*='--navi-reading-size'] .navi-live-question :where(p, li, blockquote),
+:root .guided-stage .navi-live-learning[style*='--navi-reading-size'] .guided-question-prompt[data-density] {
+  font-size: var(--navi-reading-size);
+}
+.navi-preview-diagram { margin-block: 10px; }
+.navi-assist-diagram { min-inline-size: 0; }
+.navi-assist-diagram > p { color: var(--rb-muted); font-size: .875rem; margin: 4px 0 0; }
 .navi-message-body .rich-text {
   white-space: pre-wrap;
 }

@@ -6,6 +6,8 @@ import {
   parseNaviToolIntent,
   parseNaviUICommand,
   isNaviPageEditRequest,
+  isNaviDiagramRequest,
+  prepareNaviUIProposal,
   defaultLayout,
   workspaceLayoutSchema,
   registerNaviUI,
@@ -13,6 +15,8 @@ import {
   currentNaviUI,
 } from '../lib/navi-ui';
 import { relatedNaviEvidence } from '../lib/navi-evidence';
+import { naviQuestionSketch } from '../lib/navi-question-visual';
+import type { Question } from '../lib/model';
 const cap = {
   panels: ['question', 'explanation', 'steps', 'diagram', 'answer', 'rubric'],
   questionIds: ['q1', 'q2'],
@@ -44,6 +48,25 @@ test('clear font requests resolve locally and unsupported collection edits leave
   const previous = collection.snapshot();
   assert.equal(collection.execute([{ type: 'setFontSize', value: 22 }]).reason, 'unsupported');
   assert.equal(collection.snapshot(), previous);
+});
+test('Navi previews a motion sketch from the visible question without deriving its answer', () => {
+  const question = { subject: 'physics', prompt: '一辆自行车 30 s 行驶 150 m，其速度为 ____ m/s。', answer: 'SECRET' } as Question;
+  assert.equal(isNaviDiagramRequest('改一下界面，给我个图'), true);
+  assert.equal(isNaviDiagramRequest('不要画图'), false);
+  const diagram = naviQuestionSketch(question);
+  assert.equal(diagram && 'kind' in diagram && diagram.kind, 'motion');
+  assert.match(JSON.stringify(diagram), /30 s · 150 m/);
+  assert.doesNotMatch(JSON.stringify(diagram), /SECRET|velocity-time/);
+  assert.equal(naviQuestionSketch({ ...question, prompt: '从原地跑了 100 m 后折返 30 s' }), undefined);
+});
+test('Navi proposes only supported changes and keeps protected pages uneditable', () => {
+  const surface = new NaviUIController({ ...cap, panels: [], pagePresentation: true });
+  assert.deepEqual(prepareNaviUIProposal(surface, [
+    { type: 'splitView' }, { type: 'setFontSize', value: 22 },
+  ]), [{ type: 'setFontSize', value: 22 }]);
+  assert.equal(surface.state.fontSize, 18);
+  surface.capabilities.protected = true;
+  assert.deepEqual(prepareNaviUIProposal(surface, [{ type: 'setFontSize', value: 22 }]), []);
 });
 test('invalid final step rolls back the whole batch, including malicious or unsupported parameters', () => {
   const c = new NaviUIController(cap);
