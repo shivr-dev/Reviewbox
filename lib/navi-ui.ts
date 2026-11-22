@@ -335,6 +335,7 @@ export class NaviUIController {
   private listeners = new Set<() => void>();
   manualAt = 0;
   visualQuestion?: Question;
+  localPluginScope?: string;
   readEvidence?: () => {
     questionId: string;
     answer: string;
@@ -503,9 +504,30 @@ export function isNaviPageEditRequest(text: string) {
   return /(?:编辑|編輯|修改|调整|調整|更改|重排|改一下|改成|换成|換成|优化|優化|重新设计|重新設計|放大|缩小|縮小).{0,18}(?:页面|頁面|界面|版面|排版|布局|佈局|字[号號体體]|面板)|(?:页面|頁面|界面|版面|排版|布局|佈局|字[号號体體]|面板).{0,18}(?:改成|调成|調成|調整|调整|放大|缩小|縮小|变大|變大|变小|變小)|\b(?:edit|adjust|change|redesign|rearrange|resize)\b.{0,36}\b(?:page|layout|font size|panel)\b/i.test(text);
 }
 
+export function isNaviPluginRequest(text: string) {
+  return /(?:做|创建|建立|搭建|製作|制作|保存|儲存|生成|设计|設計).{0,28}(?:插件|擴充功能|harness)|\b(?:create|build|make|save)\b.{0,32}\b(?:plug-?in|harness)\b/i.test(text);
+}
+
 export function isNaviDiagramRequest(text: string) {
   if (/不要|别|別|不用|无需|不需要|do not|don't|without/i.test(text)) return false;
   return /(?:给|給|画|畫|加|生成|打开|打開|显示|顯示|看)(?:我|我看)?\s*(?:一[个個张張幅]|[个個张張])?\s*(?:示意图|示意圖|图示|圖示|图解|圖解|图[。.!！?？\s，,]*$|圖[。.!！?？\s，,]*$)|\b(?:show|add|draw|give me)\b.{0,20}\b(?:diagram|sketch)\b/i.test(text);
+}
+
+export function parseNaviPluginRecipe(text: string, fontSize = 18): NaviUIAction[] | null {
+  if (!isNaviPluginRequest(text)) return null;
+  const instructions = text.replace(/^[^：:\n]{1,36}[：:\n]\s*/, '');
+  if (instructions === text) return null;
+  const recipe: NaviUIAction[] = [];
+  for (const instruction of instructions.split(/[，,；;\n]+/).map(item => item.trim()).filter(Boolean)) {
+    if (isNaviDiagramRequest(instruction)) {
+      recipe.push({ type: 'mountRegisteredComponent', component: 'diagram' });
+      continue;
+    }
+    const actions = parseNaviUICommand(instruction, fontSize);
+    if (!actions) return null;
+    recipe.push(...actions);
+  }
+  return recipe.length && recipe.length <= 12 ? recipe : null;
 }
 
 export function prepareNaviUIProposal(controller: NaviUIController, actions: NaviUIAction[]) {
@@ -540,7 +562,8 @@ export function prepareNaviUIProposal(controller: NaviUIController, actions: Nav
 
 /** Local commands work without an AI request. Unrecognized language goes to the tutor. */
 export function parseNaviUICommand(text: string, fontSize = 18): NaviUIAction[] | null {
-  const s = text.trim().toLowerCase();
+  const input = text.trim();
+  const s = (isNaviPluginRequest(input) ? input.replace(/^[^：:\n]{1,36}[：:\n]\s*/, '') : input).toLowerCase();
   if (
     /不要|別|别|不想|don.t|do not|ne .*pas|no quiero|しない|말고|하지 마|не надо|什么是|什麼是|what is|how does|是什么意思|是什麼意思/.test(
       s,

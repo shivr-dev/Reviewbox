@@ -66,6 +66,8 @@ import {
   currentNaviUI,
   executeNaviUI,
   isNaviPageEditRequest,
+  isNaviPluginRequest,
+  parseNaviPluginRecipe,
   isNaviDiagramRequest,
   prepareNaviUIProposal,
   parseNaviUICommand,
@@ -79,6 +81,8 @@ import {
 import { relatedNaviEvidence } from '@/lib/navi-evidence';
 import NaviPracticePreview from './navi-practice-preview';
 import NaviActionPreview from './navi-action-preview';
+import NaviLocalPluginList from './navi-local-plugin-list';
+import { disableActiveNaviPlugin, isReusableNaviRecipe, saveNaviLocalPlugin } from '@/lib/navi-local-plugins';
 import { queryNaviContexts, naviSourceData } from '@/lib/navi-query';
 import { NaviActivity, NaviLayer, NaviSurface } from './navi-presentation';
 import NaviResponse from './navi-response';
@@ -228,7 +232,7 @@ export default function NaviWorkspace() {
   const avatarState: NaviMotionState = !open ? 'sleeping' : requestPending || loadingPack ? 'thinking' :
     error ? 'error' : operationMotion ?? (hasProposal ? 'guiding' : replyMotion ?? (resting ? 'sleeping' : 'idle'));
   const draftNeedsConnection = !aiReady && !!draft.trim() &&
-    !parseNaviUICommand(draft) && !isNaviDiagramRequest(draft) && !parseNaviToolIntent(draft) &&
+    !parseNaviUICommand(draft) && !parseNaviPluginRecipe(draft) && !isNaviDiagramRequest(draft) && !parseNaviToolIntent(draft) &&
     !offlineConfigurationRequest(draft) && parseNaviWebIntent(draft) === undefined;
   const canSuggestFollowups = aiReady && !busy && !draft.trim() && !hasProposal;
   function openConnectionSettings() {
@@ -651,10 +655,12 @@ export default function NaviWorkspace() {
     };
     const activePage = currentNaviUI();
     const diagramRequested = !check && isNaviDiagramRequest(text);
-    const commands: NaviUIAction[] | null | undefined = check ? undefined : diagramRequested
-      ? [{ type: 'mountRegisteredComponent', component: 'diagram' }]
-      : parseNaviUICommand(text, activePage?.snapshot().fontSize);
-    const pageEdit = !check && (!!commands || isNaviPageEditRequest(text));
+    const pluginRequest = !check && isNaviPluginRequest(text);
+    const fontSize = activePage?.snapshot().fontSize;
+    const commands: NaviUIAction[] | null | undefined = check ? undefined : pluginRequest
+      ? parseNaviPluginRecipe(text, fontSize)
+      : diagramRequested ? [{ type: 'mountRegisteredComponent', component: 'diagram' }] : parseNaviUICommand(text, fontSize);
+    const pageEdit = !check && (!!commands || isNaviPageEditRequest(text) || pluginRequest);
     const editTarget = pageEdit ? activePage : undefined;
     const setEdit = (stage: EditTrace['stage'], progress?: NaviProgress, proposalId?: string) => {
       if (pageEdit && currentNamespace() === owner) {
@@ -983,8 +989,9 @@ export default function NaviWorkspace() {
     } catch (e) {
       setEdit(controller.current.signal.aborted ? 'cancelled' : 'failed');
       if (currentNamespace() === owner && !controller.current.signal.aborted){
-        setError(t('error.' + (e instanceof NaviError ? e.code : 'request')));
-        setDiagnostic(diagnoseNaviFailure(e,'client'));
+        const failure = diagnoseNaviFailure(e, 'client');
+        setError(t(failure.code === 'RB-MODEL-TRUNCATED' ? 'error.truncated' : 'error.' + (e instanceof NaviError ? e.code : 'request')));
+        setDiagnostic(failure);
       }
     } finally {
       if (controller.current.signal.aborted) {
@@ -1101,6 +1108,24 @@ export default function NaviWorkspace() {
     pendingUI?.id ??
     pendingNote?.id ??
     messages.findLast((m) => m.role === 'assistant')?.id;
+  async function acceptPendingLayout(pluginName?: string) {
+    if (applyingUI.current || !pendingUI?.ui_actions) return false;
+    const proposal = pendingUI, target = pendingTarget.current;
+    const before = target?.snapshot(), owner = currentNamespace();
+    markEditProposal(proposal.id, 'applying');
+    const applied = await applyUI(proposal.ui_actions!, proposal.uiQuestionId,
+      proposal.uiTargetId, proposal.membershipReceipt, target);
+    markEditProposal(proposal.id, applied ? 'applied' : 'apply-failed');
+    if (!applied) return false;
+    if (pluginName && target && before && currentNamespace() === owner) {
+      let saved = false;
+      try { saved = saveNaviLocalPlugin(target, pluginName, proposal.ui_actions!, before); }
+      catch {}
+      setReceipt(t(saved ? 'plugins.saved' : 'plugins.saveFailed'));
+    }
+    setPendingUI(current => current?.id === proposal.id ? null : current);
+    return true;
+  }
   const inlineTool = (
     <section
       className="navi-tool-tray navi-inline-tool"
@@ -1189,21 +1214,9 @@ export default function NaviWorkspace() {
           <NaviActionPreview
             key={pendingUI.id}
             actions={pendingUI.ui_actions!}
-            onAccept={async() => {
-              if (applyingUI.current) return;
-              markEditProposal(pendingUI.id, 'applying');
-              const applied = await applyUI(
-                pendingUI.ui_actions!,
-                pendingUI.uiQuestionId,
-                pendingUI.uiTargetId,
-                pendingUI.membershipReceipt,
-                pendingTarget.current,
-              );
-              markEditProposal(pendingUI.id, applied ? 'applied' : 'apply-failed');
-              if (applied) {
-                setPendingUI((current) => current?.id === pendingUI.id ? null : current);
-              }
-            }}
+            onAccept={() => void acceptPendingLayout()}
+            onSavePlugin={pendingTarget.current?.localPluginScope && isReusableNaviRecipe(pendingUI.ui_actions!)
+              ? acceptPendingLayout : undefined}
             onCancel={() => {
               markEditProposal(pendingUI.id, 'cancelled');
               setPendingUI(null);
@@ -1309,6 +1322,7 @@ export default function NaviWorkspace() {
                   </button>
                 )}
               </div>
+              <NaviLocalPluginList />
               <nav aria-label={t('history')}>
                 <button
                   disabled={busy}
@@ -1802,6 +1816,17 @@ export default function NaviWorkspace() {
                 type="button"
                 aria-label={t('live.undo')}
                 onClick={() => {
+                  const surface = currentNaviUI();
+                  try {
+                    if (surface && disableActiveNaviPlugin(surface)) {
+                      showOutcome('success');
+                      setReceipt(t('plugins.undo'));
+                      return;
+                    }
+                  } catch {
+                    setReceipt(t('plugins.changeFailed'));
+                    return;
+                  }
                   const result = executeNaviUI([
                     { type: 'restoreLayout', target: 'undo' },
                   ]);

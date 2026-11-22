@@ -10,10 +10,10 @@ import {
 import { useTranslation } from 'react-i18next';
 import {
   NaviUIController,
-  registerNaviUI,
   panelNames,
   type NaviUIAction,
 } from '@/lib/navi-ui';
+import { registerNaviPluginSurface } from '@/lib/navi-local-plugins';
 import type { Question, Grade } from '@/lib/model';
 import { currentNamespace } from '@/lib/store';
 import { useReview } from './review-context';
@@ -84,7 +84,7 @@ export default function NaviLearningWorkspace({
     ),
     [error, setError] = useState(''),
     [knowledgePair, setKnowledgePair] = useState(['', '']);
-  useEffect(() => registerNaviUI(controller), [controller]);
+  useEffect(() => registerNaviPluginSurface(controller, JSON.stringify(['practice', q.subject])), [controller, q.subject]);
   const baselineFocus = useRef(focused);
   if (layout.mode === 'default' && !controller.history.length)
     baselineFocus.current = focused;

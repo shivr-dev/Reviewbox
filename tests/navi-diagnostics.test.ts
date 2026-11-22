@@ -54,6 +54,27 @@ test('task routing and explicit evaluation never silently select GPT-OSS for nor
 test('truncation diagnostics distinguish final-content failure and preserve retry count',async()=>{
  const oldFetch=globalThis.fetch;try{globalThis.fetch=async()=>Response.json({result:{choices:[{finish_reason:'length',message:{content:'{"reply":"unfinished'}}]}});await assert.rejects(naviConversation(input,{environment}),(e:any)=>e.diagnostic.code==='RB-MODEL-TRUNCATED'&&e.diagnostic.attempts===2);}finally{globalThis.fetch=oldFetch;}
 });
+test('Navi retries a truncated response once with a larger compact budget on the other model', async () => {
+ const saved = globalThis.fetch;
+ const attempts: {url: string; maxTokens: number; prompt: string; reasoning?: string}[] = [];
+ try {
+  globalThis.fetch = async (url, init) => {
+   const body = JSON.parse(String(init?.body));
+   attempts.push({url: String(url), maxTokens: body.max_tokens, prompt: body.messages[0].content, reasoning: body.reasoning_effort});
+   return attempts.length === 1
+    ? Response.json({result:{choices:[{finish_reason:'length',message:{content:'{"reply":"partial'}}]}})
+    : Response.json({result:{response:'{"reply":"A complete answer","citations":[],"supplementary":true}'}});
+  };
+  const reply = await naviConversation(input, { environment });
+  assert.equal(reply.reply, 'A complete answer');
+  assert.equal(attempts.length, 2);
+  assert.ok(attempts[0].url.endsWith(GLM));
+  assert.ok(attempts[1].url.endsWith(QWEN));
+  assert.ok(attempts[1].maxTokens > attempts[0].maxTokens);
+  assert.equal(attempts[1].reasoning, 'low');
+  assert.match(attempts[1].prompt, /Close the complete JSON object/);
+ } finally { globalThis.fetch = saved; }
+});
 test('Navi repairs one complete JSON object and only summarizes actual validation for complex requests', async () => {
  const saved = globalThis.fetch;
  const progress: string[] = [];

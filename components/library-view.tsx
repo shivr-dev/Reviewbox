@@ -6,7 +6,8 @@ import { naviReadingStyle } from './navi-page-surface';
 import {subjectLabel as subjectName} from '@/lib/presentation';
 import {tr} from '@/lib/i18n';
 import {lazy,Suspense,useMemo,useSyncExternalStore,useLayoutEffect} from 'react';
-import {NaviUIController,registerNaviUI} from '@/lib/navi-ui';
+import {NaviUIController} from '@/lib/navi-ui';
+import {registerNaviPluginSurface} from '@/lib/navi-local-plugins';
 const BookletExport=lazy(()=>import('./booklet-export'));
 import type {watchRequest} from '@/lib/watch-client';
 import ManualImport from './manual-import';
@@ -85,14 +86,15 @@ export default function LibraryView({
   initialTab = 'materials',packageRequest, embedded = false, openImport = false, page,
 }: { initialTab?: string;packageRequest?:typeof watchRequest; embedded?: boolean; openImport?: boolean; page?: string } = {}) {
   const { data, refresh, start, notify, navigate, subject: routeSubject } = useReview();
-  const collection=useMemo(()=>{const c=new NaviUIController({panels:[],questionIds:[],molecule:false,protected:false,collection:true,pagePresentation:true});c.state.collection={query:'',subject:SUBJECTS.some(s=>s.id===routeSubject)?routeSubject as any:'all',sort:'new'};return c;},[routeSubject]);
+  const collection=useMemo(()=>{const c=new NaviUIController({panels:[],questionIds:[],molecule:false,protected:false,collection:true,pagePresentation:true});c.state.collection={query:'',subject:SUBJECTS.some(s=>s.id===routeSubject)?routeSubject as any:'all',sort:'new'};return c;},[routeSubject,initialTab,page]);
   const collectionState=useSyncExternalStore(collection.subscribe,collection.snapshot,collection.snapshot);
   const search=collectionState.collection?.query??'',filter=collectionState.collection?.subject??(SUBJECTS.some(s=>s.id===routeSubject)?routeSubject:'all');
   const setSearch=(query:string)=>collection.execute([{type:'setFilter',query}], 'user');
   const setFilter=(subject:string)=>collection.execute([{type:'setFilter',subject:subject as any}], 'user');
   const materialOrder=collectionState.collection?.sort??'new';
   const setMaterialOrder=(value:string)=>collection.execute([{type:'setSort',value:value as any}], 'user');
-  useEffect(()=>registerNaviUI(collection,15),[collection]);
+  useEffect(() => registerNaviPluginSurface(collection, JSON.stringify(['library', routeSubject, initialTab, page]), 15),
+    [collection, routeSubject, initialTab, page]);
   collection.target={type:'subject',id:routeSubject};
   collection.capabilities.scrollTargets=[...data.materials.map(m=>'material:'+m.id),...data.questions.map(q=>'question:'+q.id)];
   const rowRefs=useRef(new Map<string,HTMLElement>());

@@ -17,6 +17,7 @@ import {
 import { relatedNaviEvidence } from '../lib/navi-evidence';
 import { naviQuestionSketch } from '../lib/navi-question-visual';
 import type { Question } from '../lib/model';
+import { changeNaviLocalPlugin, isReusableNaviRecipe, listNaviLocalPlugins, registerNaviPluginSurface, saveNaviLocalPlugin } from '../lib/navi-local-plugins';
 const cap = {
   panels: ['question', 'explanation', 'steps', 'diagram', 'answer', 'rubric'],
   questionIds: ['q1', 'q2'],
@@ -67,6 +68,40 @@ test('Navi proposes only supported changes and keeps protected pages uneditable'
   assert.equal(surface.state.fontSize, 18);
   surface.capabilities.protected = true;
   assert.deepEqual(prepareNaviUIProposal(surface, [{ type: 'setFontSize', value: 22 }]), []);
+});
+test('local Navi plugins replay after remount on matching surfaces and can be disabled', () => {
+  const stored = new Map<string, string>();
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+  Object.defineProperty(globalThis, 'localStorage', { configurable: true, value: {
+    getItem: (key: string) => stored.get(key) ?? null,
+    setItem: (key: string, value: string) => stored.set(key, value),
+  } });
+  const registrations: Array<() => void> = [];
+  try {
+    const actions = parseNaviUICommand('做个插件：把字号调到22px')!;
+    const first = new NaviUIController(cap);
+    registrations.push(registerNaviPluginSurface(first, 'practice:math'));
+    const baseline = first.snapshot();
+    assert.equal(first.execute(actions).ok, true);
+    assert.equal(saveNaviLocalPlugin(first, 'Large text', actions, baseline), true);
+    assert.equal(isReusableNaviRecipe([{ type: 'expandAnswer' }]), false);
+    const reopened = new NaviUIController(cap);
+    const other = new NaviUIController(cap);
+    const protectedRoom = new NaviUIController({ ...cap, protected: true });
+    registrations.push(registerNaviPluginSurface(reopened, 'practice:math'));
+    registrations.push(registerNaviPluginSurface(other, 'practice:english'));
+    registrations.push(registerNaviPluginSurface(protectedRoom, 'practice:math'));
+    assert.equal(reopened.snapshot().fontSize, 22);
+    assert.equal(other.snapshot().fontSize, 18);
+    assert.equal(protectedRoom.snapshot().fontSize, 18);
+    assert.equal(changeNaviLocalPlugin(listNaviLocalPlugins()[0].id, 'disable', reopened), true);
+    assert.equal(reopened.snapshot().fontSize, 18);
+    assert.equal(listNaviLocalPlugins()[0].enabled, false);
+  } finally {
+    registrations.forEach(unregister => unregister());
+    if (descriptor) Object.defineProperty(globalThis, 'localStorage', descriptor);
+    else Reflect.deleteProperty(globalThis, 'localStorage');
+  }
 });
 test('invalid final step rolls back the whole batch, including malicious or unsupported parameters', () => {
   const c = new NaviUIController(cap);

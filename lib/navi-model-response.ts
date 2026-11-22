@@ -81,7 +81,8 @@ export function parseNaviModelResponse(body: any, model?: WorkersModel): unknown
       start = -1;
     }
   }
-  if (start >= 0 || objects.length !== 1)
+  if (start >= 0) throw new NaviResponseFormatError('truncated');
+  if (objects.length !== 1)
     throw new NaviResponseFormatError('structure');
   try {
     return finalObject(JSON.parse(objects[0]));
@@ -116,4 +117,3 @@ export function naviQuoteMatches(content: string, quote: string) {
   }
   return false;
 }
-

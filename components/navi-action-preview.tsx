@@ -15,10 +15,12 @@ export default function NaviActionPreview({
   actions,
   onAccept,
   onCancel,
+  onSavePlugin,
 }: {
   actions: NaviUIAction[];
   onAccept: () => void;
   onCancel?: () => void;
+  onSavePlugin?: (name: string) => Promise<boolean>;
 }) {
   const { t } = useTranslation('study'),
     controller = currentNaviUI(),
@@ -27,7 +29,10 @@ export default function NaviActionPreview({
       controller?.snapshot ?? (() => empty),
       () => empty,
     ),
-    [dismissed, setDismissed] = useState(false);
+    [dismissed, setDismissed] = useState(false),
+    [naming, setNaming] = useState(false),
+    [pluginName, setPluginName] = useState(''),
+    [saving, setSaving] = useState(false);
   if (dismissed) return null;
   let after: WorkspaceLayout | undefined;
   try {
@@ -134,7 +139,7 @@ export default function NaviActionPreview({
       )}
       {!after && <p>{t('navi.live.error.unsupported')}</p>}
       <div className="button-row">
-        <button type="button" disabled={!after} onClick={onAccept}>
+        <button type="button" disabled={!after || saving} onClick={onAccept}>
           {t('navi.live.accept')}
         </button>
         <button
@@ -146,7 +151,23 @@ export default function NaviActionPreview({
         >
           {t('navi.cancel')}
         </button>
+        {after && onSavePlugin && !naming && (
+          <button type="button" onClick={() => setNaming(true)}>{t('navi.plugins.save')}</button>
+        )}
       </div>
+      {naming && onSavePlugin && (
+        <div className="navi-local-plugin-name">
+          <label>{t('navi.plugins.name')}
+            <input value={pluginName} onChange={event => setPluginName(event.target.value)} maxLength={64} disabled={saving} />
+          </label>
+          <p>{t('navi.plugins.scope')}</p>
+          <button type="button" disabled={saving || !pluginName.trim()} onClick={async () => {
+            setSaving(true);
+            try { await onSavePlugin(pluginName.trim()); }
+            finally { setSaving(false); }
+          }}>{t('navi.plugins.saveEnable')}</button>
+        </div>
+      )}
     </section>
   );
 }

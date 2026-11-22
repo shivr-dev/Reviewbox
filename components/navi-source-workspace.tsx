@@ -3,10 +3,10 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   NaviUIController,
-  registerNaviUI,
   activateNaviUI,
   type WorkspaceLayout,
 } from '@/lib/navi-ui';
+import { registerNaviPluginSurface } from '@/lib/navi-local-plugins';
 import type { NaviTarget } from '@/lib/navi-context';
 import { currentNamespace } from '@/lib/store';
 import { useReview } from './review-context';
@@ -91,7 +91,8 @@ export default function NaviSourceWorkspace({
   );
   controller.target = target;
   controller.visualQuestion = diagrams[0];
-  useEffect(() => registerNaviUI(controller, priority), [controller, priority]);
+  const pluginScope = JSON.stringify(['source', target.type, target.id, target.sectionId]);
+  useEffect(() => registerNaviPluginSurface(controller, pluginScope, priority), [controller, pluginScope, priority]);
   const details = material?.text ?? section?.source ?? pack?.description ?? '';
   function chooseKnowledge(index: number, id: string, layout: WorkspaceLayout) {
     const next = [...(layout.knowledgeIds ?? pair)];

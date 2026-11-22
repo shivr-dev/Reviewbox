@@ -1136,6 +1136,20 @@
   list-style: disc;
 }
 .navi-analysis-summary li + li { margin-block-start: 3px; }
+.navi-local-plugins { border-block: 1px solid var(--rb-stroke); padding-block: 8px; }
+.navi-local-plugins > summary { cursor: pointer; padding-block: 6px; font-weight: 650; }
+.navi-local-plugins ul { list-style: none; margin: 0; padding: 0; }
+.navi-local-plugins li {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: 4px 12px; padding-block: 8px;
+}
+.navi-local-plugins li + li { border-block-start: 1px solid var(--rb-stroke); }
+.navi-local-plugins li > strong { min-width: 0; overflow-wrap: anywhere; }
+.navi-local-plugins li button { min-height: 32px; padding-inline: 8px; }
+.navi-local-plugins button[aria-checked='true'] { color: var(--rb-violet); background: var(--rb-wash); }
+.navi-local-plugin-name { padding-block-start: 10px; display: grid; gap: 7px; }
+.navi-local-plugin-name input { display: block; width: 100%; margin-block-start: 4px; }
+.navi-local-plugin-name p { font-size: .83rem; margin: 0; color: var(--rb-muted); }
 
 .navi-reading-surface[data-navi-reading-mode='focus'] :is(.rb-home, .rb-results-desk, .alpha-workspace, .membership-page, .remediation-course),
 .library-page[data-navi-reading-mode='focus'],
